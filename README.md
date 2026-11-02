@@ -1,0 +1,47 @@
+# 火事どこ23区
+
+東京消防庁と東京都の公開データから、東京23区の火災件数を区・消防署・町名ごとにまとめる静的サイト。
+
+## 仕組み
+1. `collector/run.mjs` … 東京消防庁サイトから収集（23区の管轄表 → 58署の災害情報ページ → 日次速報）。解析は `parse_station.js`（署ごとに違う表の書式を見出しで読み分け、読み取った行も記録）。
+2. `site/build.py` … `data/raw/` の最新データからページを生成（`dist/`）。
+3. `site/og.js` … SNS共有用のOGP画像（区ごと）。
+4. `site/verify.js` … 自動チェック（出典行と値の一致、区の合計の再計算、人口の検算、表示エラー・横はみ出し・リンク切れ・検索・並べ替え）。
+5. `site/verify_live.mjs` … 公開前に、全署の公式ページを取り直して値を再照合。
+6. `collector/news_run.mjs` … 報道（Googleニュースの検索RSS 25本）から23区の火事を抽出し `data/raw/news.json` に30日分を保持。見出し文は保存・表示せず、区・町名・建物の種類・けが人の有無・報道元リンクだけを使う（`news.js`）。
+7. `worker/` … 「サイレンが聞こえた」報告の受付サーバー（Cloudflare Workers + D1）。IPは日替わりの塩付きハッシュでのみ保持（10分の連投制限用）、番地は切り捨て、7日で削除。`node worker/test.mjs` で動作テスト。
+8. `.github/workflows/daily.yml` … 毎朝すべて、30分ごとに報道だけを取り直して生成・検査し、GitHub Pages に公開。
+
+## 「いまの火事」の情報源（kaji.news と同じ考え方）
+東京消防庁の災害情報案内（03-3212-2119）は職員が応対する窓口のため、自動発信はしない。代わりに
+- 報道（上記6）… 23区の火事で、けが人や大きな被害があるものはほぼ報道される
+- 利用者の報告（上記7）… 「サイレンが聞こえた／煙／火」をワンタップで。近くの人の報告が集まると、その区・町に件数が出る
+を組み合わせる。多摩地区・他県に広げるときは、録音で案内している消防本部の災害案内ダイヤル（自動発信＋文字起こし）や、市のメール配信（すぐメール等）を加える。
+
+## 受付サーバーの公開手順（初回だけ）
+```
+cd worker
+npx wrangler login                       # Cloudflare アカウント（無料）でログイン
+npx wrangler d1 create kaji23            # 表示された database_id を wrangler.toml に貼る
+npx wrangler d1 execute kaji23 --remote --file=schema.sql
+npx wrangler secret put SALT             # 長いランダム文字列を入力
+npx wrangler deploy                      # https://kaji23-reports.<名前>.workers.dev が発行される
+```
+発行されたURLを GitHub リポジトリの Settings → Variables に `REPORTS_API` として登録すると、次の生成からボタンがそこへ送信するようになる。無料枠（1日10万リクエスト・D1 5GB）で足りる想定。
+
+## 手動で動かす
+```
+npm ci
+node collector/run.mjs          # 収集
+cd site && ./run_all.sh          # 生成・検査（Playwright が必要）
+```
+独自ドメインを使うときは `SITE_URL=https://example.jp ./run_all.sh`（OGP・シェアのURLに使われます）。
+
+## データの更新頻度
+- 署ページ：署ごとに不定期（毎日〜月1回）。集計時点はページごとに表示。
+- 報道：30分ごと。
+- サイレン報告：リアルタイム（ページは1分ごとに集計を取り直す）。
+- 人口：年1回（1月1日現在）。`data/raw/pop_YYYY-01-01.json` を東京都の統計 第1表CSVから更新。
+
+## 全国展開の手順
+`collect_tfd.js` の区・署のリストと探索ルールを、各消防本部のサイト構成に合わせた「取得アダプタ」として追加する。`parse_station.js` の表の読み分けはそのまま使える。

@@ -1,0 +1,15 @@
+name = "kaji23-reports"
+main = "src/index.js"
+compatibility_date = "2025-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kaji23"
+database_id = "（wrangler d1 create kaji23 の結果を貼る）"
+
+[vars]
+ALLOW_ORIGIN = "https://（公開するドメイン）"
+# SALT は wrangler secret put SALT で設定（公開しない）
+
+[triggers]
+crons = ["17 4 * * *"]

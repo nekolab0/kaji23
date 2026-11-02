@@ -1,0 +1,45 @@
+# 収集 → 生成 → 検査 → 公開
+#  - 毎朝6時台: 東京消防庁（署ページ・日次速報）＋報道
+#  - 30分ごと: 報道だけ取り直してサイトを作り直す
+name: daily
+on:
+  schedule:
+    - cron: '23 21 * * *'      # UTC 21:23 = 日本時間 6:23（全部）
+    - cron: '7,37 * * * *'     # 30分ごと（報道のみ）
+  workflow_dispatch:
+concurrency: { group: build, cancel-in-progress: false }
+permissions: { contents: write, pages: write, id-token: write }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: npm ci && npm i -g playwright@1.47.2 && npx playwright install --with-deps chromium
+      - run: sudo apt-get install -y fonts-noto-cjk
+      - name: 東京消防庁から収集（朝の1回だけ）
+        if: github.event.schedule != '7,37 * * * *'
+        run: node collector/run.mjs && cd site && node verify_live.mjs
+      - name: 報道から23区の火事を収集
+        run: node collector/news_run.mjs
+      - name: 受付サーバーのテスト
+        run: node --no-warnings worker/test.mjs
+      - name: 生成・検査
+        env: { SITE_URL: '${{ vars.SITE_URL }}' }
+        run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh
+      - name: データを保存
+        run: |
+          git config user.name kaji23-bot && git config user.email bot@users.noreply.github.com
+          git add data/raw verify && git commit -m "data: $(date -u +%FT%H:%M)" || true
+          git push
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: dist }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: { name: github-pages }
+    steps:
+      - uses: actions/deploy-pages@v4

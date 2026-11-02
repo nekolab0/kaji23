@@ -1,0 +1,32 @@
+{
+  "source": "東京都の統計「住民基本台帳による東京都の世帯と人口（町丁別・年齢別）令和8年1月」第1表",
+  "url": "https://www.toukei.metro.tokyo.lg.jp/juukiy/2026/jy26000001.htm",
+  "csv": "https://www.toukei.metro.tokyo.lg.jp/juukiy/2026/jy26qv0100.csv",
+  "asof": "2026-01-01",
+  "kubu_total": {"households": 5600989, "pop": 9796723, "density": 15612},
+  "wards": {
+    "13101": {"households": 39737, "pop": 69139, "density": 5930},
+    "13102": {"households": 108424, "pop": 191015, "density": 18709},
+    "13103": {"households": 155262, "pop": 269877, "density": 13255},
+    "13104": {"households": 234374, "pop": 355125, "density": 19491},
+    "13105": {"households": 132456, "pop": 236981, "density": 20990},
+    "13106": {"households": 138606, "pop": 217512, "density": 21515},
+    "13107": {"households": 171985, "pop": 288833, "density": 20976},
+    "13108": {"households": 297147, "pop": 543193, "density": 12635},
+    "13109": {"households": 240687, "pop": 415644, "density": 18190},
+    "13110": {"households": 162902, "pop": 282607, "density": 19264},
+    "13111": {"households": 424146, "pop": 745048, "density": 12044},
+    "13112": {"households": 508002, "pop": 928666, "density": 15998},
+    "13113": {"households": 143708, "pop": 230880, "density": 15280},
+    "13114": {"households": 220969, "pop": 343794, "density": 22052},
+    "13115": {"households": 339208, "pop": 582636, "density": 17106},
+    "13116": {"households": 189882, "pop": 296129, "density": 22762},
+    "13117": {"households": 216145, "pop": 367432, "density": 17828},
+    "13118": {"households": 128146, "pop": 224784, "density": 22124},
+    "13119": {"households": 340146, "pop": 583528, "density": 18111},
+    "13120": {"households": 400678, "pop": 750559, "density": 15611},
+    "13121": {"households": 386004, "pop": 703369, "density": 13209},
+    "13122": {"households": 256910, "pop": 472558, "density": 13579},
+    "13123": {"households": 365465, "pop": 697414, "density": 13976}
+  }
+}
