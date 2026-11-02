@@ -1,25 +1,34 @@
-// 火事どこ23区 — 目撃報告・口コミの受付サーバー（Cloudflare Workers + D1）
+// 火事どこ — 目撃報告・口コミの受付サーバー（Cloudflare Workers + D1）。全国の市区町村に対応
 //
 // 報告（サイレン／煙・におい／火）を、同じ町・2時間以内なら同じ「火事」にまとめる。
 // 火事ごと・町ごとに口コミを投稿でき、3人が「不適切」と通報すると非表示になる。
 // /f/<火事ID> は共有用のページ。X や LINE に貼ると「どこで・何件」が見出しとして出る。
 //
-// POST /api/report   {ward, town?, kind}            → {ok, incident}
-// POST /api/comment  {inc? | ward+town?, body}      → {ok, id}
+// POST /api/report   {pref, city, town?, kind}      → {ok, incident}   （東京23区は {ward} だけでも可）
+// POST /api/comment  {inc? | pref+city+town?, body} → {ok, id, inc}   （火事を指定しなければ、同じ場所の進行中の火事に付く）
 // POST /api/flag     {id}                           → {ok}
 // GET  /api/live?hours=6                            → いま報告が上がっている火事
 // GET  /api/incident?id=                            → 火事1件（件数・口コミ）
-// GET  /api/town?ward=&town=                        → 町の火事（30日）と口コミ掲示板
+// GET  /api/town?pref=&city=&town=                 → 町の火事（30日）と口コミ掲示板
 // GET  /api/reports?hours=24                        → 区・町ごとの件数（旧形式）
 // POST /api/contact  {body}                         → 削除依頼・問い合わせ
 // GET  /f/<id>                                      → 共有用ページ
 //
 // 個人の特定を避けるため: 町名は丁目まで、番地・電話番号・URLは受け付けない。
 // IPアドレスは保存しない（日替わりの塩付きハッシュを連投防止にだけ使う）。
+import { AREAS } from './areas.js';
+
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
 export const KINDS = ['siren', 'smoke', 'fire'];
 const KIND_JA = { siren: 'サイレン', smoke: '煙・におい', fire: '火' };
+// 場所は「都道府県＋市区町村（政令市は区）」。東京23区だけは区名だけでも受け付ける（旧形式）
+export function areaOf(b) {
+  let pref = String((b && b.pref) || ''), city = String((b && (b.city || b.ward)) || '');
+  if (!pref && WARDS.includes(city)) pref = '東京都';
+  return AREAS[pref] && AREAS[pref].includes(city) ? { pref, city } : null;
+}
+export const placeName = (pref, city, town) => (pref === '東京都' && WARDS.includes(city) ? '' : pref || '') + city + (town || '');
 const REPORT_COOLDOWN_MIN = 10;   // 同じ人・同じ区の報告は10分に1回
 const COMMENT_COOLDOWN_SEC = 60;  // 口コミは1分に1回
 const MERGE_HOURS = 2;            // 最後の報告から2時間以内なら同じ火事
@@ -78,16 +87,22 @@ async function setup(env) {
   await run(`CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, ward TEXT NOT NULL, town TEXT,
     kind TEXT NOT NULL CHECK (kind IN ('siren','smoke','fire')), at TEXT NOT NULL, who TEXT NOT NULL)`);
   // 旧版の表に列を足す（すでにあれば何もしない）
-  for (const col of ['inc TEXT', 'base TEXT']) { try { await run(`ALTER TABLE reports ADD COLUMN ${col}`); } catch (e) {} }
+  for (const col of ['inc TEXT', 'base TEXT', 'pref TEXT']) { try { await run(`ALTER TABLE reports ADD COLUMN ${col}`); } catch (e) {} }
   await run('CREATE INDEX IF NOT EXISTS idx_reports_at ON reports(at)');
   await run('CREATE INDEX IF NOT EXISTS idx_reports_who ON reports(who, ward, at)');
   await run(`CREATE TABLE IF NOT EXISTS incidents (id TEXT PRIMARY KEY, ward TEXT NOT NULL, town TEXT, base TEXT, first_at TEXT NOT NULL, last_at TEXT NOT NULL,
     n INTEGER NOT NULL DEFAULT 0, siren INTEGER NOT NULL DEFAULT 0, smoke INTEGER NOT NULL DEFAULT 0, fire INTEGER NOT NULL DEFAULT 0, comments INTEGER NOT NULL DEFAULT 0)`);
+  try { await run('ALTER TABLE incidents ADD COLUMN pref TEXT'); } catch (e) {}
   await run('CREATE INDEX IF NOT EXISTS idx_inc_last ON incidents(last_at)');
+  await run('CREATE INDEX IF NOT EXISTS idx_inc_area ON incidents(pref, ward, base, last_at)');
   await run('CREATE INDEX IF NOT EXISTS idx_inc_place ON incidents(ward, base, last_at)');
   await run(`CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY AUTOINCREMENT, inc TEXT, ward TEXT NOT NULL, town TEXT, base TEXT, body TEXT NOT NULL,
     at TEXT NOT NULL, who TEXT NOT NULL, flags INTEGER NOT NULL DEFAULT 0, hidden INTEGER NOT NULL DEFAULT 0)`);
+  try { await run('ALTER TABLE comments ADD COLUMN pref TEXT'); } catch (e) {}
   await run('CREATE INDEX IF NOT EXISTS idx_com_inc ON comments(inc, at)');
+  await run('CREATE INDEX IF NOT EXISTS idx_com_area ON comments(pref, ward, base, at)');
+  // 23区だけだった頃のデータは東京都とみなす
+  for (const t of ['reports', 'incidents', 'comments']) await run(`UPDATE ${t} SET pref = '東京都' WHERE pref IS NULL`);
   await run('CREATE INDEX IF NOT EXISTS idx_com_place ON comments(ward, base, at)');
   await run('CREATE INDEX IF NOT EXISTS idx_com_who ON comments(who, at)');
   await run('CREATE TABLE IF NOT EXISTS flags (comment INTEGER NOT NULL, who TEXT NOT NULL, PRIMARY KEY (comment, who))');
@@ -99,9 +114,15 @@ async function setup(env) {
   return (await env.DB.prepare('SELECT v FROM meta WHERE k = ?').bind('salt').first()).v;
 }
 
-const incOut = r => r && ({ id: r.id, ward: r.ward, town: r.town, first: r.first_at, last: r.last_at,
+// 同じ場所（町名がなければ市区町村内の直近）で、指定時刻より後に報告がある火事
+async function openIncident(DB, pref, ward, base, since) {
+  return base
+    ? DB.prepare('SELECT * FROM incidents WHERE pref = ? AND ward = ? AND (base = ? OR base IS NULL) AND last_at > ? ORDER BY (base = ?) DESC, last_at DESC LIMIT 1').bind(pref, ward, base, since, base).first()
+    : DB.prepare('SELECT * FROM incidents WHERE pref = ? AND ward = ? AND last_at > ? ORDER BY last_at DESC LIMIT 1').bind(pref, ward, since).first();
+}
+const incOut = r => r && ({ id: r.id, pref: r.pref, city: r.ward, ward: r.ward, town: r.town, place: placeName(r.pref, r.ward, r.town), first: r.first_at, last: r.last_at,
   counts: { total: r.n, siren: r.siren, smoke: r.smoke, fire: r.fire }, comments: r.comments });
-const comOut = r => ({ id: r.id, inc: r.inc, ward: r.ward, town: r.town, body: r.body, at: r.at });
+const comOut = r => ({ id: r.id, inc: r.inc, pref: r.pref, city: r.ward, ward: r.ward, town: r.town, body: r.body, at: r.at });
 
 export async function handle(request, env, now = new Date()) {
   const url = new URL(request.url);
@@ -121,29 +142,28 @@ export async function handle(request, env, now = new Date()) {
   // ---- 目撃報告 ----
   if (P === '/api/report' && request.method === 'POST') {
     const b = await body(); if (!b) return json(env, { error: '送信内容を読み取れませんでした' }, 400);
-    const ward = String(b.ward || ''), kind = String(b.kind || '');
-    if (!WARDS.includes(ward)) return json(env, { error: '区名が正しくありません' }, 400);
+    const area = areaOf(b), kind = String(b.kind || '');
+    if (!area) return json(env, { error: '都道府県・市区町村を選んでください' }, 400);
+    const { pref, city: ward } = area;
     if (!KINDS.includes(kind)) return json(env, { error: '報告の種類が正しくありません' }, 400);
     const town = cleanTown(b.town);
     if (town && !TOWN_OK.test(town)) return json(env, { error: '町名に使えない文字が含まれています' }, 400);
     const base = town ? baseTown(town) : null;
     const who = await whoOf();
-    const dup = await DB.prepare('SELECT COUNT(*) AS n FROM reports WHERE who = ? AND ward = ? AND at > ?').bind(who, ward, ago(REPORT_COOLDOWN_MIN * 60e3)).first();
-    if (dup && dup.n > 0) return json(env, { error: `同じ区への報告は${REPORT_COOLDOWN_MIN}分に1回までです`, cooldown: true }, 429);
+    const dup = await DB.prepare('SELECT COUNT(*) AS n FROM reports WHERE who = ? AND pref = ? AND ward = ? AND at > ?').bind(who, pref, ward, ago(REPORT_COOLDOWN_MIN * 60e3)).first();
+    if (dup && dup.n > 0) return json(env, { error: `同じ市区町村への報告は${REPORT_COOLDOWN_MIN}分に1回までです`, cooldown: true }, 429);
     // 同じ町（町名なしなら区内で直近）の、2時間以内に報告がある火事にまとめる
     const since = ago(MERGE_HOURS * 3600e3);
-    let inc = base
-      ? await DB.prepare('SELECT * FROM incidents WHERE ward = ? AND (base = ? OR base IS NULL) AND last_at > ? ORDER BY (base = ?) DESC, last_at DESC LIMIT 1').bind(ward, base, since, base).first()
-      : await DB.prepare('SELECT * FROM incidents WHERE ward = ? AND last_at > ? ORDER BY last_at DESC LIMIT 1').bind(ward, since).first();
+    let inc = await openIncident(DB, pref, ward, base, since);
     if (inc) {
       await DB.prepare(`UPDATE incidents SET last_at = ?, n = n + 1, ${kind} = ${kind} + 1, town = COALESCE(town, ?), base = COALESCE(base, ?) WHERE id = ?`)
         .bind(iso, town || null, base, inc.id).run();
     } else {
       inc = { id: newId() };
-      await DB.prepare(`INSERT INTO incidents (id, ward, town, base, first_at, last_at, n, ${kind}) VALUES (?, ?, ?, ?, ?, ?, 1, 1)`)
-        .bind(inc.id, ward, town || null, base, iso, iso).run();
+      await DB.prepare(`INSERT INTO incidents (id, pref, ward, town, base, first_at, last_at, n, ${kind}) VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1)`)
+        .bind(inc.id, pref, ward, town || null, base, iso, iso).run();
     }
-    await DB.prepare('INSERT INTO reports (ward, town, base, kind, at, who, inc) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(ward, town || null, base, kind, iso, who, inc.id).run();
+    await DB.prepare('INSERT INTO reports (pref, ward, town, base, kind, at, who, inc) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(pref, ward, town || null, base, kind, iso, who, inc.id).run();
     return json(env, { ok: true, incident: inc.id });
   }
 
@@ -152,22 +172,27 @@ export async function handle(request, env, now = new Date()) {
     const b = await body(); if (!b) return json(env, { error: '送信内容を読み取れませんでした' }, 400);
     const [text, err] = checkBody(b.body);
     if (err) return json(env, { error: err }, 400);
-    let ward, town, base, incId = null;
+    let pref, ward, town, base, incId = null;
     if (b.inc) {
       const inc = await DB.prepare('SELECT * FROM incidents WHERE id = ?').bind(String(b.inc)).first();
       if (!inc && !/^n-/.test(String(b.inc))) return json(env, { error: 'この火事は見つかりませんでした' }, 404);
       incId = String(b.inc).slice(0, 80);
-      ward = inc ? inc.ward : String(b.ward || ''); town = inc ? inc.town : cleanTown(b.town);
-    } else { ward = String(b.ward || ''); town = cleanTown(b.town); }
-    if (!WARDS.includes(ward)) return json(env, { error: '区名が正しくありません' }, 400);
+      if (inc) { pref = inc.pref || '東京都'; ward = inc.ward; town = inc.town; }
+      else { const area = areaOf(b); if (!area) return json(env, { error: '都道府県・市区町村を選んでください' }, 400); pref = area.pref; ward = area.city; town = cleanTown(b.town); }
+    } else {
+      const area = areaOf(b); if (!area) return json(env, { error: '都道府県・市区町村を選んでください' }, 400);
+      pref = area.pref; ward = area.city; town = cleanTown(b.town);
+    }
     if (town && !TOWN_OK.test(town)) return json(env, { error: '町名に使えない文字が含まれています' }, 400);
     base = town ? baseTown(town) : null;
+    // 火事を指定していない口コミは、同じ場所で2時間以内に報告がある火事に付ける
+    if (!incId) { const open = await openIncident(DB, pref, ward, base, ago(MERGE_HOURS * 3600e3)); if (open) incId = open.id; }
     const who = await whoOf();
     const dup = await DB.prepare('SELECT COUNT(*) AS n FROM comments WHERE who = ? AND at > ?').bind(who, ago(COMMENT_COOLDOWN_SEC * 1e3)).first();
     if (dup && dup.n > 0) return json(env, { error: '口コミは1分に1回までです', cooldown: true }, 429);
-    const r = await DB.prepare('INSERT INTO comments (inc, ward, town, base, body, at, who) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(incId, ward, town || null, base, text, iso, who).run();
+    const r = await DB.prepare('INSERT INTO comments (inc, pref, ward, town, base, body, at, who) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').bind(incId, pref, ward, town || null, base, text, iso, who).run();
     if (incId) await DB.prepare('UPDATE incidents SET comments = comments + 1 WHERE id = ?').bind(incId).run();
-    return json(env, { ok: true, id: r.meta && r.meta.last_row_id != null ? r.meta.last_row_id : r.lastInsertRowid });
+    return json(env, { ok: true, id: r.meta && r.meta.last_row_id != null ? r.meta.last_row_id : r.lastInsertRowid, inc: incId });
   }
 
   // ---- 不適切な口コミの通報 ----
@@ -214,10 +239,11 @@ export async function handle(request, env, now = new Date()) {
   }
 
   if (P === '/api/town' && request.method === 'GET') {
-    const ward = String(url.searchParams.get('ward') || ''), base = baseTown(url.searchParams.get('town') || '');
-    if (!WARDS.includes(ward) || !base) return json(env, { error: '区・町名が正しくありません' }, 400);
-    const i = await DB.prepare('SELECT * FROM incidents WHERE ward = ? AND base = ? AND last_at > ? ORDER BY last_at DESC LIMIT 20').bind(ward, base, ago(30 * 864e5)).all();
-    const c = await DB.prepare('SELECT * FROM comments WHERE ward = ? AND base = ? AND hidden = 0 ORDER BY at DESC LIMIT 50').bind(ward, base).all();
+    const area = areaOf({ pref: url.searchParams.get('pref'), city: url.searchParams.get('city') || url.searchParams.get('ward') });
+    const base = baseTown(url.searchParams.get('town') || '');
+    if (!area || !base) return json(env, { error: '場所が正しくありません' }, 400);
+    const i = await DB.prepare('SELECT * FROM incidents WHERE pref = ? AND ward = ? AND base = ? AND last_at > ? ORDER BY last_at DESC LIMIT 20').bind(area.pref, area.city, base, ago(30 * 864e5)).all();
+    const c = await DB.prepare('SELECT * FROM comments WHERE pref = ? AND ward = ? AND base = ? AND hidden = 0 ORDER BY at DESC LIMIT 50').bind(area.pref, area.city, base).all();
     return json(env, { generatedAt: iso, incidents: i.results.map(incOut), comments: c.results.map(comOut) }, 200, { 'Cache-Control': 'public, max-age=30' });
   }
 
@@ -241,9 +267,9 @@ export async function handle(request, env, now = new Date()) {
     const site = (env.SITE_URL || DEFAULT_SITE).replace(/\/$/, '');
     const inc = await DB.prepare('SELECT * FROM incidents WHERE id = ?').bind(m[1]).first();
     const dest = `${site}/fire.html?id=${encodeURIComponent(m[1])}`;
-    let title = '火事の目撃情報｜火事どこ23区', desc = '東京23区の「近くで火事？」を町名で確かめられるサイトです。';
+    let title = '火事の目撃情報｜火事どこ', desc = '「近くで火事？」を町名で確かめられるサイトです。';
     if (inc) {
-      const place = `${inc.ward}${inc.town || ''}`;
+      const place = placeName(inc.pref, inc.ward, inc.town);
       const parts = KINDS.filter(k => inc[k]).map(k => `${KIND_JA[k]}${inc[k]}`).join('・');
       const t = new Date(new Date(inc.last_at).getTime() + 9 * 3600e3);
       title = `${place}付近で火事の目撃情報 ${inc.n}件｜火事どこ23区`;

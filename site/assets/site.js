@@ -1,4 +1,4 @@
-// 火事どこ23区: 町名検索・現在地・いまの火事・目撃報告・口コミ・火事のページ・共有
+// 火事どこ: 町名検索・現在地・いまの火事・目撃報告（全国）・口コミ・火事のページ・共有
 (function () {
   'use strict';
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
@@ -6,9 +6,8 @@
   var meta = $('meta[name="kaji23-api"]');
   var API = meta && meta.content ? meta.content.replace(/\/$/, '') : '';
   var KIND = { siren: 'サイレン', smoke: '煙・におい', fire: '火' };
-  var WARD_CODE = { '13101': '千代田区', '13102': '中央区', '13103': '港区', '13104': '新宿区', '13105': '文京区', '13106': '台東区', '13107': '墨田区',
-    '13108': '江東区', '13109': '品川区', '13110': '目黒区', '13111': '大田区', '13112': '世田谷区', '13113': '渋谷区', '13114': '中野区', '13115': '杉並区',
-    '13116': '豊島区', '13117': '北区', '13118': '荒川区', '13119': '板橋区', '13120': '練馬区', '13121': '足立区', '13122': '葛飾区', '13123': '江戸川区' };
+  var AREAS = window.KAJI_AREAS || { prefs: {}, codes: {} };   // 全国の都道府県・市区町村（assets/areas.js）
+  var TOKYO23 = (AREAS.prefs['東京都'] || []).slice(0, 23);
   var KNUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
 
   function el(tag, attrs, text) {
@@ -41,12 +40,12 @@
   }
   function msg(e) { return (e && e.message && /[ぁ-んァ-ン一-龥]/.test(e.message)) ? e.message : '通信できませんでした。電波の良いところで、もう一度お試しください。'; }
   function readJSON(id) { var n = document.getElementById(id); try { return n ? JSON.parse(n.textContent) : null; } catch (e) { return null; } }
-  function placeOf(x) { return x.ward + (x.town || ''); }
+  function placeOf(x) { return x.place || ((x.pref === '東京都' && TOKYO23.indexOf(x.city || x.ward) >= 0 ? '' : (x.pref || '')) + (x.city || x.ward) + (x.town || '')); }
   function countsText(c) { return ['fire', 'smoke', 'siren'].filter(function (k) { return c[k]; }).map(function (k) { return KIND[k] + ' ' + c[k]; }).join('・'); }
   var TOWN_INDEX = readJSON('town-index') || [];
   var TOWN_FILES = readJSON('town-files') || {};
   TOWN_INDEX.forEach(function (t) { TOWN_FILES[t.w + '|' + t.t] = t.f; });
-  function townFile(ward, town) { return town ? TOWN_FILES[ward + '|' + baseTown(town)] : null; }
+  function townFile(pref, city, town) { return pref === '東京都' && town ? TOWN_FILES[city + '|' + baseTown(town)] : null; }
 
   // ---------------- 共有ボタン・コピー ----------------
   function copyText(text, btn) {
@@ -105,10 +104,10 @@
         fetch('https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lat=' + p.coords.latitude + '&lon=' + p.coords.longitude)
           .then(function (r) { return r.json(); })
           .then(function (j) {
-            var r = j && j.results; var ward = r && WARD_CODE[String(r.muniCd)];
-            if (!ward) return reject(new Error('現在地が東京23区の外のようです'));
+            var r = j && j.results; var a = r && AREAS.codes[String(r.muniCd).slice(0, 5)];
+            if (!a) return reject(new Error('現在地の市区町村がわかりませんでした'));
             var town = cleanTown(r.lv01Nm || '');
-            resolve({ ward: ward, town: town, base: baseTown(town) });
+            resolve({ pref: a[0], city: a[1], town: town, base: baseTown(town) });
           }, function () { reject(new Error('現在地の町名を調べられませんでした')); });
       }, function () { reject(new Error('現在地を使う許可がありませんでした')); }, { timeout: 10000, maximumAge: 300000 });
     });
@@ -145,9 +144,12 @@
       geo.addEventListener('click', function () {
         count.textContent = '現在地を調べています…';
         locate().then(function (r) {
-          var f = TOWN_FILES[r.ward + '|' + r.base];
-          if (f) { count.textContent = r.ward + r.town + 'のページを開きます'; location.href = f; }
-          else { input.value = r.base || r.ward; render(); count.textContent = r.ward + (r.town || '') + '付近：候補から選んでください'; }
+          var f = townFile(r.pref, r.city, r.base);
+          if (f) { count.textContent = r.city + r.town + 'のページを開きます'; location.href = f; return; }
+          if (r.pref === '東京都' && TOKYO23.indexOf(r.city) >= 0) { input.value = r.base || r.city; render(); count.textContent = r.city + (r.town || '') + '付近：候補から選んでください'; return; }
+          // 23区の外: 町のページはまだないので、投稿欄に場所を入れる
+          var panel = $('[data-post]'); if (panel && panel._setArea) { panel._setArea(r.pref, r.city, r.town); panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+          count.textContent = r.pref + r.city + (r.town || '') + '付近です。町ごとのページは東京23区から順に作っています。下の欄から報告・口コミを送れます。';
         }, function (e) { count.textContent = msg(e); });
       });
     }
@@ -173,14 +175,14 @@
     if (!API) { liveBoxes.forEach(function (b) { b.innerHTML = ''; b.appendChild(el('p', { class: 'muted small' }, '目撃報告の受付を準備中です。')); }); return; }
     getJSON('/api/live?hours=6').then(function (j) {
       liveBoxes.forEach(function (box) {
-        var w = box.getAttribute('data-ward'), t = box.getAttribute('data-town');
-        var list = j.incidents.filter(function (x) { return (!w || x.ward === w) && (!t || (x.town && baseTown(x.town) === t)); });
+        var pf = box.getAttribute('data-pref'), w = box.getAttribute('data-city'), t = box.getAttribute('data-town');
+        var list = j.incidents.filter(function (x) { return (!pf || (x.pref || '東京都') === pf) && (!w || x.ward === w) && (!t || (x.town && baseTown(x.town) === t)); });
         box.innerHTML = '';
         if (!list.length) { box.appendChild(el('p', { class: 'muted live-empty' }, box.getAttribute('data-empty'))); }
         else { var ul = el('ul', { class: 'fires' }); list.forEach(function (x) { ul.appendChild(fireCard(x)); }); box.appendChild(ul); }
       });
       tiles.forEach(function (tile) {
-        var n = j.incidents.filter(function (x) { return x.ward === tile.getAttribute('data-ward-tile'); }).reduce(function (a, x) { return a + x.counts.total; }, 0);
+        var n = j.incidents.filter(function (x) { return (x.pref || '東京都') === '東京都' && x.ward === tile.getAttribute('data-ward-tile'); }).reduce(function (a, x) { return a + x.counts.total; }, 0);
         $('.tile-n', tile).textContent = n ? '報告' + n : '';
         tile.className = tile.className.replace(/\bh[x1-4]\b/, n ? (n >= 10 ? 'h4' : n >= 5 ? 'h3' : n >= 2 ? 'h2' : 'h1') : 'hx');
       });
@@ -191,52 +193,95 @@
   }
   loadLive(); if (liveBoxes.length || tiles.length) setInterval(loadLive, 60000);
 
-  // ---------------- 目撃報告 ----------------
-  function initReport(box) {
-    var fixedWard = box.getAttribute('data-ward');
-    var form = $('.report-form', box), status = $('.report-status', box), buttons = $$('button[type=submit]', form);
+  // ---------------- 投稿欄（全国）: 場所＋「ボタンで報告」／「口コミを書く」 ----------------
+  function fillCities(sel, pref, city) {
+    sel.innerHTML = '';
+    sel.appendChild(el('option', { value: '' }, pref ? '市区町村を選ぶ' : '先に都道府県を選ぶ'));
+    (AREAS.prefs[pref] || []).forEach(function (c) { var o = el('option', null, c); if (c === city) o.selected = true; sel.appendChild(o); });
+    sel.disabled = !pref;
+  }
+  function initPanel(box) {
+    var inc = box.getAttribute('data-inc');
+    var prefSel = $('[name=pref]', box), citySel = $('[name=city]', box), townIn = $('[name=town]', box);
+    var status = $('.post-status', box), quick = $('form.quick', box), text = $('form.text', box);
     var say = function (t, link) { status.innerHTML = ''; status.appendChild(document.createTextNode(t)); if (link) { status.appendChild(document.createTextNode(' ')); status.appendChild(link); } };
-    var busy = function (b) { buttons.forEach(function (x) { x.disabled = b; }); };
-    if (!API) { form.hidden = true; say('目撃報告の受付を準備中です。いま出動中の災害は、東京消防庁の災害情報案内（03-3212-2119）で確かめられます。'); return; }
-    var geo = $('.geo-fill', form);
-    if (geo && navigator.geolocation) {
+    if (!API) { quick.hidden = true; text.hidden = true; var tb = $('.tabs', box); if (tb) tb.hidden = true; var ar = $('.area', box); if (ar) ar.hidden = true;
+      say('目撃報告の受付を準備中です。いま出動中の災害は、東京消防庁の災害情報案内（03-3212-2119）で確かめられます。'); return; }
+    if (prefSel) {
+      fillCities(citySel, prefSel.value, box.getAttribute('data-city'));
+      prefSel.addEventListener('change', function () { fillCities(citySel, prefSel.value, ''); });
+    }
+    box._setArea = function (pref, city, town) {
+      if (!prefSel) return; prefSel.value = pref; fillCities(citySel, pref, city); if (townIn) townIn.value = town || '';
+    };
+    // タブ
+    var tabs = $$('[role=tab]', box);
+    var show = function (name) {
+      tabs.forEach(function (t) { var on = t.getAttribute('data-tab') === name; t.setAttribute('aria-selected', on ? 'true' : 'false'); t.tabIndex = on ? 0 : -1; });
+      quick.hidden = name !== 'quick'; text.hidden = name !== 'text'; say('');
+    };
+    tabs.forEach(function (t, i) {
+      t.addEventListener('click', function () { show(t.getAttribute('data-tab')); });
+      t.addEventListener('keydown', function (e) { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; n.focus(); n.click(); } });
+    });
+    // 現在地
+    var geo = $('.geo-fill', box);
+    if (geo && navigator.geolocation && prefSel) {
       geo.hidden = false;
       geo.addEventListener('click', function () {
         say('現在地を調べています…');
-        locate().then(function (r) {
-          if (fixedWard && r.ward !== fixedWard) { say('現在地は' + r.ward + 'のようです。' + r.ward + 'のページから報告してください。'); return; }
-          var ws = $('select[name=ward]', form); if (ws) ws.value = r.ward;
-          $('[name=town]', form).value = r.town; say(r.ward + r.town + 'を入れました。');
-        }, function (e) { say(msg(e)); });
+        locate().then(function (r) { box._setArea(r.pref, r.city, r.town); say(r.pref + r.city + (r.town || '') + 'を入れました。'); }, function (e) { say(msg(e)); });
       });
     }
-    form.addEventListener('submit', function (ev) {
+    var area = function () {
+      if (inc) return { pref: box.getAttribute('data-pref'), city: box.getAttribute('data-city'), town: box.getAttribute('data-town') || '' };
+      var pref = prefSel.value, city = citySel.value;
+      if (!pref) { say('都道府県を選んでください。'); return null; }
+      if (!city) { say('市区町村を選んでください。'); return null; }
+      var town = cleanTown(townIn.value);
+      if (town && !/^[぀-ヿ㐀-鿿0-9・ー々ヶ]+$/.test(town)) { say('町名は漢字・かなで入れてください（番地は不要です）。'); return null; }
+      return { pref: pref, city: city, town: town };
+    };
+    var busy = function (f, b) { $$('button', f).forEach(function (x) { x.disabled = b; }); };
+    var fireLink = function (id) { return el('a', { href: 'fire.html?id=' + encodeURIComponent(id) }, 'この火事のページを見る・近所に知らせる →'); };
+    quick.addEventListener('submit', function (ev) {
       ev.preventDefault();
+      var a = area(); if (!a) return;
       var kind = (ev.submitter && ev.submitter.value) || 'siren';
-      var ward = fixedWard || ($('[name=ward]', form) || {}).value;
-      if (!ward) { say('区を選んでください。'); return; }
-      var town = cleanTown(($('[name=town]', form) || {}).value);
-      if (town && !/^[぀-ヿ㐀-鿿0-9・ー々ヶ]+$/.test(town)) { say('町名は漢字・かなで入れてください（番地は不要です）。'); return; }
-      busy(true); say('送信しています…');
-      var rec = { ward: ward, kind: kind }; if (town) rec.town = town;
+      busy(quick, true); say('送信しています…');
+      var rec = { pref: a.pref, city: a.city, kind: kind }; if (a.town) rec.town = a.town;
       postJSON('/api/report', rec).then(function (j) {
-        var a = el('a', { href: 'fire.html?id=' + encodeURIComponent(j.incident) }, 'この火事のページを見る・近所に知らせる →');
-        say('報告しました。ありがとうございます。' + (kind === 'fire' ? '火が見える場合は119番への通報もお願いします。' : ''), a);
-        box.dispatchEvent(new CustomEvent('reported', { bubbles: true, detail: j }));
-        loadLive();
-      }, function (e) { say(msg(e)); }).then(function () { busy(false); });
+        say('報告しました。ありがとうございます。' + (kind === 'fire' ? '火が見える場合は119番への通報もお願いします。' : ''), inc ? null : fireLink(j.incident));
+        document.dispatchEvent(new CustomEvent('kaji:posted', { detail: j })); loadLive();
+      }, function (e) { say(msg(e)); }).then(function () { busy(quick, false); });
+    });
+    text.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var a = area(); if (!a) return;
+      var ta = $('textarea', text), body = ta.value.trim();
+      if (body.length < 2) { say('口コミを入力してください。'); return; }
+      busy(text, true); say('送信しています…');
+      var rec = { pref: a.pref, city: a.city, body: body }; if (a.town) rec.town = a.town; if (inc) rec.inc = inc;
+      postJSON('/api/comment', rec).then(function (j) {
+        ta.value = '';
+        var link = null;
+        if (!inc && j.inc) link = fireLink(j.inc);
+        else if (!inc) { var f = townFile(a.pref, a.city, a.town); if (f) link = el('a', { href: f + '#board' }, a.city + baseTown(a.town) + 'の口コミを見る →'); }
+        say('口コミを投稿しました。' + (!inc && j.inc ? 'いま報告が上がっている火事のページにも表示されます。' : ''), link);
+        document.dispatchEvent(new CustomEvent('kaji:posted', { detail: j }));
+      }, function (e) { say(msg(e)); }).then(function () { busy(text, false); });
     });
   }
-  $$('[data-reports]').forEach(initReport);
+  $$('[data-post]').forEach(initPanel);
 
-  // ---------------- 口コミ ----------------
+  // ---------------- 口コミの一覧 ----------------
   function initComments(box) {
-    var ward = box.getAttribute('data-ward'), town = box.getAttribute('data-town'), inc = box.getAttribute('data-inc');
-    var list = $('.com-list', box), form = $('.com-form', box), status = $('.com-status', box);
-    if (!API) { list.innerHTML = ''; list.appendChild(el('li', { class: 'muted small' }, '口コミの受付を準備中です。')); form.hidden = true; return; }
+    var pref = box.getAttribute('data-pref') || '東京都', city = box.getAttribute('data-city'), town = box.getAttribute('data-town'), inc = box.getAttribute('data-inc');
+    var list = $('.com-list', box);
+    if (!API) { list.innerHTML = ''; list.appendChild(el('li', { class: 'muted small' }, '口コミの受付を準備中です。')); return; }
     function render(items) {
       list.innerHTML = '';
-      if (!items.length) { list.appendChild(el('li', { class: 'muted small com-empty' }, 'まだ口コミはありません。気づいたことがあれば、最初の口コミを書いてください。')); return; }
+      if (!items.length) { list.appendChild(el('li', { class: 'muted small com-empty' }, 'まだ口コミはありません。気づいたことがあれば、「口コミを書く」から最初の口コミを書いてください。')); return; }
       items.forEach(function (c) {
         var li = el('li', { class: 'com' });
         var head = el('div', { class: 'com-head small muted' });
@@ -254,19 +299,11 @@
     }
     function load() {
       var p = inc ? getJSON('/api/incident?id=' + encodeURIComponent(inc)).then(function (j) { return j.comments.slice().reverse(); })
-                  : getJSON('/api/town?ward=' + encodeURIComponent(ward) + '&town=' + encodeURIComponent(town || '')).then(function (j) { return j.comments; });
+                  : getJSON('/api/town?pref=' + encodeURIComponent(pref) + '&city=' + encodeURIComponent(city) + '&town=' + encodeURIComponent(town || '')).then(function (j) { return j.comments; });
       return p.then(render, function () { list.innerHTML = ''; list.appendChild(el('li', { class: 'muted small' }, '口コミを読み込めませんでした。')); });
     }
     load();
-    form.addEventListener('submit', function (ev) {
-      ev.preventDefault();
-      var ta = $('textarea', form), body = ta.value.trim();
-      if (body.length < 2) { status.textContent = '口コミを入力してください。'; return; }
-      var btn = $('button[type=submit]', form); btn.disabled = true; status.textContent = '送信しています…';
-      var rec = { body: body, ward: ward }; if (town) rec.town = town; if (inc) rec.inc = inc;
-      postJSON('/api/comment', rec).then(function () { ta.value = ''; status.textContent = '投稿しました。'; return load(); }, function (e) { status.textContent = msg(e); })
-        .then(function () { btn.disabled = false; });
-    });
+    document.addEventListener('kaji:posted', function () { setTimeout(load, 200); });
     box._reload = load;
   }
   $$('[data-comments]').forEach(initComments);
@@ -295,35 +332,40 @@
       var vv = el('span', { class: 'v' }, v); s.appendChild(vv); if (d) s.appendChild(el('span', { class: 'd' }, d)); return s;
     };
     var setText = function (sel, t) { $(sel, fire).textContent = t; };
-    var setup = function (ward, town, title) {
+    // 火事のページの投稿欄（場所はこの火事に固定。ボタンで報告／口コミを書く）
+    var makePanel = function (pref, city, town) {
+      var r = el('div', { class: 'panel post', 'data-post': '', 'data-inc': id, 'data-pref': pref, 'data-city': city, 'data-town': town || '' });
+      r.innerHTML = '<p class="small muted">この火事の場所（<b class="f-place"></b>）に送ります。<strong>火や煙が見えたら119番へ。</strong></p>' +
+        '<div class="tabs" role="tablist" aria-label="送り方"><button type="button" role="tab" id="ftq" aria-controls="fpq" aria-selected="true" data-tab="quick">ボタンで報告</button>' +
+        '<button type="button" role="tab" id="ftt" aria-controls="fpt" aria-selected="false" data-tab="text" tabindex="-1">口コミを書く</button></div>' +
+        '<form class="quick" id="fpq" role="tabpanel" aria-labelledby="ftq" data-pane="quick"><p class="small muted">いちばん近いものを押すだけで送れます。</p>' +
+        '<div class="btn-row kinds"><button type="submit" class="btn" name="kind" value="siren">サイレンが聞こえた</button><button type="submit" class="btn" name="kind" value="smoke">煙・においがする</button><button type="submit" class="btn primary" name="kind" value="fire">火が見える</button></div></form>' +
+        '<form class="text" id="fpt" role="tabpanel" aria-labelledby="ftt" data-pane="text" hidden><label class="sr" for="f-com">口コミ</label>' +
+        '<textarea id="f-com" name="body" maxlength="200" rows="3" placeholder="例：黒い煙が北の方に見えます。消防車が5台ほど来ています。"></textarea>' +
+        '<p class="small muted">見えたこと・聞こえたことを200文字まで。番地や人の名前、原因や被害者についての憶測は書かないでください。<a href="rules.html">投稿のルール</a></p>' +
+        '<button class="btn primary" type="submit">口コミを投稿する</button></form><p class="post-status small" aria-live="polite"></p>';
+      $('.f-place', r).textContent = placeOf({ pref: pref, city: city, town: town });
+      return r;
+    };
+    var setup = function (pref, ward, town, title) {
       if (shown) return; shown = true;
-      document.title = title + '｜火事どこ23区';
+      document.title = title + '｜火事どこ';
       var crumb = $('.f-crumb');
       if (crumb) {
         crumb.innerHTML = '';
-        var wf = WARD_FILES[ward]; if (wf) { crumb.appendChild(el('a', { href: wf + '.html' }, ward)); crumb.appendChild(document.createTextNode(' ／ ')); }
-        var tf = townFile(ward, town); if (tf) { crumb.appendChild(el('a', { href: tf }, baseTown(town))); crumb.appendChild(document.createTextNode(' ／ ')); }
+        var wf = pref === '東京都' && WARD_FILES[ward]; if (wf) { crumb.appendChild(el('a', { href: wf + '.html' }, ward)); crumb.appendChild(document.createTextNode(' ／ ')); }
+        else { crumb.appendChild(document.createTextNode(pref + ward + ' ／ ')); }
+        var tf = townFile(pref, ward, town); if (tf) { crumb.appendChild(el('a', { href: tf }, baseTown(town))); crumb.appendChild(document.createTextNode(' ／ ')); }
         crumb.appendChild(document.createTextNode('火事のページ'));
       }
-      // 報告欄（同じ区・町に固定）
-      if (API && WARD_FILES[ward]) {
-        var rs = $('.f-rep-sec', fire); rs.hidden = false;
-        var r = el('div', { class: 'panel report', 'data-reports': '', 'data-ward': ward });
-        r.innerHTML = '<p class="small muted">見えたこと・聞こえたことを押してください。この火事の報告に加わります。<strong>火や煙が見えたら119番へ。</strong></p>' +
-          '<form class="report-form"><input type="hidden" name="ward"><input type="hidden" name="town">' +
-          '<div class="btn-row kinds"><button type="submit" class="btn" name="kind" value="siren">サイレンが聞こえた</button><button type="submit" class="btn" name="kind" value="smoke">煙・においがする</button><button type="submit" class="btn primary" name="kind" value="fire">火が見える</button></div></form>' +
-          '<p class="report-status small" aria-live="polite"></p>';
-        $('[name=ward]', r).value = ward; $('[name=town]', r).value = town || '';
-        $('.f-report', fire).appendChild(r); initReport(r);
+      if (API && AREAS.prefs[pref] && AREAS.prefs[pref].indexOf(ward) >= 0) {
+        $('.f-rep-sec', fire).hidden = false;
+        var r = makePanel(pref, ward, town); $('.f-report', fire).appendChild(r); initPanel(r);
       }
-      // 口コミ
-      var cb = el('div', { class: 'comments', 'data-comments': '', 'data-ward': ward, 'data-inc': id });
+      // 口コミの一覧
+      var cb = el('div', { class: 'comments', 'data-comments': '', 'data-pref': pref, 'data-city': ward, 'data-inc': id });
       if (town) cb.setAttribute('data-town', town);
-      cb.innerHTML = '<ul class="com-list" aria-live="polite"><li class="muted small">口コミを読み込んでいます…</li></ul>' +
-        '<form class="com-form panel"><label for="f-com"><strong>この火事の口コミを書く</strong> <span class="small muted">（200文字まで・匿名）</span></label>' +
-        '<textarea id="f-com" name="body" maxlength="200" rows="3" placeholder="例：黒い煙が北の方に見えます。消防車が5台ほど来ています。"></textarea>' +
-        '<p class="small muted">見えたこと・聞こえたことを書いてください。番地や人の名前、原因や被害者についての憶測は書かないでください。<a href="rules.html">投稿のルール</a></p>' +
-        '<div class="row"><button class="btn primary" type="submit">投稿する</button><span class="com-status small" aria-live="polite"></span></div></form>';
+      cb.innerHTML = '<ul class="com-list" aria-live="polite"><li class="muted small">口コミを読み込んでいます…</li></ul>';
       $('.f-comments', fire).appendChild(cb); initComments(cb);
       // SNS
       var q = (town ? baseTown(town) : ward) + ' 火事', sns = $('.f-sns', fire);
@@ -344,7 +386,7 @@
       st.appendChild(stat('報告', String(x.counts.total), countsText(x.counts), true));
       st.appendChild(stat('最新の報告', ago(x.last), hm(x.last)));
       st.appendChild(stat('口コミ', String(j.comments.length), '下に表示'));
-      setup(x.ward, x.town, place + '付近の火事の目撃情報');
+      setup(x.pref || '東京都', x.ward, x.town, place + '付近の火事の目撃情報');
       var ss = $('.f-share-sec', fire); ss.hidden = false;
       var tags = ' #' + x.ward + (x.town ? ' #' + baseTown(x.town) : '') + ' #火事';
       var text = '【火事の目撃情報】' + place + '付近　報告' + x.counts.total + '件（' + countsText(x.counts) + '）' + hm(x.last) + '時点' + tags;
@@ -362,7 +404,7 @@
       var ul = el('ul', { class: 'plain' });
       x.sources.forEach(function (s) { var li = el('li'); li.appendChild(el('a', { href: s.link, target: '_blank', rel: 'noopener nofollow' }, s.name + ' の記事')); li.appendChild(el('span', { class: 'small muted' }, '　' + hm(s.pub))); ul.appendChild(li); });
       $('.f-news', fire).appendChild(ul);
-      setup(x.ward, x.town, place + 'の火事');
+      setup('東京都', x.ward, x.town, place + 'の火事');
       var ss = $('.f-share-sec', fire); ss.hidden = false;
       shareButtons($('.f-share', fire), '【報道】' + place + 'の火事（' + hm(x.first) + '〜）' + ' #' + x.ward + ' #火事', location.href);
     };
@@ -384,7 +426,7 @@
       };
       refresh.n = 0;
       refresh(); setInterval(refresh, 60000);
-      fire.addEventListener('reported', function () { setTimeout(refresh, 300); });
+      document.addEventListener('kaji:posted', function () { setTimeout(refresh, 300); });
     }
   }
 })();

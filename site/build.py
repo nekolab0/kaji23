@@ -196,43 +196,48 @@ NEWS_NOTE = ('<p class="small muted">報道各社のニュースから、23区�
              '詳しい内容はリンク先の記事でご確認ください。報道されない小さな火事は載りません。' +
              (f'最終確認：{jtime(news["collectedAt"])}' if news['collectedAt'] else '') + '</p>')
 
-def report_block(ward=None, town=None, title='見た・聞いたを報告する'):
-    """目撃報告ボタン。区ページ・町ページは区（と町）を固定、トップは区を選ぶ"""
-    if ward:
-        dl = f'dl-{ward["slug"]}'
-        opts = ''.join(f'<option value="{esc(t["base"])}">' for t in towns_of(ward['name']))
-        ex = town or (towns_of(ward['name']) or [{'base': ''}])[0]['base']
-        sel = (f'<input type="hidden" name="ward" value="{esc(ward["name"])}">'
-               f'<label class="small" for="town-{dl}">町名（丁目まで。任意）</label>'
-               f'<input id="town-{dl}" class="town-in" name="town" maxlength="20" list="{dl}" value="{esc(town or "")}" placeholder="例：{esc(ex)}2丁目" autocomplete="off">'
-               f'<datalist id="{dl}">{opts}</datalist>')
-    else:
-        opts = ''.join(f'<option>{esc(w["name"])}</option>' for w in sorted(wards, key=lambda w: w['name']))
-        sel = (f'<label class="small" for="rep-ward">区</label><select id="rep-ward" name="ward"><option value="">区を選ぶ</option>{opts}</select>'
-               f'<label class="small" for="rep-town">町名（丁目まで。任意）</label><input id="rep-town" class="town-in" name="town" maxlength="20" placeholder="例：赤羽西2丁目" autocomplete="off">')
-    wattr = f' data-ward="{esc(ward["name"])}"' if ward else ''
-    return (f'<div class="panel report" data-reports{wattr}>'
+AREAS = json.load(open(RAW / 'areas.json', encoding='utf-8'))['prefs']
+PREF_OPTIONS = ''.join(f'<option>{esc(p)}</option>' for p in AREAS)
+
+def post_panel(pref='', city='', town='', title='サイレン・煙・火に気づいたら', note=None):
+    """全国共通の投稿欄。場所（都道府県→市区町村→町名）を選び、
+    「ボタンで報告」（サイレン／煙・におい／火）か「口コミを書く」（自由記入）で送る"""
+    uid = 'p' + re.sub(r'[^0-9a-zA-Z]', '', quote(f'{pref}{city}{town}'))[-24:]
+    dl = ''
+    if pref == '東京都' and city in by_name:
+        dl = f'<datalist id="dl-{uid}">' + ''.join(f'<option value="{esc(t["base"])}">' for t in towns_of(city)) + '</datalist>'
+    pref_opts = PREF_OPTIONS.replace(f'<option>{esc(pref)}</option>', f'<option selected>{esc(pref)}</option>') if pref else PREF_OPTIONS
+    note = note or '同じ場所の近くの人の報告とまとめて「火事のページ」ができ、近所の人と共有できます。消防への通報にはなりません。'
+    return (f'<div class="panel post" data-post data-pref="{esc(pref)}" data-city="{esc(city)}" data-town="{esc(town)}">'
             f'<h3>{esc(title)}</h3>'
-            '<p class="small muted">押すと、同じ町の近くの人の報告とまとめて「火事のページ」ができます。消防への通報にはなりません。<strong>火や煙が見えたら119番へ。</strong></p>'
-            f'<form class="report-form">{sel}'
-            '<button type="button" class="btn ghost geo-fill" hidden>現在地の町名を入れる</button>'
+            f'<p class="small muted">{esc(note)}<strong>火や煙が見えたら119番へ。</strong></p>'
+            '<fieldset class="area"><legend class="sr">場所</legend>'
+            f'<label class="small" for="pf-{uid}">都道府県</label><select id="pf-{uid}" name="pref"><option value="">都道府県を選ぶ</option>{pref_opts}</select>'
+            f'<label class="small" for="ct-{uid}">市区町村</label><select id="ct-{uid}" name="city"><option value="">市区町村を選ぶ</option>'
+            + (f'<option selected>{esc(city)}</option>' if city else '') + '</select>'
+            f'<label class="small" for="tw-{uid}">町名（丁目まで・任意）</label>'
+            f'<input id="tw-{uid}" name="town" maxlength="20" value="{esc(town)}" placeholder="例：{esc(town or "本町")}2丁目" autocomplete="off"' + (f' list="dl-{uid}"' if dl else '') + f'>{dl}'
+            '<button type="button" class="btn ghost geo-fill" hidden>現在地の場所を入れる</button></fieldset>'
+            '<div class="tabs" role="tablist" aria-label="送り方">'
+            f'<button type="button" role="tab" id="tq-{uid}" aria-controls="pq-{uid}" aria-selected="true" data-tab="quick">ボタンで報告</button>'
+            f'<button type="button" role="tab" id="tt-{uid}" aria-controls="pt-{uid}" aria-selected="false" data-tab="text" tabindex="-1">口コミを書く</button></div>'
+            f'<form class="quick" id="pq-{uid}" role="tabpanel" aria-labelledby="tq-{uid}" data-pane="quick">'
+            '<p class="small muted">いちばん近いものを押すだけで送れます。</p>'
             '<div class="btn-row kinds"><button type="submit" class="btn" name="kind" value="siren">サイレンが聞こえた</button>'
             '<button type="submit" class="btn" name="kind" value="smoke">煙・においがする</button>'
-            '<button type="submit" class="btn primary" name="kind" value="fire">火が見える</button></div>'
-            '</form><p class="report-status small" aria-live="polite"></p></div>')
+            '<button type="submit" class="btn primary" name="kind" value="fire">火が見える</button></div></form>'
+            f'<form class="text" id="pt-{uid}" role="tabpanel" aria-labelledby="tt-{uid}" data-pane="text" hidden>'
+            f'<label class="sr" for="tx-{uid}">口コミ</label>'
+            f'<textarea id="tx-{uid}" name="body" maxlength="200" rows="3" placeholder="例：黒い煙が北の方に見えます。消防車が5台ほど来ています。"></textarea>'
+            '<p class="small muted">見えたこと・聞こえたことを200文字まで。番地や人の名前、原因や被害者についての憶測は書かないでください。<a href="rules.html">投稿のルール</a></p>'
+            '<button class="btn primary" type="submit">口コミを投稿する</button></form>'
+            '<p class="post-status small" aria-live="polite"></p></div>')
 
-def comment_block(ward, town=None, inc=None, title='口コミを書く'):
-    """口コミの一覧と投稿欄（電話帳ナビのように、町・火事ごとに書き込める）"""
-    attrs = f'data-ward="{esc(ward)}"' + (f' data-town="{esc(town)}"' if town else '') + (f' data-inc="{esc(inc)}"' if inc else '')
-    fid = 'com-' + re.sub(r'[^0-9a-zA-Z]', '', quote(f'{ward}{town or ""}{inc or ""}'))[:40]
+def comment_block(ward, town=None, pref='東京都'):
+    """口コミの一覧（投稿は post_panel の「口コミを書く」から）"""
+    attrs = f'data-pref="{esc(pref)}" data-city="{esc(ward)}"' + (f' data-town="{esc(town)}"' if town else '')
     return (f'<div class="comments" data-comments {attrs}>'
-            '<ul class="com-list" aria-live="polite"><li class="muted small">口コミを読み込んでいます…</li></ul>'
-            '<form class="com-form panel">'
-            f'<label for="{fid}"><strong>{esc(title)}</strong> <span class="small muted">（200文字まで・匿名）</span></label>'
-            f'<textarea id="{fid}" name="body" maxlength="200" rows="3" placeholder="例：黒い煙が北の方に見えます。消防車が5台ほど来ています。"></textarea>'
-            '<p class="small muted">見えたこと・聞こえたことを書いてください。番地や人の名前、原因や被害者についての憶測は書かないでください。<a href="rules.html">投稿のルール</a></p>'
-            '<div class="row"><button class="btn primary" type="submit">投稿する</button><span class="com-status small" aria-live="polite"></span></div>'
-            '</form></div>')
+            '<ul class="com-list" aria-live="polite"><li class="muted small">口コミを読み込んでいます…</li></ul></div>')
 
 def sns_links(words):
     """X・Yahoo!リアルタイム検索・Googleニュースで、その場所の火事を探すリンク"""
@@ -245,7 +250,7 @@ def sns_links(words):
 
 def live_block(ward=None, town=None, empty=None):
     """いま報告が上がっている火事（受付サーバーから読み込み）"""
-    attrs = (f' data-ward="{esc(ward)}"' if ward else '') + (f' data-town="{esc(town)}"' if town else '')
+    attrs = (f' data-pref="東京都" data-city="{esc(ward)}"' if ward else '') + (f' data-town="{esc(town)}"' if town else '')
     empty = empty or ('この町から、いま上がっている報告はありません。' if town else f'{ward}から、いま上がっている報告はありません。' if ward else 'いま、23区内で上がっている報告はありません。')
     return f'<div class="live" data-live{attrs} data-empty="{esc(empty)}"><p class="muted small live-loading">いまの報告を読み込んでいます…</p></div>'
 
@@ -306,6 +311,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
     <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="about.html">データの出典と集め方</a></li>
     <li><a href="{TFD}/" rel="noopener" target="_blank">東京消防庁 ↗</a></li><li><a href="https://disaportal.gsi.go.jp/" rel="noopener" target="_blank">ハザードマップポータル ↗</a></li></ul></div>
 </div><div class="wrap small muted" style="padding-block:0 20px">データ取得：{FETCHED_LABEL}（東京消防庁 各消防署ページ）／人口：{jdate(pop["asof"])}現在（東京都の統計）　© {THIS_YEAR} {SITE_NAME}</div></footer>
+<script src="assets/areas.js" defer></script>
 <script src="assets/site.js" defer></script>'''
     inner = f'{head}\n{header}\n<main>\n{body}\n</main>\n{footer}'
     if full:
@@ -425,7 +431,7 @@ def ward_page(w):
 <section class="section" aria-labelledby="now">
   <h2 id="now">いまの{esc(name)}</h2>
   {live_block(ward=name)}
-  {report_block(w, title=f'{name}で気づいたことを報告')}
+  {post_panel('東京都', name, title=f'{name}で気づいたことを知らせる')}
 </section>
 <section class="section" aria-labelledby="machi">
   <h2 id="machi">{esc(name)}の町から探す（{len(towns_of(name))}町）</h2>
@@ -476,12 +482,12 @@ def index_page(full=True):
   {ALERT}
 </section>
 <section class="section" aria-labelledby="now">
-  <div class="sec-head"><h2 id="now">いま報告が上がっている場所</h2><span class="small muted live-updated"></span></div>
-  {live_block(empty='いま、23区内で上がっている報告はありません。サイレンや煙に気づいたら、下のボタンで知らせてください。')}
+  <div class="sec-head"><h2 id="now">いま報告が上がっている場所（全国）</h2><span class="small muted live-updated"></span></div>
+  {live_block(empty='いま上がっている報告はありません。サイレンや煙に気づいたら、下の欄から知らせてください。')}
 </section>
 <section class="section" aria-labelledby="rep">
   <h2 id="rep" class="sr">報告する</h2>
-  {report_block(title='サイレン・煙・火に気づいたら')}
+  {post_panel(title='サイレン・煙・火に気づいたら', note='全国どこからでも送れます。同じ場所の近くの人の報告とまとめて「火事のページ」ができ、近所の人と共有できます。消防への通報にはなりません。')}
 </section>
 <section class="section" aria-labelledby="recent">
   <h2 id="recent">最近報道された23区の火事</h2>
@@ -525,12 +531,13 @@ def machi_page(t):
 <section class="section" aria-labelledby="now">
   <h2 id="now">いまの{esc(base)}</h2>
   {live_block(ward=ward, town=base)}
-  {report_block(w, town=base, title=f'{base}で気づいたことを報告')}
+  {post_panel('東京都', ward, base, title=f'{base}で気づいたことを知らせる')}
 </section>
 <section class="section" aria-labelledby="board">
   <h2 id="board">{esc(base)}の口コミ</h2>
-  <p class="small muted">火事やサイレン、消防車について、{esc(base)}の人が書き込んだ口コミです。いま起きている火事の口コミは、上の「火事のページ」にあります。</p>
-  {comment_block(ward, town=base, title=f'{base}の口コミを書く')}
+  <p class="small muted">火事やサイレン、消防車について、{esc(base)}で書き込まれた口コミです。いま起きている火事の口コミは、その火事のページにも表示されます。</p>
+  {comment_block(ward, town=base)}
+  <p class="small muted">口コミは上の欄の「口コミを書く」から投稿できます。</p>
 </section>
 <section class="section" aria-labelledby="sns">
   <h2 id="sns">SNS・ニュースで確かめる</h2>
@@ -619,7 +626,8 @@ def rules_page():
 <section class="section"><h2>報告と口コミのしくみ</h2>
 <ul class="plain"><li>報告と口コミは匿名です。会員登録はありません。</li>
 <li>連投を防ぐため、送信元の情報を元に戻せない形（日ごとに変わるハッシュ）で一時的に使います。IPアドレスそのものは保存しません。</li>
-<li>同じ町で2時間以内にあった報告は、同じ「火事のページ」にまとめます。</li>
+<li>報告と口コミは全国どこからでも送れます。場所は都道府県・市区町村（政令市は区）・町名（丁目まで）で、市区町村の一覧は総務省「全国地方公共団体コード」（令和6年1月1日現在）によります。</li>
+<li>同じ町で2時間以内にあった報告は、同じ「火事のページ」にまとめます。場所だけ選んで書いた口コミも、その場所で進行中の火事があればそのページに表示します。</li>
 <li>報告の明細は30日で削除します。</li>
 <li>報告・口コミは利用者の投稿で、運営者が内容を確認したものではありません。消防への通報にもなりません。</li></ul></section>
 </div>'''
@@ -758,7 +766,7 @@ def build(report=None):
             shutil.rmtree(p) if p.is_dir() else p.unlink()
     (DIST / 'assets').mkdir(parents=True, exist_ok=True)
     (DIST / 'data').mkdir(exist_ok=True)
-    for f in ('site.css', 'site.js'):
+    for f in ('site.css', 'site.js', 'areas.js'):
         shutil.copy(SITE / 'assets' / f, DIST / 'assets' / f)
     pages = {'index.html': index_page(), 'ranking.html': ranking_page(), 'towns.html': towns_page(),
              'dial.html': dial_page(), 'about.html': about_page(report), 'fire.html': fire_page(), 'rules.html': rules_page()}

@@ -263,3 +263,20 @@ ul.ngs li::marker { content: "× "; color: var(--up); }
 .tile-n { display: block; font-size: 11px; font-weight: 700; }
 .sns .btn { font-size: 14px; min-height: 42px; }
 h1, .fire-card .place b { word-break: auto-phrase; }
+
+/* 投稿欄（全国）: 場所＋タブ */
+.post { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.post h3 { font-size: 16px; }
+.post .area { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; min-width: 0; }
+.post .area label { font-weight: 700; margin-top: 4px; }
+.post select, .post input[name=town] { font: inherit; font-size: 16px; min-height: 44px; padding: 0 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; min-width: 0; }
+.post select[disabled] { opacity: .6; }
+.post .geo-fill { margin-top: 4px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; border: 1.5px solid var(--ink); border-radius: 999px; padding: 3px; gap: 3px; background: var(--bg); }
+.tabs [role=tab] { font: inherit; font-weight: 700; font-size: 14px; min-height: 40px; border: 0; border-radius: 999px; background: transparent; color: var(--ink); cursor: pointer; }
+.tabs [role=tab][aria-selected=true] { background: var(--ink); color: #ffffff; }
+.post form { display: grid; gap: 8px; }
+.post textarea { font: inherit; font-size: 16px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; width: 100%; resize: vertical; background: var(--bg); color: var(--ink); }
+.post form.text .btn { justify-self: start; }
+.post .kinds .btn { flex: 1 1 auto; }
+.post-status:empty { display: none; }

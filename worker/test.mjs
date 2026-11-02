@@ -33,7 +33,19 @@ if (isMain) {
   r = await handle(req('POST', '/api/report', { ward: '北区', town: '赤羽西', kind: 'smoke' }), env, at(1));
   ok('同じ人・同じ区は10分以内なら断る', r.status === 429, r.status);
   r = await handle(req('POST', '/api/report', { ward: '大阪市北区', kind: 'siren' }), env, t0);
-  ok('23区以外の区名は断る', r.status === 400);
+  ok('都道府県なしで23区以外の名前は断る', r.status === 400);
+  r = await handle(req('POST', '/api/report', { pref: '大阪府', city: '大阪市北区', town: '梅田1丁目', kind: 'smoke' }, '11.1.1.1'), env, at(2)); const osaka = await J(r);
+  ok('全国: 大阪市北区の報告を受け付ける', r.status === 200 && osaka.incident && osaka.incident !== a.incident, JSON.stringify(osaka));
+  r = await handle(req('POST', '/api/report', { pref: '北海道', city: '大阪市北区', kind: 'smoke' }, '11.1.1.2'), env, at(2));
+  ok('全国: 都道府県と合わない市区町村は断る', r.status === 400);
+  r = await handle(req('POST', '/api/report', { pref: '北海道', city: '泊村（国後郡）', kind: 'siren' }, '11.1.1.3'), env, at(2));
+  ok('全国: 同名の村も区別して受け付ける', r.status === 200);
+  r = await handle(req('POST', '/api/comment', { pref: '大阪府', city: '大阪市北区', town: '梅田', body: '梅田の方で煙が上がっています' }, '11.1.1.4'), env, at(3)); const oc = await J(r);
+  ok('全国: 火事を指定しない口コミは同じ場所の火事に付く', r.status === 200 && oc.inc === osaka.incident, JSON.stringify(oc));
+  r = await handle(req('POST', '/api/comment', { pref: '大阪府', city: '堺市堺区', body: '堺でもサイレンが聞こえる' }, '11.1.1.5'), env, at(4)); const sc = await J(r);
+  ok('全国: 火事のない場所の口コミは掲示板へ', r.status === 200 && sc.inc === null);
+  r = await handle(req('GET', '/f/' + osaka.incident), env, at(5));
+  ok('全国: 共有ページに都道府県から表示', /大阪府大阪市北区梅田1丁目付近で火事の目撃情報 1件/.test(await r.text()));
   r = await handle(req('POST', '/api/report', { ward: '港区', kind: 'explosion' }), env, t0);
   ok('決められた種類以外は断る', r.status === 400);
   r = await handle(req('POST', '/api/report', { ward: '港区', town: '<script>', kind: 'siren' }, '9.9.9.9'), env, t0);
@@ -59,7 +71,8 @@ if (isMain) {
   ok('火事1件の件数と口コミ', inc.incident.counts.total === 3 && inc.incident.counts.siren === 1 && inc.incident.counts.smoke === 1 && inc.incident.counts.fire === 1 && inc.comments.length === 1 && inc.incident.town === '赤羽西2丁目', JSON.stringify(inc.incident));
   r = await handle(req('GET', '/api/live?hours=6'), env, at(210)); const live = await J(r);
   const la = live.incidents.find(x => x.id === a.incident);
-  ok('いまの火事の一覧（新しい順・最新口コミ付き）', live.incidents.length === 3 && live.incidents[0].id === e.incident && la && la.latest.length === 1, live.incidents.map(x => x.id).join(','));
+  const tk = live.incidents.filter(x => x.pref === '東京都');
+  ok('いまの火事の一覧（新しい順・最新口コミ付き・全国）', live.incidents.length === 5 && tk.length === 3 && live.incidents[0].id === e.incident && la && la.latest.length === 1, live.incidents.map(x => x.id).join(','));
   r = await handle(req('GET', '/api/live?hours=1'), env, at(600)); 
   ok('時間の範囲外は出さない', (await J(r)).incidents.length === 0);
   r = await handle(req('GET', '/api/town?ward=北区&town=赤羽西'), env, at(300)); const town = await J(r);
@@ -82,6 +95,12 @@ if (isMain) {
   r = await handle(req('POST', '/api/contact', { body: '赤羽西の口コミを削除してください' }), env, at(50));
   ok('削除依頼を受け付けて保存', r.status === 200 && db.prepare('SELECT COUNT(*) n FROM contact').get().n === 1);
   const salt = db.prepare("SELECT v FROM meta WHERE k='salt'").get();
+  // 23区だけの頃のデータ（都道府県なし）を東京都として引き継ぐ
+  { const m = makeEnv(); const d = m.db;
+    d.exec(`CREATE TABLE incidents (id TEXT PRIMARY KEY, ward TEXT NOT NULL, town TEXT, base TEXT, first_at TEXT NOT NULL, last_at TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, siren INTEGER NOT NULL DEFAULT 0, smoke INTEGER NOT NULL DEFAULT 0, fire INTEGER NOT NULL DEFAULT 0, comments INTEGER NOT NULL DEFAULT 0)`);
+    d.exec(`INSERT INTO incidents (id, ward, town, base, first_at, last_at, n, siren) VALUES ('old1','北区','赤羽','赤羽','2026-11-02T09:00:00Z','2026-11-02T09:59:00Z',1,1)`);
+    const x = await (await handle(req('POST', '/api/report', { ward: '北区', town: '赤羽', kind: 'smoke' }, '12.1.1.1'), m.env, t0)).json();
+    ok('旧データを東京都として引き継ぎ、同じ火事にまとめる', x.incident === 'old1' && d.prepare("SELECT pref FROM incidents WHERE id='old1'").get().pref === '東京都', JSON.stringify(x)); }
   ok('表と塩を自動で用意（塩はランダム48桁）', salt && /^[0-9a-f]{48}$/.test(salt.v));
 
   results.forEach(x => console.log(`${x.ok ? 'PASS' : 'FAIL'}  ${x.name}${x.detail !== '' ? ' — ' + x.detail : ''}`));

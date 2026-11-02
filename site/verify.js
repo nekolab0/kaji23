@@ -263,6 +263,11 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   await gp.click('.geo-go');
   await gp.waitForURL(/m-kita-/, { timeout: 5000 }).catch(() => {});
   if (!decodeURIComponent(gp.url()).endsWith('m-kita-赤羽西.html')) searchBad.push(`現在地→${decodeURIComponent(gp.url()).split('/').pop()}`);
+  await gp.goto('file://' + path.join(DIST, 'index.html'));
+  await gp.click('[data-post] .geo-fill');
+  await gp.waitForFunction(() => document.querySelector('[data-post] [name=city]').value === '北区', null, { timeout: 5000 }).catch(() => {});
+  const gv = await gp.evaluate(() => { const p = document.querySelector('[data-post]'); return [p.querySelector('[name=pref]').value, p.querySelector('[name=city]').value, p.querySelector('[name=town]').value].join('|'); });
+  if (gv !== '東京都|北区|赤羽西2丁目') searchBad.push(`投稿欄の現在地が不正 ${gv}`);
   await gctx.close();
 
   // R11 報告→火事のページ→口コミ→通報→共有（受付サーバーは本物の処理を検査用DBで）
@@ -274,9 +279,11 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     await fp.goto('file://' + path.join(DIST, 'index.html'));
     await fp.waitForSelector('.live-empty', { timeout: 5000 }).then(() => flowOk.push('報告なしの表示'), () => flowBad.push('トップ: 報告がないときの表示が出ない'));
     await fp.goto('file://' + path.join(DIST, 'm-kita-赤羽西.html'));
-    await fp.fill('.report .town-in', '赤羽西二丁目3番地'); clock++;
-    await fp.click('.report button[value=smoke]');
-    const link = await fp.waitForSelector('.report-status a', { timeout: 5000 }).then(h => h.getAttribute('href'), () => null);
+    const pre = await fp.evaluate(() => { const p = document.querySelector('[data-post]'); return p.querySelector('[name=pref]').value + '|' + p.querySelector('[name=city]').value; });
+    if (pre !== '東京都|北区') flowBad.push(`町ページの場所の初期値が不正 ${pre}`); else flowOk.push('町ページは場所が入った状態');
+    await fp.fill('[data-post] [name=town]', '赤羽西二丁目3番地'); clock++;
+    await fp.click('[data-post] button[value=smoke]');
+    const link = await fp.waitForSelector('[data-post] .post-status a', { timeout: 5000 }).then(h => h.getAttribute('href'), () => null);
     const incId = link && decodeURIComponent(link.split('id=')[1] || '');
     const row = incId && W.db.prepare('SELECT * FROM incidents WHERE id = ?').get(incId);
     if (!row || row.town !== '赤羽西2丁目' || row.smoke !== 1) flowBad.push(`報告の保存が不正 ${JSON.stringify(row)}`); else flowOk.push('町ページから報告（番地は切り捨て）');
@@ -292,29 +299,55 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       if (!/【火事の目撃情報】北区赤羽西2丁目付近　報告1件/.test(xt) || !xt.includes(API + '/f/' + incId) || !/#赤羽西/.test(xt)) flowBad.push(`Xの共有文が不正「${xt.slice(0, 160)}」`); else flowOk.push('X・LINEの共有文');
       const og = await (await handle(new Request(API + '/f/' + incId), W.env)).text();
       if (!/北区赤羽西2丁目付近で火事の目撃情報 1件/.test(og)) flowBad.push('共有用ページの見出しが不正'); else flowOk.push('共有用ページの見出し');
-      clock++; await fp.fill('.f-comments textarea', '黒い煙が見えます。消防車が来ています');
-      await fp.click('.f-comments button[type=submit]');
+      clock++; await fp.click('.f-report [data-tab=text]');
+      await fp.fill('.f-report textarea', '黒い煙が見えます。消防車が来ています');
+      await fp.click('.f-report form.text button[type=submit]');
       await fp.waitForFunction(() => /黒い煙が見えます/.test(document.querySelector('.f-comments .com-list').textContent), null, { timeout: 5000 })
         .then(() => flowOk.push('口コミの投稿・表示'), () => flowBad.push('口コミが表示されない'));
-      clock++; await fp.fill('.f-comments textarea', 'くわしくは https://example.com を見て');
-      await fp.click('.f-comments button[type=submit]');
-      await fp.waitForFunction(() => /URLは書き込めません/.test(document.querySelector('.f-comments .com-status').textContent), null, { timeout: 5000 })
+      clock++; await fp.fill('.f-report textarea', 'くわしくは https://example.com を見て');
+      await fp.click('.f-report form.text button[type=submit]');
+      await fp.waitForFunction(() => /URLは書き込めません/.test(document.querySelector('.f-report .post-status').textContent), null, { timeout: 5000 })
         .then(() => flowOk.push('URL入りは断る'), () => flowBad.push('URL入りの口コミを断らない'));
       await fp.click('.f-comments .flag');
       await fp.waitForFunction(() => /通報しました/.test(document.querySelector('.f-comments .flag').textContent), null, { timeout: 5000 })
         .then(() => flowOk.push('通報'), () => flowBad.push('通報できない'));
-      clock++; await fp.click('.f-report button[value=fire]');
+      clock++; await fp.click('.f-report [data-tab=quick]'); await fp.click('.f-report button[value=fire]');
       await fp.waitForFunction(() => /報告\s*2/.test(document.querySelector('.f-stats').textContent), null, { timeout: 5000 })
         .then(() => flowOk.push('火事のページから報告を追加'), () => flowBad.push('火事のページの報告が件数に反映されない'));
     }
     await fp.goto('file://' + path.join(DIST, 'index.html'));
     await fp.waitForFunction(() => /赤羽西2丁目付近/.test(document.querySelector('[data-live]').textContent) && /報告2/.test(document.querySelector('[data-ward-tile="北区"]').textContent), null, { timeout: 5000 })
       .then(() => flowOk.push('トップの一覧と区の地図'), () => flowBad.push('トップに出ない'));
-    clock++; await fp.goto('file://' + path.join(DIST, 'm-kita-赤羽西.html'));
-    await fp.fill('#board ~ .comments textarea, .comments textarea', '夜中にサイレンが多い町です');
-    await fp.click('.comments button[type=submit]');
+    clock += 200; await fp.goto('file://' + path.join(DIST, 'm-kita-赤羽西.html')); // 火事から3時間以上あと → 町の掲示板へ
+    await fp.click('[data-post] [data-tab=text]');
+    await fp.fill('[data-post] textarea', '夜中にサイレンが多い町です');
+    await fp.click('[data-post] form.text button[type=submit]');
     await fp.waitForFunction(() => /夜中にサイレンが多い町です/.test(document.querySelector('.comments .com-list').textContent), null, { timeout: 5000 })
       .then(() => flowOk.push('町の口コミ掲示板'), () => flowBad.push('町の口コミが表示されない'));
+    // 全国: トップで大阪府→大阪市北区を選んでボタンで報告 → 火事のページ
+    clock++; await fp.goto('file://' + path.join(DIST, 'index.html'));
+    await fp.click('[data-post] button[value=siren]');
+    if (!/都道府県を選んで/.test(await fp.$eval('[data-post] .post-status', e => e.textContent))) flowBad.push('都道府県未選択を止めない'); else flowOk.push('未選択の確認');
+    await fp.selectOption('[data-post] [name=pref]', '大阪府');
+    const nCity = await fp.$$eval('[data-post] [name=city] option', o => o.length);
+    await fp.selectOption('[data-post] [name=city]', '大阪市北区');
+    await fp.fill('[data-post] [name=town]', '梅田1丁目');
+    await fp.click('[data-post] button[value=smoke]');
+    const olink = await fp.waitForSelector('[data-post] .post-status a', { timeout: 5000 }).then(h => h.getAttribute('href'), () => null);
+    if (!olink || nCity < 30) flowBad.push(`全国の報告ができない（市区町村${nCity}件）`);
+    else {
+      await fp.goto('file://' + path.join(DIST, olink));
+      await fp.waitForFunction(() => /大阪府大阪市北区梅田1丁目付近で火事/.test(document.querySelector('.f-title').textContent), null, { timeout: 5000 })
+        .then(() => flowOk.push('全国（大阪府大阪市北区）の報告と火事のページ'), () => flowBad.push('全国の火事のページが出ない'));
+      // 火事を指定しない口コミは、同じ場所の進行中の火事に付く
+      clock++; await fp.goto('file://' + path.join(DIST, 'index.html'));
+      await fp.click('[data-post] [data-tab=text]');
+      await fp.selectOption('[data-post] [name=pref]', '大阪府'); await fp.selectOption('[data-post] [name=city]', '大阪市北区'); await fp.fill('[data-post] [name=town]', '梅田');
+      await fp.fill('[data-post] textarea', '梅田の方で煙が見えます');
+      await fp.click('[data-post] form.text button[type=submit]');
+      const clink = await fp.waitForSelector('[data-post] .post-status a', { timeout: 5000 }).then(h => h.getAttribute('href'), () => null);
+      if (clink !== olink) flowBad.push(`口コミが同じ場所の火事に付かない ${clink}`); else flowOk.push('場所だけ選んだ口コミが進行中の火事に付く');
+    }
     const nid = news.incidents[0] && 'n-' + news.incidents[0].id;
     if (nid) {
       await fp.goto('file://' + path.join(DIST, 'fire.html') + '?id=' + encodeURIComponent(nid));
@@ -327,10 +360,10 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   }
   // 受付サーバー未設定の版では、ボタンを隠して案内だけ出す
   const TMP = path.join(OUT, 'tmp'); fs.rmSync(TMP, { recursive: true, force: true }); fs.mkdirSync(path.join(TMP, 'assets'), { recursive: true });
-  for (const f of ['site.css', 'site.js']) fs.copyFileSync(path.join(DIST, 'assets', f), path.join(TMP, 'assets', f));
+  for (const f of ['site.css', 'site.js', 'areas.js']) fs.copyFileSync(path.join(DIST, 'assets', f), path.join(TMP, 'assets', f));
   fs.writeFileSync(path.join(TMP, 'a.html'), fs.readFileSync(path.join(DIST, 'm-kita-赤羽西.html'), 'utf8').replace(/name="kaji23-api" content="[^"]*"/, 'name="kaji23-api" content=""'));
   await page.goto('file://' + path.join(TMP, 'a.html'));
-  const off = await page.evaluate(() => ({ h: document.querySelector('.report-form').offsetHeight, m: document.querySelector('.report-status').textContent, c: document.querySelector('.com-form').offsetHeight }));
+  const off = await page.evaluate(() => ({ h: document.querySelector('[data-post] form.quick').offsetHeight, m: document.querySelector('[data-post] .post-status').textContent, c: document.querySelector('[data-post] form.text').offsetHeight }));
   if (off.h !== 0 || off.c !== 0 || !/災害情報案内/.test(off.m)) flowBad.push('受付サーバー未設定のときの表示が不正'); else flowOk.push('未設定時は案内のみ');
   await browser.close();
 
@@ -340,7 +373,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   add('R4 サイト内リンク・ページ内リンク', !links.length, links.slice(0, 20).join(' / ') || `${allPages.length}ページすべてのリンク先とアンカーが存在`);
   add('R5 タイトル・見出し・説明文・OGP画像', !meta.length, meta.slice(0, 10).join(' / ') || `${allPages.length}ページすべてにあり`);
   add('R6 表示されている数字＝データ', !numbers.length, numbers.join(' / ') || '23区の統計と58署のカードすべて一致');
-  add('R7 町名検索・現在地', !searchBad.length, searchBad.join(' / ') || '「赤羽西」→赤羽西の町ページ、渋谷区の町も検索可、Enterで移動、現在地（北区赤羽西二丁目）→赤羽西の町ページ');
+  add('R7 町名検索・現在地', !searchBad.length, searchBad.join(' / ') || '「赤羽西」→赤羽西の町ページ、渋谷区の町も検索可、Enterで移動、現在地（北区赤羽西二丁目）→赤羽西の町ページ・投稿欄に東京都/北区/赤羽西2丁目');
   add('R9 出典ボックスの見出し', !provBad.length, provBad.join(' / ') || '出典の各行が「今年の件数／前年同時期／○○○○年」で始まる');
   add('R10 報道された火事の表示', !newsBad.length, newsBad.join(' / ') || `区ページの件数がデータと一致（計${news.incidents.length}件）、町ページにも振り分け、見出し文・配慮の要る語は表示なし`);
   add('R11 報告・火事のページ・口コミ・共有', !flowBad.length, flowBad.join(' / ') || flowOk.join('、') + 'を確認');
