@@ -18,7 +18,7 @@ for (const f of ['parse_station.js', 'collect_tfd.js']) {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const UA = 'kaji23-collector/1.0 (+https://github.com/; 公開データの集計)';
+const UA = 'kaji23-collector/1.0 (+https://github.com/nekolab0/kaji23; public fire statistics, about 1 request per second)';
 async function fetchText(url, tries = 3) {
   for (let i = 0; i < tries; i++) {
     try {
