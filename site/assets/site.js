@@ -185,11 +185,12 @@
     if (x.pref && !is23(x.pref, x.ward)) li.appendChild(el('span', { class: 'small muted' }, x.pref));
     a.appendChild(el('b', null, placeOf(x) + '付近')); li.appendChild(a);
     var row = el('div', { class: 'row' });
-    row.appendChild(el('span', { class: 'tag warn' }, '報告 ' + x.counts.total + '件'));
+    if (x.official) row.appendChild(el('span', { class: 'tag off' }, '消防の発表 ' + (x.official.kind || '火災')));
+    if (x.counts.total) row.appendChild(el('span', { class: 'tag warn' }, '報告 ' + x.counts.total + '件'));
     var ct = countsText(x.counts); if (ct) row.appendChild(el('span', { class: 'small muted' }, ct));
     if (x.comments) row.appendChild(el('span', { class: 'tag' }, '口コミ ' + x.comments));
     li.appendChild(row);
-    li.appendChild(el('span', { class: 'small muted' }, '最新の報告 ' + ago(x.last) + '（' + hm(x.last) + '）' + (Date.now() - Date.parse(x.last) > 90 * 60000 ? '・落ち着いている可能性があります' : '')));
+    li.appendChild(el('span', { class: 'small muted' }, (x.counts.total ? '最新の報告 ' : '消防の出動 ') + ago(x.last) + '（' + hm(x.last) + '）' + (Date.now() - Date.parse(x.last) > 90 * 60000 ? '・落ち着いている可能性があります' : '')));
     if (x.latest && x.latest[0]) li.appendChild(el('p', { class: 'quote' }, '「' + x.latest[0].body + '」'));
     return li;
   }
@@ -576,18 +577,30 @@
     };
     var renderUGC = function (j) {
       var x = j.incident, place = placeOf(x), calm = Date.now() - Date.parse(x.last) > 90 * 60000;
-      setText('.f-kind', calm ? '火事の目撃情報（落ち着いている可能性）' : '火事の目撃情報');
-      setText('.f-title', place + '付近で火事？');
-      setText('.f-lead', '近所の人から' + x.counts.total + '件の報告がありました。最初の報告は' + hm(x.first) + '、最新は' + ago(x.last) + '（' + hm(x.last) + '）です。' +
-        (calm ? '最後の報告から時間がたっているため、落ち着いている可能性があります。' : ''));
+      var off = j.official || [], o0 = off[0];
+      setText('.f-kind', (x.official ? '消防の発表あり' : '火事の目撃情報') + (calm ? '（落ち着いている可能性）' : ''));
+      setText('.f-title', place + '付近で火事' + (x.official ? '' : '？'));
+      setText('.f-lead', (o0 ? o0.name.replace(/（.*$/, '') + 'が' + hm(o0.at) + 'に' + o0.kind + 'で出動したと発表しています' + (o0.status === '鎮火' ? '（鎮火）' : '') + '。' : '') +
+        (x.counts.total ? '近所の人から' + x.counts.total + '件の報告がありました（最新 ' + ago(x.last) + '）。' : (o0 ? '近所の人からの報告はまだありません。' : '')) +
+        (calm ? '時間がたっているため、落ち着いている可能性があります。' : ''));
       var st = $('.f-stats', fire); st.innerHTML = '';
-      st.appendChild(stat('報告', String(x.counts.total), countsText(x.counts), true));
-      st.appendChild(stat('最新の報告', ago(x.last), hm(x.last)));
+      if (o0) st.appendChild(stat('消防の発表', o0.kind, hm(o0.at) + (o0.status ? '・' + o0.status : ''), true));
+      st.appendChild(stat('報告', String(x.counts.total), x.counts.total ? countsText(x.counts) : 'まだありません', !o0));
+      st.appendChild(stat('最新', ago(x.last), hm(x.last)));
+      var os = $('.f-off-sec', fire);
+      if (os && off.length) {
+        os.hidden = false; var ul = $('.f-off', fire); ul.innerHTML = '';
+        off.forEach(function (o) {
+          var li = el('li'); li.appendChild(el('b', null, hm(o.at) + ' ' + o.kind + (o.status ? '（' + o.status + '）' : '')));
+          li.appendChild(document.createTextNode('　' + (o.town || '') + '　'));
+          var a = el('a', { href: o.url, target: '_blank', rel: 'noopener' }, '出典：' + o.name); li.appendChild(a); ul.appendChild(li);
+        });
+      }
       st.appendChild(stat('口コミ', String(j.comments.length), '下に表示'));
       setup(x.pref || '東京都', x.ward, x.town, place + '付近の火事の目撃情報');
       var ss = $('.f-share-sec', fire); ss.hidden = false;
       var tags = ' #' + x.ward + (x.town ? ' #' + baseTown(x.town) : '') + ' #火事';
-      var text = '【火事の目撃情報】' + place + '付近　報告' + x.counts.total + '件（' + countsText(x.counts) + '）' + hm(x.last) + '時点' + tags;
+      var text = (x.official ? '【消防出動】' + place + '付近で' + (x.official.kind || '火災') + (x.counts.total ? '　目撃報告' + x.counts.total + '件' : '') : '【火事の目撃情報】' + place + '付近　報告' + x.counts.total + '件（' + countsText(x.counts) + '）') + '　' + hm(x.last) + '時点' + tags;
       shareButtons($('.f-share', fire), text, API + '/f/' + encodeURIComponent(x.id));
     };
     var renderNews = function (x) {

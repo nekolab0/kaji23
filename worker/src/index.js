@@ -18,6 +18,7 @@
 // 個人の特定を避けるため: 町名は丁目まで、番地・電話番号・URLは受け付けない。
 // IPアドレスは保存しない（日替わりの塩付きハッシュを連投防止にだけ使う）。
 import { AREAS } from './areas.js';
+import { SOURCES, parseSource, robotsAllows } from './official.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
@@ -108,6 +109,13 @@ async function setup(env) {
   await run('CREATE INDEX IF NOT EXISTS idx_com_who ON comments(who, at)');
   await run('CREATE TABLE IF NOT EXISTS flags (comment INTEGER NOT NULL, who TEXT NOT NULL, PRIMARY KEY (comment, who))');
   await run('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)');
+  // 消防本部の発表（出動情報）と、各ページの読み取り状況
+  await run(`CREATE TABLE IF NOT EXISTS official (id TEXT PRIMARY KEY, source TEXT NOT NULL, pref TEXT NOT NULL, ward TEXT NOT NULL, town TEXT, base TEXT,
+    kind TEXT NOT NULL, status TEXT, at TEXT NOT NULL, seen_first TEXT NOT NULL, seen_last TEXT NOT NULL, inc TEXT)`);
+  await run('CREATE INDEX IF NOT EXISTS idx_off_inc ON official(inc)');
+  await run('CREATE INDEX IF NOT EXISTS idx_off_at ON official(at)');
+  await run(`CREATE TABLE IF NOT EXISTS sources (id TEXT PRIMARY KEY, last_try TEXT, last_ok TEXT, status TEXT, items INTEGER, robots TEXT, robots_at TEXT)`);
+  for (const col of ['official INTEGER NOT NULL DEFAULT 0', 'official_kind TEXT', 'official_src TEXT']) { try { await run(`ALTER TABLE incidents ADD COLUMN ${col}`); } catch (e) {} }
   await run('CREATE TABLE IF NOT EXISTS contact (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL, at TEXT NOT NULL, who TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0)');
   if (env.SALT) return env.SALT;
   const rnd = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -122,7 +130,8 @@ async function openIncident(DB, pref, ward, base, since) {
     : DB.prepare('SELECT * FROM incidents WHERE pref = ? AND ward = ? AND last_at > ? ORDER BY last_at DESC LIMIT 1').bind(pref, ward, since).first();
 }
 const incOut = r => r && ({ id: r.id, pref: r.pref, city: r.ward, ward: r.ward, town: r.town, place: placeName(r.pref, r.ward, r.town), first: r.first_at, last: r.last_at,
-  counts: { total: r.n, siren: r.siren, smoke: r.smoke, fire: r.fire }, comments: r.comments });
+  counts: { total: r.n, siren: r.siren, smoke: r.smoke, fire: r.fire }, comments: r.comments,
+  official: r.official ? { kind: r.official_kind, source: r.official_src, name: (SOURCES.find(s => s.id === r.official_src) || {}).name || null } : null });
 const comOut = r => ({ id: r.id, inc: r.inc, pref: r.pref, city: r.ward, ward: r.ward, town: r.town, body: r.body, at: r.at });
 
 export async function handle(request, env, now = new Date()) {
@@ -236,7 +245,9 @@ export async function handle(request, env, now = new Date()) {
     if (!inc && !/^n-/.test(id)) return json(env, { error: 'この火事は見つかりませんでした' }, 404);
     const c = await DB.prepare('SELECT * FROM comments WHERE inc = ? AND hidden = 0 ORDER BY at ASC LIMIT 300').bind(id).all();
     const t = inc ? await DB.prepare("SELECT kind, strftime('%Y-%m-%dT%H:%M:00Z', at) AS m, COUNT(*) AS n FROM reports WHERE inc = ? GROUP BY kind, m ORDER BY m").bind(id).all() : { results: [] };
-    return json(env, { generatedAt: iso, incident: incOut(inc), comments: c.results.map(comOut), timeline: t.results }, 200, { 'Cache-Control': 'public, max-age=15' });
+    const o = inc ? await DB.prepare('SELECT source, kind, status, at, town FROM official WHERE inc = ? ORDER BY at').bind(id).all() : { results: [] };
+    const official = o.results.map(x => { const sc = SOURCES.find(s => s.id === x.source) || {}; return { ...x, name: sc.name || x.source, url: sc.url || null }; });
+    return json(env, { generatedAt: iso, incident: incOut(inc), comments: c.results.map(comOut), timeline: t.results, official }, 200, { 'Cache-Control': 'public, max-age=15' });
   }
 
   if (P === '/api/town' && request.method === 'GET') {
@@ -246,6 +257,13 @@ export async function handle(request, env, now = new Date()) {
     const i = await DB.prepare('SELECT * FROM incidents WHERE pref = ? AND ward = ? AND base = ? AND last_at > ? ORDER BY last_at DESC LIMIT 20').bind(area.pref, area.city, base, ago(30 * 864e5)).all();
     const c = await DB.prepare('SELECT * FROM comments WHERE pref = ? AND ward = ? AND base = ? AND hidden = 0 ORDER BY at DESC LIMIT 50').bind(area.pref, area.city, base).all();
     return json(env, { generatedAt: iso, incidents: i.results.map(incOut), comments: c.results.map(comOut) }, 200, { 'Cache-Control': 'public, max-age=30' });
+  }
+
+  // 消防本部のページの読み取り状況（運営の確認用）
+  if (P === '/api/sources' && request.method === 'GET') {
+    const { results } = await DB.prepare('SELECT * FROM sources').all();
+    const st = Object.fromEntries(results.map(r => [r.id, r]));
+    return json(env, { generatedAt: iso, sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items } : {}) })) });
   }
 
   // 場所ごとの火事の件数（検索候補の「記録○件」用。直近365日）
@@ -280,12 +298,12 @@ export async function handle(request, env, now = new Date()) {
       const place = placeName(inc.pref, inc.ward, inc.town);
       const parts = KINDS.filter(k => inc[k]).map(k => `${KIND_JA[k]}${inc[k]}`).join('・');
       const t = new Date(new Date(inc.last_at).getTime() + 9 * 3600e3);
-      title = `${place}付近で火事の目撃情報 ${inc.n}件｜火事どこ23区`;
+      title = inc.official ? `${place}付近で${inc.official_kind || '火災'}（消防出動）${inc.n ? ` 目撃報告${inc.n}件` : ''}｜火事どこ` : `${place}付近で火事の目撃情報 ${inc.n}件｜火事どこ`;
       desc = `${parts}の報告、口コミ${inc.comments}件（最新 ${t.getUTCMonth() + 1}/${t.getUTCDate()} ${t.getUTCHours()}:${String(t.getUTCMinutes()).padStart(2, '0')}）。現場の状況を近所の人どうしで共有しています。近づかず、火や煙が見えたら119番へ。`;
     }
     const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">
-<meta property="og:type" content="article"><meta property="og:site_name" content="火事どこ23区"><meta property="og:title" content="${escHtml(title)}">
+<meta property="og:type" content="article"><meta property="og:site_name" content="火事どこ"><meta property="og:title" content="${escHtml(title)}">
 <meta property="og:description" content="${escHtml(desc)}"><meta property="og:url" content="${escHtml(dest)}"><meta property="og:image" content="${site}/og/live.png">
 <meta name="twitter:card" content="summary_large_image"><link rel="canonical" href="${escHtml(dest)}">
 <meta http-equiv="refresh" content="0;url=${escHtml(dest)}"></head><body><p><a href="${escHtml(dest)}">${escHtml(title)}</a></p>
@@ -295,11 +313,87 @@ export async function handle(request, env, now = new Date()) {
   return json(env, { error: 'not found' }, 404);
 }
 
+// ---------- 消防本部の出動情報を取り込む ----------
+const UA = 'kaji23-bot/1.0 (+https://nekolab0.github.io/kaji23/about.html; 火災の出動情報を町名単位で表示)';
+// 取り出した1件を保存し、同じ場所・近い時刻の「火事」にまとめる（なければ新しく作る）
+export async function ingestOfficial(env, items, now = new Date()) {
+  const DB = env.DB; let added = 0;
+  for (const x of items) {
+    const base = x.town ? baseTown(x.town) || null : null;
+    const id = `${x.source}|${x.ward || x.city}|${x.town || ''}|${x.at}`;
+    const old = await DB.prepare('SELECT id, inc FROM official WHERE id = ?').bind(id).first();
+    if (old) { await DB.prepare('UPDATE official SET seen_last = ?, status = COALESCE(?, status) WHERE id = ?').bind(now.toISOString(), x.status || null, id).run(); continue; }
+    const city = x.city;
+    const t0 = new Date(x.at);
+    let inc = await DB.prepare(`SELECT * FROM incidents WHERE pref = ? AND ward = ? AND (base = ? OR base IS NULL OR ? IS NULL) AND first_at > ? AND first_at < ? ORDER BY (base = ?) DESC, last_at DESC LIMIT 1`)
+      .bind(x.pref, city, base, base, new Date(t0 - MERGE_HOURS * 3600e3).toISOString(), new Date(+t0 + MERGE_HOURS * 3600e3).toISOString(), base).first();
+    if (inc) {
+      await DB.prepare('UPDATE incidents SET official = 1, official_kind = ?, official_src = ?, town = COALESCE(town, ?), base = COALESCE(base, ?), last_at = MAX(last_at, ?) WHERE id = ?')
+        .bind(x.kind, x.source, x.town || null, base, x.at, inc.id).run();
+    } else {
+      inc = { id: newId() };
+      await DB.prepare('INSERT INTO incidents (id, pref, ward, town, base, first_at, last_at, n, official, official_kind, official_src) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?)')
+        .bind(inc.id, x.pref, city, x.town || null, base, x.at, x.at, x.kind, x.source).run();
+    }
+    await DB.prepare('INSERT INTO official (id, source, pref, ward, town, base, kind, status, at, seen_first, seen_last, inc) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(id, x.source, x.pref, city, x.town || null, base, x.kind, x.status || null, x.at, now.toISOString(), now.toISOString(), inc.id).run();
+    added++;
+  }
+  return added;
+}
+
+// 1回の実行で読むページ数を絞り、古い順に回す（各ページはおよそ5〜10分に1回）
+export async function pollSources(env, now = new Date(), fetcher = fetch, perRun = 6) {
+  await setup(env);
+  const DB = env.DB;
+  const { results } = await DB.prepare('SELECT * FROM sources').all();
+  const st = Object.fromEntries(results.map(r => [r.id, r]));
+  const due = SOURCES.slice().sort((a, b) => String((st[a.id] || {}).last_try || '').localeCompare(String((st[b.id] || {}).last_try || ''))).slice(0, perRun);
+  const report = [];
+  for (const src of due) {
+    const s = st[src.id] || {};
+    let status = 'ok', items = 0;
+    try {
+      // robots.txt は1日1回だけ取り直す
+      let robots = s.robots, robotsAt = s.robots_at;
+      if (!robotsAt || now - new Date(robotsAt) > 864e5) {
+        try { const r = await fetcher(new URL('/robots.txt', src.url).href, { headers: { 'User-Agent': UA } }); robots = r.ok ? (await r.text()).slice(0, 20000) : ''; } catch (e) { robots = ''; }
+        robotsAt = now.toISOString();
+      }
+      if (!robotsAllows(robots, src.url)) status = 'robots.txtで禁止';
+      else {
+        const r = await fetcher(src.url, { headers: { 'User-Agent': UA, 'Accept-Language': 'ja' } });
+        if (!r.ok) status = 'HTTP ' + r.status;
+        else {
+          const buf = await r.arrayBuffer();
+          let html = new TextDecoder('utf-8').decode(buf);
+          const cs = (html.match(/charset=["']?([\w-]+)/i) || [])[1] || (r.headers.get('content-type') || '').split('charset=')[1] || 'utf-8';
+          if (!/utf-?8/i.test(cs)) { try { html = new TextDecoder(cs.trim().toLowerCase().replace('shift-jis', 'shift_jis')).decode(buf); } catch (e) {} }
+          const found = parseSource(html, src, now);
+          items = found.length;
+          await ingestOfficial(env, found, now);
+        }
+      }
+      await DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, robots, robots_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = COALESCE(excluded.last_ok, sources.last_ok), status = excluded.status, items = excluded.items, robots = excluded.robots, robots_at = excluded.robots_at')
+        .bind(src.id, now.toISOString(), status === 'ok' ? now.toISOString() : null, status, items, robots || '', robotsAt).run();
+    } catch (e) {
+      status = 'エラー: ' + String(e && e.message || e).slice(0, 80);
+      await DB.prepare('INSERT INTO sources (id, last_try, status, items) VALUES (?, ?, ?, 0) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, status = excluded.status, items = 0').bind(src.id, now.toISOString(), status).run();
+    }
+    report.push({ id: src.id, status, items });
+  }
+  return report;
+}
+
 export default {
   fetch: (request, env) => handle(request, env),
-  // 毎日、古い報告の明細を削除（火事の件数・口コミは残す）
   scheduled: async (event, env) => {
     await setup(env);
-    await env.DB.prepare('DELETE FROM reports WHERE at < ?').bind(new Date(Date.now() - KEEP_REPORT_DAYS * 864e5).toISOString()).run();
+    if (event.cron === '17 4 * * *') {
+      // 毎日、古い報告の明細を削除（火事の件数・口コミは残す）
+      await env.DB.prepare('DELETE FROM reports WHERE at < ?').bind(new Date(Date.now() - KEEP_REPORT_DAYS * 864e5).toISOString()).run();
+      return;
+    }
+    await pollSources(env);   // 5分ごと: 消防本部の出動情報
   },
 };

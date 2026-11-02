@@ -584,6 +584,11 @@ def fire_page():
   <h2 id="com">現場の口コミ</h2>
   <div class="f-comments"></div>
 </section>
+<section class="section f-off-sec" aria-labelledby="offh" hidden>
+  <h2 id="offh">消防本部の発表</h2>
+  <ul class="plain f-off"></ul>
+  <p class="small muted">各消防本部が公開している出動情報から、火災の出動だけを自動で取り出して表示しています。最新の状況は出典のページでご確認ください。</p>
+</section>
 <section class="section f-news-sec" aria-labelledby="src" hidden>
   <h2 id="src">報道</h2>
   <div class="f-news"></div>
@@ -745,13 +750,20 @@ def about_page(report):
 <p><strong>今年の件数を掲載していない署（年ごとの件数のみ）</strong>：{esc(annual) or "なし"}</p>
 <p><strong>火災件数のページがない署</strong>：{esc(unpub) or "なし"}</p>
 <p class="muted small">これらの署がある区では、区の合計は「掲載署の合計」となり、人口あたりの比較から外しています。</p></section>
+<section class="section" aria-labelledby="off"><h2 id="off">消防本部の出動情報（全国）</h2>
+<p>次の消防本部が公開している出動情報のページを、受付サーバーが5分ごとに読み、<strong>火災の出動だけ</strong>を取り出して「火事のページ」に表示しています（救急・救助・警戒などは使いません）。場所は町名（丁目）までにとどめ、目標物や番地は保存しません。各サイトの robots.txt で読み取りが禁止されている場合は読みません。</p>
+<ul class="plain">{''.join(f'<li><a href="{esc(u)}" target="_blank" rel="noopener">{esc(n)}</a></li>' for n, u in OFFICIAL_SOURCES)}</ul>
+<p class="small muted">読み取りの状況：受付サーバーの <code>/api/sources</code> で確認できます。掲載の停止を希望される消防本部の方は、<a href="rules.html">お問い合わせ欄</a>からご連絡ください。</p></section>
 {rep}
 <section class="section" aria-labelledby="note"><h2 id="note">ご利用にあたって</h2>
-<p>このサイトは民間が独自に運営する非公式サイトです。東京消防庁・東京都・各区の公認や監修は受けていません。各消防署のページは更新日がばらばらで、集計時点がそろっていません。数字が食い違う場合は公式発表を優先してください。現在発生中の火事を知らせるサービスではありません。火や煙を見たら119番へ通報してください。</p>
+<p>このサイトは民間が独自に運営する非公式サイトです。東京消防庁・東京都・各区の公認や監修は受けていません。各消防署のページは更新日がばらばらで、集計時点がそろっていません。数字が食い違う場合は公式発表を優先してください。目撃報告・口コミは利用者の投稿で、消防の出動情報は各消防本部の公開ページから自動で取り出したものです。最新・正確な情報は各消防本部の発表をご確認ください。火や煙を見たら119番へ通報してください。</p>
 <p class="muted small">運営者・お問い合わせ：[運営者名・連絡先を記入]</p></section>
 </div>'''
     return page('about', f'データの出典と集め方｜{SITE_NAME}', f'{SITE_NAME}の火災件数・管轄区域・人口データの出典と、各消防署ページからの読み取り方法、自動チェックの結果。', body)
 
+# 受付サーバーが読む消防本部の出動情報ページ（worker/src/official.js の一覧から）
+_off = (ROOT / 'worker' / 'src' / 'official.js').read_text(encoding='utf-8')
+OFFICIAL_SOURCES = list(dict.fromkeys((m.group(1), m.group(2).replace('${k}', 'kurume')) for m in re.finditer(r"name: '([^']+)', url: [`']([^`']+)[`']", _off)))
 exec((SITE / 'nation.py').read_text(encoding='utf-8'))   # 全国版（都道府県・市区町村・町のページ、検索索引）
 
 def build(report=None):

@@ -134,7 +134,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   // W1 サイレン報告の受付サーバー（Cloudflare Worker）の動作テスト
   const wp = path.join(OUT, 'worker.json');
   if (fs.existsSync(wp)) { const W = JSON.parse(fs.readFileSync(wp, 'utf8')); const f = W.results.filter(r => !r.ok);
-    add('W1 サイレン報告の受付サーバー', !f.length && W.results.length >= 10, f.length ? f.map(r => r.name).join(' / ') : `${W.results.length}項目すべて合格（火事へのまとめ・口コミの禁止事項・通報で非表示・共有ページ・連投制限・IPを保存しない）`);
+    add('W1 サイレン報告の受付サーバー', !f.length && W.results.length >= 10, f.length ? f.map(r => r.name).join(' / ') : `${W.results.length}項目すべて合格（火事へのまとめ・口コミの禁止事項・通報で非表示・共有ページ・連投制限・IPを保存しない・消防の出動情報の取り込みとrobots.txt）`);
   } else add('W1 サイレン報告の受付サーバー', false, '未実施（node worker/test.mjs）');
 })();
 
@@ -149,7 +149,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   const browser = await chromium.launch();
 
   // 受付サーバーの代わりに、本物の処理（worker/src/index.js）を検査用のSQLiteで動かす
-  const { handle } = await import(path.join(ROOT, 'worker', 'src', 'index.js'));
+  const { handle, ingestOfficial } = await import(path.join(ROOT, 'worker', 'src', 'index.js'));
   const { makeEnv } = await import(path.join(ROOT, 'worker', 'test.mjs'));
   let W = makeEnv();
   const API = (fs.readFileSync(path.join(DIST, 'index.html'), 'utf8').match(/name="kaji23-api" content="([^"]*)"/) || [])[1] || '';
@@ -386,6 +386,19 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
         .then(() => flowOk.push('全国の町ページ（梅田）'), () => flowBad.push('全国の町ページに報告・口コミが出ない'));
       const near = await fp.$$eval('.t-near a', a => a.length);
       if (near < 5) flowBad.push('近くの町が出ない');
+    }
+    // 消防本部の発表: 取り込むと一覧に「消防の発表」、火事のページに出典つきで出る
+    await ingestOfficial(W.env, [{ source: 'sapporo', pref: '北海道', city: '札幌市北区', town: '北32条西7丁目', kind: '建物火災', at: new Date(Date.now() - 20 * 60e3).toISOString() }], new Date());
+    const offInc = W.db.prepare("SELECT id FROM incidents WHERE ward = '札幌市北区'").get();
+    await fp.goto('file://' + path.join(DIST, 'index.html'));
+    await fp.waitForFunction(() => [...document.querySelectorAll('.fire-card')].some(c => /札幌市北区北32条西7丁目付近/.test(c.textContent) && /消防の発表 建物火災/.test(c.textContent)), null, { timeout: 5000 })
+      .then(() => flowOk.push('一覧に「消防の発表」'), () => flowBad.push('一覧に消防の発表が出ない'));
+    if (offInc) {
+      await fp.goto('file://' + path.join(DIST, 'fire.html') + '?id=' + offInc.id);
+      await fp.waitForFunction(() => /消防の発表あり/.test(document.querySelector('.f-kind').textContent) && /札幌市消防局/.test(document.querySelector('.f-off').textContent), null, { timeout: 5000 })
+        .then(() => flowOk.push('火事のページに消防の発表と出典'), () => flowBad.push('火事のページに消防の発表が出ない'));
+      const xs = decodeURIComponent((await fp.$$eval('.f-share a', as => as.map(a => a.href))).find(h => /intent/.test(h)) || '');
+      if (!/【消防出動】北海道札幌市北区北32条西7丁目付近で建物火災/.test(xs)) flowBad.push('消防の発表の共有文が不正'); else flowOk.push('消防の発表の共有文');
     }
     const nid = news.incidents[0] && 'n-' + news.incidents[0].id;
     if (nid) {

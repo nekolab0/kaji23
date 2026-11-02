@@ -1,7 +1,7 @@
 // D1 を Node の組み込み SQLite で代用して、受付サーバーの動作を確認する
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
-import { handle, cleanTown, baseTown, checkBody } from './src/index.js';
+import { handle, cleanTown, baseTown, checkBody, pollSources } from './src/index.js';
 export function makeEnv() {
   const db = new DatabaseSync(':memory:');
   const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
@@ -97,6 +97,33 @@ if (isMain) {
   r = await handle(req('POST', '/api/contact', { body: '赤羽西の口コミを削除してください' }), env, at(50));
   ok('削除依頼を受け付けて保存', r.status === 200 && db.prepare('SELECT COUNT(*) n FROM contact').get().n === 1);
   const salt = db.prepare("SELECT v FROM meta WHERE k='salt'").get();
+  // 消防本部の出動情報: robots.txt を守り、火災だけを取り込み、利用者の報告と同じ火事にまとめる
+  { const m = makeEnv(); const pnow = new Date('2026-11-03T00:00:00Z');
+    // 先に利用者の報告（札幌市北区北32条西で 22:50）
+    await handle(req('POST', '/api/report', { pref: '北海道', city: '札幌市北区', town: '北32条西7丁目', kind: 'smoke' }, '21.1.1.1'), m.env, new Date('2026-11-02T13:50:00Z'));
+    const pages = {
+      'https://www.119.city.sapporo.jp/robots.txt': [404, ''],
+      'https://www.119.city.sapporo.jp/saigai/sghp.html': [200, '<h2>現在の災害出動</h2>〇札幌市<BR>　　現在出動中の災害はありません<BR><h2>現在の救急出動</h2><h2>過去の災害出動</h2><TABLE><TR><TD>本日（03日）</TD><TD>昨日（02日）</TD></TR><TR><TD COLSPAN=2>〇札幌市</TD></TR><TR><TD>●救助出動<BR>・東区北43条東3丁目（03時51分）<BR></TD><TD>●火災出動<BR>・北区北32条西7丁目（22時46分）<BR>●車両火災出動<BR>・南区澄川6条4丁目（06時54分）<BR></TD></TR></TABLE>'],
+      'https://disif.city.kyoto.lg.jp/robots.txt': [200, 'User-agent: *\nDisallow: /annai/'],
+    };
+    const fetcher = async (u) => { const p = pages[u] || [404, '']; return new Response(p[1], { status: p[0], headers: { 'Content-Type': 'text/html; charset=utf-8' } }); };
+    const rep = await pollSources(m.env, pnow, fetcher, 3);
+    const sp = rep.find(r => r.id === 'sapporo'), ky = rep.find(r => r.id === 'kyoto');
+    ok('出動情報: 札幌から火災2件（救助は捨てる）', sp && sp.status === 'ok' && sp.items === 2, JSON.stringify(rep));
+    ok('出動情報: robots.txt で禁止されたページは読まない', ky && /robots/.test(ky.status), JSON.stringify(ky));
+    const merged = m.db.prepare("SELECT * FROM incidents WHERE ward='札幌市北区'").all();
+    ok('出動情報: 同じ場所の利用者の報告と同じ火事にまとめる', merged.length === 1 && merged[0].official === 1 && merged[0].n === 1 && merged[0].official_kind === '火災', JSON.stringify(merged));
+    const car = m.db.prepare("SELECT * FROM incidents WHERE ward='札幌市南区'").get();
+    ok('出動情報: 報告のない場所は新しい火事として作る', car && car.official === 1 && car.n === 0 && car.official_kind === '車両火災');
+    await pollSources(m.env, new Date(+pnow + 300e3), fetcher, 3);
+    ok('出動情報: 同じ発表を二重に取り込まない', m.db.prepare('SELECT COUNT(*) n FROM official').get().n === 2);
+    const inc = await (await handle(req('GET', '/api/incident?id=' + merged[0].id), m.env, pnow)).json();
+    ok('出動情報: 火事のページに消防の発表と出典', inc.official.length === 1 && inc.official[0].name.includes('札幌市消防局') && inc.incident.official.kind === '火災', JSON.stringify(inc.official));
+    const live = await (await handle(req('GET', '/api/live?hours=48'), m.env, pnow)).json();
+    ok('出動情報: いまの火事の一覧に出る', live.incidents.filter(x => x.official).length === 2);
+    const srcs = await (await handle(req('GET', '/api/sources'), m.env, pnow)).json();
+    ok('出動情報: 読み取り状況を確認できる', srcs.sources.find(x => x.id === 'sapporo').status === 'ok');
+  }
   // 23区だけの頃のデータ（都道府県なし）を東京都として引き継ぐ
   { const m = makeEnv(); const d = m.db;
     d.exec(`CREATE TABLE incidents (id TEXT PRIMARY KEY, ward TEXT NOT NULL, town TEXT, base TEXT, first_at TEXT NOT NULL, last_at TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, siren INTEGER NOT NULL DEFAULT 0, smoke INTEGER NOT NULL DEFAULT 0, fire INTEGER NOT NULL DEFAULT 0, comments INTEGER NOT NULL DEFAULT 0)`);

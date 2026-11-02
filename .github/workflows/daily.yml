@@ -26,7 +26,7 @@ jobs:
       - name: 報道から全国の火事を収集
         run: node collector/news_jp.test.mjs && node collector/news_run.mjs
       - name: 受付サーバーのテスト
-        run: node --no-warnings worker/test.mjs
+        run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs
       - name: 生成・検査
         env: { SITE_URL: '${{ vars.SITE_URL }}' }
         run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh

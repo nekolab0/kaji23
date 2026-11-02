@@ -304,3 +304,4 @@ h1, .fire-card .place b { word-break: auto-phrase; }
 .region h3 a { color: var(--ink); }
 .cnt { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--fire-soft); color: var(--fire-ink); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .fire-card > .small.muted:first-child { margin-bottom: -4px; }
+.tag.off { background: var(--navy); color: #ffffff; }
