@@ -15,20 +15,25 @@ h1{font-size:72px;font-weight:900;line-height:1.15;letter-spacing:.01em}
 const icon = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c2341c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-10z"/></svg>';
 
 function wardHTML(w) {
-  const has = w.ytd !== null && w.ytd !== undefined;
-  const d = has && w.prev !== null && w.prev !== undefined ? w.ytd - w.prev : null;
   return `<style>${css}</style><div class="brand">${icon}<span>火事どこ<b>23区</b></span></div>
-<h1>${esc(w.name)}の火事・火災件数</h1>
-${has ? `<div class="row"><span class="big">${w.ytd}<small>件</small></span><div class="sub">2026年これまでの火災<br>${w.complete ? '区内全消防署の合計' : '掲載している消防署の合計'}</div></div>
-${d !== null ? `<span class="chip">前年同時期 ${w.prev}件 → ${d > 0 ? '+' : ''}${d}件</span>` : ''}` : `<div class="sub">消防署ごとの情報と管轄の町名</div>`}
-<div class="foot"><span>出典：東京消防庁 各消防署の公開データ</span><span>火や煙を見たら119番</span></div>`;
+<h1>${esc(w.name)}で火事？<br>いま、どこで。</h1>
+<div class="sub">サイレン・煙の目撃情報と口コミを、町名ごとにリアルタイムで。<br>${esc(w.name)}の町名から探せます。</div>
+<span class="chip">近づかない・火や煙が見えたら119番</span>
+<div class="foot"><span>近所の人の報告＋報道＋東京消防庁の公開データ</span><span>火事どこ23区</span></div>`;
 }
 function indexHTML() {
-  const f = model.daily.rows['火災件数'] || {};
   return `<style>${css}</style><div class="brand">${icon}<span>火事どこ<b>23区</b></span></div>
-<h1>東京23区の火事、<br>どこで何件？</h1>
-<div class="sub">58消防署の火災件数を、区・消防署・町名ごとに。<br>東京消防庁の公開データを毎日集計しています。</div>
-<div class="foot"><span>東京消防庁管内 今年の火災 ${f.ytd ? f.ytd.toLocaleString() : '—'}件（速報値）</span><span>火や煙を見たら119番</span></div>`;
+<h1>近くで火事？<br>町名で、いまの状況を。</h1>
+<div class="sub">サイレン・煙の目撃情報と口コミを、東京23区の町ごとにリアルタイムで。</div>
+<span class="chip">見た・聞いたを報告して、近所と共有</span>
+<div class="foot"><span>近所の人の報告＋報道＋東京消防庁の公開データ</span><span>火や煙を見たら119番</span></div>`;
+}
+function liveHTML() {
+  return `<style>${css}</style><div class="brand">${icon}<span>火事どこ<b>23区</b></span></div>
+<h1>火事の目撃情報</h1>
+<div class="sub">いま近所の人から寄せられている<br>サイレン・煙・火の報告と、現場の口コミ。</div>
+<span class="chip">近づかない・火や煙が見えたら119番</span>
+<div class="foot"><span>東京23区・町名ごとにリアルタイム</span><span>火事どこ23区</span></div>`;
 }
 
 (async () => {
@@ -36,7 +41,7 @@ function indexHTML() {
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-  const jobs = [['index', indexHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)]));
+  const jobs = [['index', indexHTML()], ['live', liveHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)]));
   for (const [name, html] of jobs) {
     await page.setContent(html, { waitUntil: 'load' });
     await page.screenshot({ path: path.join(out, name + '.png'), type: 'png' });

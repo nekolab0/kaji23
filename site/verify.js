@@ -99,6 +99,14 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   // N1 報道から取り出した火事のデータ
   const townBase = {};
   wd.forEach(w => { townBase[w.name] = new Set(Object.values(w.st).flat().map(t => t.replace(/[0-9０-９].*$/, '').replace(/（.*$/, ''))); });
+  const extra = JSON.parse(fs.readFileSync(path.join(RAW, 'towns_extra.json'), 'utf8'));
+  Object.entries(extra.wards).forEach(([k, v]) => v.towns.forEach(t => townBase[k].add(t)));
+
+  // D10 町ページ
+  const perWard = {}; model.towns.forEach(t => { perWard[t.ward] = (perWard[t.ward] || 0) + 1; });
+  const noTown = wd.filter(w => !perWard[w.name]).map(w => w.name);
+  const missing = model.towns.filter(t => !fs.existsSync(path.join(DIST, t.file))).map(t => t.file);
+  add('D10 町ページ', model.towns.length >= 900 && !noTown.length && !missing.length, `${model.towns.length}町（渋谷区${perWard['渋谷区']}・目黒区${perWard['目黒区']}町を含む）${noTown.length ? '／町のない区：' + noTown.join('、') : ''}${missing.length ? '／ページなし：' + missing.slice(0, 5).join('、') : ''}`);
   const nb = [], ids = new Set();
   const col = new Date(news.collectedAt || Date.now());
   for (const x of news.incidents) {
@@ -114,69 +122,87 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   // W1 サイレン報告の受付サーバー（Cloudflare Worker）の動作テスト
   const wp = path.join(OUT, 'worker.json');
   if (fs.existsSync(wp)) { const W = JSON.parse(fs.readFileSync(wp, 'utf8')); const f = W.results.filter(r => !r.ok);
-    add('W1 サイレン報告の受付サーバー', !f.length && W.results.length >= 10, f.length ? f.map(r => r.name).join(' / ') : `${W.results.length}項目すべて合格（連投制限・23区以外の拒否・番地の切り捨て・IPを保存しない・集計）`);
+    add('W1 サイレン報告の受付サーバー', !f.length && W.results.length >= 10, f.length ? f.map(r => r.name).join(' / ') : `${W.results.length}項目すべて合格（火事へのまとめ・口コミの禁止事項・通報で非表示・共有ページ・連投制限・IPを保存しない）`);
   } else add('W1 サイレン報告の受付サーバー', false, '未実施（node worker/test.mjs）');
 })();
 
 // ================= 表示 =================
 (async function renderChecks() {
-  const pages = fs.readdirSync(DIST).filter(f => f.endsWith('.html'));
+  const allPages = fs.readdirSync(DIST).filter(f => f.endsWith('.html'));
+  const machi = allPages.filter(f => f.startsWith('m-')).sort();
+  // ブラウザで開くのは、町ページ以外の全ページ＋町ページの見本（25ページに1つ）
+  const pages = allPages.filter(f => !f.startsWith('m-')).concat(machi.filter((f, i) => i % 25 === 0));
   const browser = await chromium.launch();
-  // 画面幅ごとにコンテキストを分ける（newPage の viewport 指定は context 経由でないと効かない）
-  const mkctx = async (width) => {
-    const c = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 500, hasTouch: width < 500 });
+
+  // 受付サーバーの代わりに、本物の処理（worker/src/index.js）を検査用のSQLiteで動かす
+  const { handle } = await import(path.join(ROOT, 'worker', 'src', 'index.js'));
+  const { makeEnv } = await import(path.join(ROOT, 'worker', 'test.mjs'));
+  let W = makeEnv();
+  const API = (fs.readFileSync(path.join(DIST, 'index.html'), 'utf8').match(/name="kaji23-api" content="([^"]*)"/) || [])[1] || '';
+  let clock = 0;
+  const apiRoute = async r => {
+    const q = r.request();
+    const res = await handle(new Request(q.url(), { method: q.method(), headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': '10.0.0.' + (clock % 250) },
+      body: q.method() === 'POST' ? q.postData() : undefined }), { ...W.env, ALLOW_ORIGIN: '*' }, new Date(Date.now() + clock * 61e3));
+    const h = {}; res.headers.forEach((v, k) => { h[k] = v; });
+    return r.fulfill({ status: res.status, headers: h, body: await res.text() });
+  };
+  const mkctx = async (width, opts = {}) => {
+    const c = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 500, hasTouch: width < 500, ...opts });
     // フォントCDNは作業環境から到達できないため遮断（公開先では読み込まれる）
     await c.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
-    await c.route(/\/api\/reports?(\?|$)/, r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"wards":{}}' }));
+    // 後に登録した経路が優先される: まず外部への送信を止め、そのうえで受付サーバーと地理院を代役に
+    await c.route(/workers\.dev|x\.com|twitter\.com|yahoo\.co\.jp|news\.google\.com/, r => r.abort()); // 本番・外部へは送らない
+    if (API) await c.route(u => u.href.startsWith(API + '/'), apiRoute);
+    await c.route(/mreversegeocoder\.gsi\.go\.jp/, r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ results: { muniCd: '13117', lv01Nm: '赤羽西二丁目' } }) }));
     return c;
   };
   const consoleErr = [], reqFail = [], overflow = [], links = [], meta = [], numbers = [];
   const fileSet = new Set(fs.readdirSync(DIST, { recursive: true }).map(String));
 
+  // R4・R5 は全ページをファイルのまま確かめる（町ページ900超を全部ブラウザで開かない）
+  for (const f of allPages) {
+    const h = fs.readFileSync(path.join(DIST, f), 'utf8');
+    const title = (h.match(/<title>([^<]*)<\/title>/) || [])[1];
+    const h1 = (h.match(/<h1[\s>]/g) || []).length;
+    const desc = /<meta name="description" content="[^"]+"/.test(h);
+    const og = (h.match(/property="og:image" content="([^"]+)"/) || [])[1];
+    if (!title || h1 !== 1 || !desc || !og || !fileSet.has(og)) meta.push(`${f}: title=${!!title} h1=${h1} desc=${desc} og=${og}`);
+    for (const m of h.matchAll(/<a [^>]*href="([^"]+)"/g)) {
+      const href = m[1].replace(/&amp;/g, '&');
+      if (/^(https?:|mailto:|tel:)/.test(href)) continue;
+      const [file0, hash] = href.split('#'); const file = decodeURIComponent((file0 || f).split('?')[0]);
+      if (!fileSet.has(file)) { links.push(`${f} → ${href}（ファイルなし）`); continue; }
+      if (hash && !fs.readFileSync(path.join(DIST, file), 'utf8').includes(`id="${hash}"`)) links.push(`${f} → ${href}（#${hash}なし）`);
+    }
+  }
+
   for (const width of [375, 1280]) {
     const wctx = await mkctx(width);
     const page = await wctx.newPage();
-
-    page.on('console', m => { if (m.type() === 'error' && !/fonts\.g/.test(m.text()) && !/ERR_FAILED/.test(m.text())) consoleErr.push(`${width}px ${page.url().split('/').pop()}: ${m.text()}`); });
-    page.on('pageerror', e => consoleErr.push(`${width}px ${page.url().split('/').pop()}: ${e.message}`));
-    page.on('requestfailed', r => { if (!/fonts\.g/.test(r.url())) reqFail.push(`${r.url()} ${r.failure() && r.failure().errorText}`); });
+    page.on('console', m => { if (m.type() === 'error' && !/fonts\.g/.test(m.text()) && !/ERR_FAILED/.test(m.text())) consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${m.text()}`); });
+    page.on('pageerror', e => consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${e.message}`));
+    page.on('requestfailed', r => { if (!/fonts\.g|x\.com|twitter|yahoo|google|workers\.dev/.test(r.url())) reqFail.push(`${r.url()} ${r.failure() && r.failure().errorText}`); });
     for (const f of pages) {
       await page.goto('file://' + path.join(DIST, f), { waitUntil: 'load' });
+      await page.waitForTimeout(f === 'index.html' || f.startsWith('m-') || f === 'fire.html' ? 150 : 0);
       const realW = await page.evaluate(() => window.innerWidth);
       if (realW !== width) overflow.push(`${width}px ${f}: 表示幅が${realW}px（viewport設定が効いていない）`);
       const o = await page.evaluate(() => {
-        const vw = document.documentElement.clientWidth;
-        const sw = document.documentElement.scrollWidth;
+        const vw = document.documentElement.clientWidth, sw = document.documentElement.scrollWidth;
         const wide = [...document.querySelectorAll('body *')].filter(el => {
-          if (el.closest('.table-box') || el.closest('.nav') || el.closest('script')) return false;
+          if (el.closest('.table-box') || el.closest('.nav') || el.closest('script') || el.closest('.sr')) return false;
           const r = el.getBoundingClientRect(); return r.width > 0 && (r.right > vw + 1 || r.left < -1);
         }).slice(0, 3).map(el => el.tagName + '.' + el.className);
         return { vw, sw, wide };
       });
       if (o.sw > o.vw + 1 || o.wide.length) overflow.push(`${width}px ${f}: ページ幅${o.sw}/${o.vw} ${o.wide.join(',')}`);
-      if (width === 375) {
-        const info = await page.evaluate(() => ({
-          title: document.title, h1: document.querySelectorAll('h1').length, desc: (document.querySelector('meta[name=description]') || {}).content,
-          og: (document.querySelector('meta[property="og:image"]') || {}).content,
-          hrefs: [...document.querySelectorAll('a[href]')].map(a => a.getAttribute('href')).filter(h => !/^(https?:|mailto:|tel:)/.test(h)),
-          ids: [...document.querySelectorAll('[id]')].map(e => e.id)
-        }));
-        if (!info.title || info.h1 !== 1 || !info.desc || !info.og || !fileSet.has(info.og)) meta.push(`${f}: title=${!!info.title} h1=${info.h1} desc=${!!info.desc} og=${info.og}`);
-        for (const h of info.hrefs) {
-          const [file, hash] = h.split('#');
-          const target = file || f;
-          if (!fileSet.has(target)) { links.push(`${f} → ${h}（ファイルなし）`); continue; }
-          if (hash) {
-            const html = fs.readFileSync(path.join(DIST, target), 'utf8');
-            if (!html.includes(`id="${hash}"`)) links.push(`${f} → ${h}（#${hash}なし）`);
-          }
-        }
-      }
     }
     await wctx.close();
   }
 
-  // 区ページに出ている数字 ＝ データ
+  // R6 区ページに出ている数字 ＝ データ
   const ctx = await mkctx(375);
   const page = await ctx.newPage();
   for (const w of model.wards) {
@@ -194,14 +220,14 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       if (s.status === 'annual-only') { const last = Math.max(...Object.keys(s.annual).map(Number)); if (v !== s.annual[last]) numbers.push(`${s.name}: 年間表示${v}≠${s.annual[last]}`); }
     }
   }
-  // 出典ボックスの行ラベル
+  // R9 出典ボックスの行ラベル
   const provBad = [];
   for (const w of model.wards) {
     await page.goto('file://' + path.join(DIST, w.slug + '.html'));
     const labs = await page.$$eval('.prov > span', ss => ss.map(s => s.textContent.trim()));
     labs.filter(l => !/^(出典|確認先|※)/.test(l)).forEach(l => { if (!/^(今年の件数|前年同時期|\d{4}年)：/.test(l)) provBad.push(`${w.name}:「${l.slice(0, 30)}」`); });
   }
-  // 報道の表示: 区ページの件数＝データ、見出し文や配慮の要る語を出していない
+  // R10 報道の表示: 区ページの件数＝データ、見出し文や配慮の要る語を出していない、町ページへの振り分け
   const newsBad = [];
   for (const w of model.wards) {
     await page.goto('file://' + path.join(DIST, w.slug + '.html'));
@@ -211,102 +237,113 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     items.forEach(t => { if (SENSITIVE.test(t)) newsBad.push(`${w.name}:配慮の要る語`); if (t.length > 160) newsBad.push(`${w.name}:長すぎる（見出し文の転載の疑い）`); });
     want.filter(x => x.sensitive).forEach(() => { if (items.some(t => /亡くなった方|けが人/.test(t))) newsBad.push(`${w.name}:配慮対象に死傷を表示`); });
   }
+  for (const x of news.incidents.filter(x => x.town)) {
+    const t = model.towns.find(t => t.ward === x.ward && t.base === x.town);
+    if (!t) { newsBad.push(`${x.id}:町ページなし`); continue; }
+    const h = fs.readFileSync(path.join(DIST, t.file), 'utf8');
+    if (!h.includes(encodeURIComponent('n-' + x.id).replace(/%2D/g, '-')) && !h.includes('n-' + x.id)) newsBad.push(`${t.file}:報道が出ていない`);
+  }
   await page.goto('file://' + path.join(DIST, 'index.html'));
   const topNews = await page.$$eval('.news-item', els => els.length);
-  if (topNews !== Math.min(8, news.incidents.length)) newsBad.push(`トップ:表示${topNews}`);
+  if (topNews !== Math.min(6, news.incidents.length)) newsBad.push(`トップ:表示${topNews}`);
 
-  // サイレン報告: 保存先がないときは案内だけ（ボタンを隠す）、保存先があるときは送信→集計が出る
-  const repBad = [];
+  // R7 町名検索と現在地
+  const searchBad = [];
+  await page.fill('#q', '赤羽西');
+  const r1 = await page.$$eval('.q-results a', as => as.map(a => a.getAttribute('href')));
+  if (r1[0] !== 'm-kita-赤羽西.html') searchBad.push(`「赤羽西」の先頭が${r1[0]}`);
+  await page.fill('#q', 'さんげんぢゃや'); // ひらがなは対象外でも落ちない
+  await page.fill('#q', '恵比寿');
+  const r2 = await page.$$eval('.q-results a', as => as.map(a => a.getAttribute('href')));
+  if (!r2.includes('m-shibuya-恵比寿.html')) searchBad.push('渋谷区の町（恵比寿）が出ない');
+  await page.fill('#q', '豊洲'); await page.press('#q', 'Enter'); await page.waitForURL(/m-koto-/, { timeout: 3000 }).catch(() => searchBad.push('Enterで町ページへ移動しない'));
+  const gctx = await mkctx(375, { geolocation: { latitude: 35.7781, longitude: 139.7186 }, permissions: ['geolocation'] });
+  const gp = await gctx.newPage();
+  await gp.goto('file://' + path.join(DIST, 'index.html'));
+  await gp.click('.geo-go');
+  await gp.waitForURL(/m-kita-/, { timeout: 5000 }).catch(() => {});
+  if (!decodeURIComponent(gp.url()).endsWith('m-kita-赤羽西.html')) searchBad.push(`現在地→${decodeURIComponent(gp.url()).split('/').pop()}`);
+  await gctx.close();
+
+  // R11 報告→火事のページ→口コミ→通報→共有（受付サーバーは本物の処理を検査用DBで）
+  const flowBad = [], flowOk = [];
+  if (!API) flowBad.push('受付サーバーのURLが未設定');
+  else {
+    W = makeEnv(); clock = 0;
+    const fc = await mkctx(375); const fp = await fc.newPage(); const ferr = []; fp.on('pageerror', e => ferr.push(e.message));
+    await fp.goto('file://' + path.join(DIST, 'index.html'));
+    await fp.waitForSelector('.live-empty', { timeout: 5000 }).then(() => flowOk.push('報告なしの表示'), () => flowBad.push('トップ: 報告がないときの表示が出ない'));
+    await fp.goto('file://' + path.join(DIST, 'm-kita-赤羽西.html'));
+    await fp.fill('.report .town-in', '赤羽西二丁目3番地'); clock++;
+    await fp.click('.report button[value=smoke]');
+    const link = await fp.waitForSelector('.report-status a', { timeout: 5000 }).then(h => h.getAttribute('href'), () => null);
+    const incId = link && decodeURIComponent(link.split('id=')[1] || '');
+    const row = incId && W.db.prepare('SELECT * FROM incidents WHERE id = ?').get(incId);
+    if (!row || row.town !== '赤羽西2丁目' || row.smoke !== 1) flowBad.push(`報告の保存が不正 ${JSON.stringify(row)}`); else flowOk.push('町ページから報告（番地は切り捨て）');
+    await fp.waitForFunction(() => /赤羽西2丁目付近/.test((document.querySelector('[data-live]') || {}).textContent || ''), null, { timeout: 5000 })
+      .then(() => flowOk.push('町ページに「いまの火事」が出る'), () => flowBad.push('町ページのいまの報告に出ない'));
+    if (incId) {
+      clock++; await fp.goto('file://' + path.join(DIST, 'fire.html') + '?id=' + encodeURIComponent(incId));
+      await fp.waitForFunction(() => /赤羽西2丁目付近で火事/.test(document.querySelector('.f-title').textContent), null, { timeout: 5000 })
+        .then(() => flowOk.push('火事のページ'), () => flowBad.push('火事のページの見出しが出ない'));
+      const share = await fp.$$eval('.f-share a', as => as.map(a => a.href));
+      const x = share.find(h => /twitter\.com\/intent/.test(h)) || '';
+      const xt = decodeURIComponent(x);
+      if (!/【火事の目撃情報】北区赤羽西2丁目付近　報告1件/.test(xt) || !xt.includes(API + '/f/' + incId) || !/#赤羽西/.test(xt)) flowBad.push(`Xの共有文が不正「${xt.slice(0, 160)}」`); else flowOk.push('X・LINEの共有文');
+      const og = await (await handle(new Request(API + '/f/' + incId), W.env)).text();
+      if (!/北区赤羽西2丁目付近で火事の目撃情報 1件/.test(og)) flowBad.push('共有用ページの見出しが不正'); else flowOk.push('共有用ページの見出し');
+      clock++; await fp.fill('.f-comments textarea', '黒い煙が見えます。消防車が来ています');
+      await fp.click('.f-comments button[type=submit]');
+      await fp.waitForFunction(() => /黒い煙が見えます/.test(document.querySelector('.f-comments .com-list').textContent), null, { timeout: 5000 })
+        .then(() => flowOk.push('口コミの投稿・表示'), () => flowBad.push('口コミが表示されない'));
+      clock++; await fp.fill('.f-comments textarea', 'くわしくは https://example.com を見て');
+      await fp.click('.f-comments button[type=submit]');
+      await fp.waitForFunction(() => /URLは書き込めません/.test(document.querySelector('.f-comments .com-status').textContent), null, { timeout: 5000 })
+        .then(() => flowOk.push('URL入りは断る'), () => flowBad.push('URL入りの口コミを断らない'));
+      await fp.click('.f-comments .flag');
+      await fp.waitForFunction(() => /通報しました/.test(document.querySelector('.f-comments .flag').textContent), null, { timeout: 5000 })
+        .then(() => flowOk.push('通報'), () => flowBad.push('通報できない'));
+      clock++; await fp.click('.f-report button[value=fire]');
+      await fp.waitForFunction(() => /報告\s*2/.test(document.querySelector('.f-stats').textContent), null, { timeout: 5000 })
+        .then(() => flowOk.push('火事のページから報告を追加'), () => flowBad.push('火事のページの報告が件数に反映されない'));
+    }
+    await fp.goto('file://' + path.join(DIST, 'index.html'));
+    await fp.waitForFunction(() => /赤羽西2丁目付近/.test(document.querySelector('[data-live]').textContent) && /報告2/.test(document.querySelector('[data-ward-tile="北区"]').textContent), null, { timeout: 5000 })
+      .then(() => flowOk.push('トップの一覧と区の地図'), () => flowBad.push('トップに出ない'));
+    clock++; await fp.goto('file://' + path.join(DIST, 'm-kita-赤羽西.html'));
+    await fp.fill('#board ~ .comments textarea, .comments textarea', '夜中にサイレンが多い町です');
+    await fp.click('.comments button[type=submit]');
+    await fp.waitForFunction(() => /夜中にサイレンが多い町です/.test(document.querySelector('.comments .com-list').textContent), null, { timeout: 5000 })
+      .then(() => flowOk.push('町の口コミ掲示板'), () => flowBad.push('町の口コミが表示されない'));
+    const nid = news.incidents[0] && 'n-' + news.incidents[0].id;
+    if (nid) {
+      await fp.goto('file://' + path.join(DIST, 'fire.html') + '?id=' + encodeURIComponent(nid));
+      const nt = await fp.$eval('.f-title', e => e.textContent);
+      const srcs = await fp.$$eval('.f-news a', as => as.length);
+      if (!nt.includes(news.incidents[0].ward) || srcs !== news.incidents[0].sources.length) flowBad.push(`報道の火事ページが不正「${nt}」`); else flowOk.push('報道の火事ページ');
+    }
+    if (ferr.length) flowBad.push(ferr.join(' / '));
+    await fc.close();
+  }
+  // 受付サーバー未設定の版では、ボタンを隠して案内だけ出す
   const TMP = path.join(OUT, 'tmp'); fs.rmSync(TMP, { recursive: true, force: true }); fs.mkdirSync(path.join(TMP, 'assets'), { recursive: true });
   for (const f of ['site.css', 'site.js']) fs.copyFileSync(path.join(DIST, 'assets', f), path.join(TMP, 'assets', f));
-  for (const f of ['kita.html', 'index.html']) fs.writeFileSync(path.join(TMP, f), fs.readFileSync(path.join(DIST, f), 'utf8').replace(/data-api="[^"]*"/g, 'data-api=""'));
-  const API = (fs.readFileSync(path.join(DIST, 'kita.html'), 'utf8').match(/data-api="([^"]*)"/) || [])[1] || '';
-  await page.goto('file://' + path.join(TMP, 'kita.html'));
-  const offline = await page.evaluate(() => { const b = document.querySelector('[data-reports]'); return { hidden: b.querySelector('.report-form').offsetHeight === 0, msg: b.querySelector('.report-status').textContent }; });
-  if (!offline.hidden || !/災害情報案内/.test(offline.msg)) repBad.push('保存先なしのとき案内が出ない');
-  const fake = await browser.newContext({ viewport: { width: 375, height: 900 } });
-  await fake.route(/workers\.dev/, r => r.abort()); // 検査で本番の受付サーバーへ送らない
-  await fake.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
-  await fake.addInitScript(() => {
-    // 共有保存領域の代わり（add と where().onSnapshot だけ）
-    const docs = [{ ward: '北区', town: '赤羽西', kind: 'siren', at: new Date(Date.now() - 3600e3).toISOString() },
-                  { ward: '北区', kind: 'fire', at: new Date(Date.now() - 50 * 3600e3).toISOString() }];
-    const subs = [];
-    const snap = (since) => ({ docs: docs.filter(d => d.at >= since).map(d => ({ data: () => d })) });
-    const col = { add: async d => { docs.push(d); subs.forEach(([f, s]) => f(snap(s))); return {}; },
-                  where: (k, op, v) => ({ onSnapshot: (f) => { subs.push([f, v]); setTimeout(() => f(snap(v)), 0); return () => {}; } }) };
-    window.claude = { use: async n => n === 'db' ? { collection: () => col } : null };
-  });
-  const fp = await fake.newPage();
-  const errs = []; fp.on('pageerror', e => errs.push(e.message));
-  await fp.goto('file://' + path.join(TMP, 'kita.html'));
-  await fp.waitForFunction(() => !document.querySelector('.report-form button').disabled, null, { timeout: 5000 }).catch(() => repBad.push('ボタンが押せるようにならない'));
-  const first = await fp.$eval('.report-list', e => e.textContent);
-  if (!/北区 全体.*1/.test(first) || /火 1/.test(first)) repBad.push(`初期集計が不正「${first.slice(0, 60)}」`);
-  await fp.fill('.report .town-in', '赤羽西1丁目3番地');
-  await fp.click('.report button[value=smoke]');
-  await fp.waitForFunction(() => /報告しました/.test(document.querySelector('.report-status').textContent), null, { timeout: 5000 }).catch(() => repBad.push('送信完了が出ない'));
-  const second = await fp.$eval('.report-list', e => e.textContent);
-  if (!/北区 全体.*2/.test(second) || !/赤羽西1丁目/.test(second)) repBad.push(`送信後の集計が不正「${second.slice(0, 80)}」`);
-  await fp.click('.report button[value=siren]');
-  const again = await fp.$eval('.report-status', e => e.textContent);
-  if (!/10分/.test(again)) repBad.push('連投が止まらない');
-  await fp.goto('file://' + path.join(TMP, 'index.html'));
-  await fp.waitForFunction(() => !document.querySelector('.report-form button').disabled, null, { timeout: 5000 }).catch(() => {});
-  await fp.click('.report button[value=siren]');
-  if (!/区を選んで/.test(await fp.$eval('.report-status', e => e.textContent))) repBad.push('トップで区未選択を止めない');
-  if (errs.length) repBad.push(errs.join(' / '));
-  await fake.close();
-  if (API) {
-    // 本番の受付サーバーにつながる設定のとき: 集計の表示・送信内容・連投拒否の表示（サーバーは検査用の代役）
-    const ac = await browser.newContext({ viewport: { width: 375, height: 900 } });
-    await ac.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
-    const sent = []; let n = 0;
-    await ac.route(/\/api\/reports?(\?|$)/, async r => {
-      const h = { 'Access-Control-Allow-Origin': '*' };
-      if (r.request().method() === 'POST') { sent.push(JSON.parse(r.request().postData())); n++;
-        return r.fulfill(n === 1 ? { status: 200, headers: h, contentType: 'application/json', body: '{"ok":true}' } : { status: 429, headers: h, contentType: 'application/json', body: JSON.stringify({ error: '同じ区への報告は10分に1回までです' }) }); }
-      return r.fulfill({ status: 200, headers: h, contentType: 'application/json', body: JSON.stringify({ wards: { '北区': { siren: 2, smoke: 0, fire: 1, total: 3, last: new Date().toISOString(), towns: { '赤羽西1丁目': 2 } } } }) });
-    });
-    const ap = await ac.newPage(); const aerr = []; ap.on('pageerror', e => aerr.push(e.message));
-    await ap.goto('file://' + path.join(DIST, 'kita.html'));
-    await ap.waitForFunction(() => /北区 全体/.test(document.querySelector('.report-list').textContent), null, { timeout: 5000 }).catch(() => repBad.push('本番設定: 集計が表示されない'));
-    await ap.fill('.report .town-in', '赤羽西1丁目3番地');
-    await ap.click('.report button[value=smoke]');
-    await ap.waitForFunction(() => /報告しました/.test(document.querySelector('.report-status').textContent), null, { timeout: 5000 }).catch(() => repBad.push('本番設定: 送信完了が出ない'));
-    if (!sent[0] || sent[0].ward !== '北区' || sent[0].kind !== 'smoke' || sent[0].town !== '赤羽西1丁目') repBad.push(`本番設定: 送信内容が不正 ${JSON.stringify(sent[0])}`);
-    await ap.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
-    await ap.click('.report button[value=siren]');
-    await ap.waitForFunction(() => /10分/.test(document.querySelector('.report-status').textContent), null, { timeout: 5000 }).catch(() => repBad.push('本番設定: サーバーの連投拒否が表示されない'));
-    if (aerr.length) repBad.push(aerr.join(' / '));
-    await ac.close();
-  }
-
-  // 町名検索
-  await page.goto('file://' + path.join(DIST, 'towns.html'));
-  await page.fill('#town-q', '赤羽');
-  const res = await page.$$eval('#town-results a', as => as.map(a => a.getAttribute('href') + '|' + a.textContent));
-  const searchOk = res.length >= 5 && res.every(r => r.includes('kita.html#st-akabane'));
-  await page.fill('#town-q', '西新宿');
-  const res2 = await page.$$eval('#town-results a', as => as.map(a => a.textContent));
-  // 並べ替え
-  await page.goto('file://' + path.join(DIST, 'ranking.html'));
-  const before = await page.$$eval('table:nth-of-type(1) tbody tr td:first-child', t => t.slice(0, 3).map(x => x.textContent));
-  await page.click('table >> nth=0 >> thead th >> nth=0 >> button');
-  const after = await page.$$eval('table:nth-of-type(1) tbody tr td:first-child', t => t.slice(0, 3).map(x => x.textContent));
+  fs.writeFileSync(path.join(TMP, 'a.html'), fs.readFileSync(path.join(DIST, 'm-kita-赤羽西.html'), 'utf8').replace(/name="kaji23-api" content="[^"]*"/, 'name="kaji23-api" content=""'));
+  await page.goto('file://' + path.join(TMP, 'a.html'));
+  const off = await page.evaluate(() => ({ h: document.querySelector('.report-form').offsetHeight, m: document.querySelector('.report-status').textContent, c: document.querySelector('.com-form').offsetHeight }));
+  if (off.h !== 0 || off.c !== 0 || !/災害情報案内/.test(off.m)) flowBad.push('受付サーバー未設定のときの表示が不正'); else flowOk.push('未設定時は案内のみ');
   await browser.close();
 
-  add('R1 コンソールエラー・スクリプトエラー', !consoleErr.length, consoleErr.join(' / ') || `${pages.length}ページ×2画面幅でエラーなし`);
-  add('R2 読み込み失敗', !reqFail.length, reqFail.join(' / ') || 'CSS・JS・画像すべて読み込み成功（Webフォントは作業環境の制限で除外）');
-  add('R3 横はみ出し（375px・1280px）', !overflow.length, overflow.join(' / ') || 'はみ出しなし');
-  add('R4 サイト内リンク・ページ内リンク', !links.length, links.slice(0, 20).join(' / ') || 'すべてのリンク先とアンカーが存在');
-  add('R5 タイトル・見出し・説明文・OGP画像', !meta.length, meta.join(' / ') || `${pages.length}ページすべてにあり`);
-  add('R6 表示されている数字＝データ', !numbers.length, numbers.join(' / ') || '23区のまとめと58署のカードすべて一致');
-  add('R7 町名検索', searchOk && res2.length >= 1, `「赤羽」${res.length}件→赤羽消防署、「西新宿」${res2.length}件（${res2[0] || ''}）`);
+  add('R1 コンソールエラー・スクリプトエラー', !consoleErr.length, consoleErr.slice(0, 8).join(' / ') || `${pages.length}ページ×2画面幅でエラーなし（町ページは${machi.length}町から見本）`);
+  add('R2 読み込み失敗', !reqFail.length, reqFail.slice(0, 8).join(' / ') || 'CSS・JS・画像すべて読み込み成功（Webフォント・外部サイトは作業環境の制限で除外）');
+  add('R3 横はみ出し（375px・1280px）', !overflow.length, overflow.slice(0, 8).join(' / ') || 'はみ出しなし');
+  add('R4 サイト内リンク・ページ内リンク', !links.length, links.slice(0, 20).join(' / ') || `${allPages.length}ページすべてのリンク先とアンカーが存在`);
+  add('R5 タイトル・見出し・説明文・OGP画像', !meta.length, meta.slice(0, 10).join(' / ') || `${allPages.length}ページすべてにあり`);
+  add('R6 表示されている数字＝データ', !numbers.length, numbers.join(' / ') || '23区の統計と58署のカードすべて一致');
+  add('R7 町名検索・現在地', !searchBad.length, searchBad.join(' / ') || '「赤羽西」→赤羽西の町ページ、渋谷区の町も検索可、Enterで移動、現在地（北区赤羽西二丁目）→赤羽西の町ページ');
   add('R9 出典ボックスの見出し', !provBad.length, provBad.join(' / ') || '出典の各行が「今年の件数／前年同時期／○○○○年」で始まる');
-  add('R10 報道された火事の表示', !newsBad.length, newsBad.join(' / ') || `23区ページの件数がデータと一致（計${news.incidents.length}件）、見出し文・配慮の要る語は表示なし`);
-  add('R11 サイレン報告ボタン', !repBad.length, repBad.join(' / ') || `保存先なし→案内のみ、共有保存領域→送信・番地切り捨て・集計・10分制限・区未選択の停止${API ? '、本番の受付サーバー設定→集計表示・送信内容・サーバー側の連投拒否の表示' : ''}を確認`);
-  add('R8 表の並べ替え', JSON.stringify(before) !== JSON.stringify(after), `並べ替え前:${before.join('・')} 後:${after.join('・')}`);
+  add('R10 報道された火事の表示', !newsBad.length, newsBad.join(' / ') || `区ページの件数がデータと一致（計${news.incidents.length}件）、町ページにも振り分け、見出し文・配慮の要る語は表示なし`);
+  add('R11 報告・火事のページ・口コミ・共有', !flowBad.length, flowBad.join(' / ') || flowOk.join('、') + 'を確認');
 
   const lp = path.join(OUT, 'live.json');
   if (fs.existsSync(lp)) {

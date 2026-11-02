@@ -4,6 +4,7 @@
 出力: dist/（そのまま公開できる静的サイト）
 """
 import json, re, html, glob, os, shutil, datetime
+from urllib.parse import quote
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -107,6 +108,31 @@ for w in tfd['wards']:
         whole_ward=any(t.endswith('の区域') for s in sts for t in s['towns']),
     ))
 by_tfd = {w['tfd']: w for w in wards}
+by_name = {w['name']: w for w in wards}
+
+# ---------- 町（丁目を除いた町名）ごとのまとまり ----------
+towns_extra = json.load(open(RAW / 'towns_extra.json', encoding='utf-8'))
+def base_of(t):
+    t = re.sub(r'（.*$', '', t)
+    return re.sub(r'[0-9０-９].*$', '', t).strip()
+TOWNS = {}
+for w in wards:
+    for st in w['stations']:
+        for t in st['towns']:
+            if t.endswith('の区域'): continue
+            for part in t.split('、'):
+                b = base_of(part)
+                if not b or re.search(r'[（）番]', b): continue
+                d = TOWNS.setdefault((w['name'], b), dict(ward=w['name'], wslug=w['slug'], base=b, parts=[], stations=[]))
+                if part not in d['parts']: d['parts'].append(part)
+                if st['slug'] not in d['stations']: d['stations'].append(st['slug'])
+for wn, e in towns_extra['wards'].items():
+    w = by_name[wn]
+    for b in e['towns']:
+        TOWNS.setdefault((wn, b), dict(ward=wn, wslug=w['slug'], base=b, parts=[b], stations=[e['station']]))
+for t in TOWNS.values(): t['file'] = f'm-{t["wslug"]}-{t["base"]}.html'
+TOWN_LIST = sorted(TOWNS.values(), key=lambda t: (t['ward'], t['base']))
+def towns_of(ward_name): return [t for t in TOWN_LIST if t['ward'] == ward_name]
 
 # 人口あたりの色分け（全署が公表している区だけ）
 vals = sorted(w['per100k'] for w in wards if w['per100k'] is not None)
@@ -140,6 +166,15 @@ def jtime(iso):
     t = datetime.datetime.fromisoformat(iso.replace('Z', '+00:00')).astimezone(JST)
     return f'{t.month}月{t.day}日 {t.hour}:{t.minute:02d}'
 
+def news_fire_id(x): return 'n-' + x['id']
+def town_link(ward, town):
+    """町名から町ページへのリンク先（なければ区ページ）"""
+    if town:
+        t = TOWNS.get((ward, base_of(town)))
+        if t: return t['file']
+    w = by_name.get(ward)
+    return f'{w["slug"]}.html' if w else 'index.html'
+
 def news_list(items, show_ward=True, empty='直近30日に、この区の火事の報道は見つかっていません。'):
     """報道された火事の一覧。見出しの文章は載せず、場所・建物・けが人の有無だけを示して元記事へリンクする"""
     if not items: return f'<p class="muted small news-empty">{empty}</p>'
@@ -151,35 +186,82 @@ def news_list(items, show_ward=True, empty='直近30日に、この区の火事�
             if x['dead']: tags.append('<span class="tag dark">亡くなった方あり</span>')
             elif x['injured']: tags.append('<span class="tag warn">けが人あり</span>')
         srcs = '・'.join(f'<a href="{esc(s["link"])}" target="_blank" rel="noopener nofollow">{esc(s["name"])}</a>' for s in x['sources'])
-        lis.append(f'''<li class="news-item" data-ward="{esc(x["ward"])}"><div class="row"><b>{place}</b>{"".join(tags)}</div>
-<span class="small muted">最初の報道 {jtime(x["first"])}　報道：{srcs}</span></li>''')
+        lis.append(f'<li class="news-item" data-ward="{esc(x["ward"])}"><div class="row"><a class="place" href="fire.html?id={esc(quote(news_fire_id(x)))}"><b>{place}</b></a>{"".join(tags)}</div>'
+                   f'<span class="small muted">最初の報道 {jtime(x["first"])}　報道：{srcs}</span></li>')
     return f'<ul class="news">{"".join(lis)}</ul>'
 
-def news_for(ward_name): return [x for x in news['incidents'] if x['ward'] == ward_name]
+def news_for(ward_name, base=None):
+    return [x for x in news['incidents'] if x['ward'] == ward_name and (base is None or (x['town'] and base_of(x['town']) == base))]
 NEWS_NOTE = ('<p class="small muted">報道各社のニュースから、23区内の火事の場所（町名まで）・建物の種類・けが人の有無だけを自動で取り出しています。'
-             '内容の詳細や原因は、リンク先の記事でご確認ください。報道されない小さな火事は載りません。' +
+             '詳しい内容はリンク先の記事でご確認ください。報道されない小さな火事は載りません。' +
              (f'最終確認：{jtime(news["collectedAt"])}' if news['collectedAt'] else '') + '</p>')
 
-def report_block(ward=None):
-    """「サイレンが聞こえた」報告（区ページは区を固定、トップは区を選ぶ）"""
+def report_block(ward=None, town=None, title='見た・聞いたを報告する'):
+    """目撃報告ボタン。区ページ・町ページは区（と町）を固定、トップは区を選ぶ"""
     if ward:
-        sel = f'<input type="hidden" name="ward" value="{esc(ward["name"])}"><input class="town-in" name="town" maxlength="20" placeholder="町名（任意。例：{esc(re.sub(r'[0-9０-９～・、（].*$', '', (ward["stations"][0]["towns"] or ["　"])[0]))}）" aria-label="町名（任意）">'
+        dl = f'dl-{ward["slug"]}'
+        opts = ''.join(f'<option value="{esc(t["base"])}">' for t in towns_of(ward['name']))
+        ex = town or (towns_of(ward['name']) or [{'base': ''}])[0]['base']
+        sel = (f'<input type="hidden" name="ward" value="{esc(ward["name"])}">'
+               f'<label class="small" for="town-{dl}">町名（丁目まで。任意）</label>'
+               f'<input id="town-{dl}" class="town-in" name="town" maxlength="20" list="{dl}" value="{esc(town or "")}" placeholder="例：{esc(ex)}2丁目" autocomplete="off">'
+               f'<datalist id="{dl}">{opts}</datalist>')
     else:
         opts = ''.join(f'<option>{esc(w["name"])}</option>' for w in sorted(wards, key=lambda w: w['name']))
-        sel = f'<select name="ward" aria-label="区"><option value="">区を選ぶ</option>{opts}</select><input class="town-in" name="town" maxlength="20" placeholder="町名（任意）" aria-label="町名（任意）">'
-    return f'''<div class="panel report" data-reports data-api="{esc(REPORTS_API)}" {f'data-ward="{esc(ward["name"])}"' if ward else ''}>
-<h3 style="font-size:15px">いま、サイレンが聞こえた？</h3>
-<p class="small muted">近くの人が同じボタンを押すと、この欄に件数が出ます。消防への通報にはなりません。火や煙が見えたら119番へ。</p>
-<form class="report-form">{sel}
-<div class="btn-row"><button type="submit" class="btn" name="kind" value="siren">サイレンが聞こえた</button><button type="submit" class="btn" name="kind" value="smoke">煙・においがする</button><button type="submit" class="btn primary" name="kind" value="fire">火が見える</button></div>
-</form>
-<p class="report-status small" aria-live="polite"></p>
-<div class="report-list small"></div>
-</div>'''
+        sel = (f'<label class="small" for="rep-ward">区</label><select id="rep-ward" name="ward"><option value="">区を選ぶ</option>{opts}</select>'
+               f'<label class="small" for="rep-town">町名（丁目まで。任意）</label><input id="rep-town" class="town-in" name="town" maxlength="20" placeholder="例：赤羽西2丁目" autocomplete="off">')
+    wattr = f' data-ward="{esc(ward["name"])}"' if ward else ''
+    return (f'<div class="panel report" data-reports{wattr}>'
+            f'<h3>{esc(title)}</h3>'
+            '<p class="small muted">押すと、同じ町の近くの人の報告とまとめて「火事のページ」ができます。消防への通報にはなりません。<strong>火や煙が見えたら119番へ。</strong></p>'
+            f'<form class="report-form">{sel}'
+            '<button type="button" class="btn ghost geo-fill" hidden>現在地の町名を入れる</button>'
+            '<div class="btn-row kinds"><button type="submit" class="btn" name="kind" value="siren">サイレンが聞こえた</button>'
+            '<button type="submit" class="btn" name="kind" value="smoke">煙・においがする</button>'
+            '<button type="submit" class="btn primary" name="kind" value="fire">火が見える</button></div>'
+            '</form><p class="report-status small" aria-live="polite"></p></div>')
+
+def comment_block(ward, town=None, inc=None, title='口コミを書く'):
+    """口コミの一覧と投稿欄（電話帳ナビのように、町・火事ごとに書き込める）"""
+    attrs = f'data-ward="{esc(ward)}"' + (f' data-town="{esc(town)}"' if town else '') + (f' data-inc="{esc(inc)}"' if inc else '')
+    fid = 'com-' + re.sub(r'[^0-9a-zA-Z]', '', quote(f'{ward}{town or ""}{inc or ""}'))[:40]
+    return (f'<div class="comments" data-comments {attrs}>'
+            '<ul class="com-list" aria-live="polite"><li class="muted small">口コミを読み込んでいます…</li></ul>'
+            '<form class="com-form panel">'
+            f'<label for="{fid}"><strong>{esc(title)}</strong> <span class="small muted">（200文字まで・匿名）</span></label>'
+            f'<textarea id="{fid}" name="body" maxlength="200" rows="3" placeholder="例：黒い煙が北の方に見えます。消防車が5台ほど来ています。"></textarea>'
+            '<p class="small muted">見えたこと・聞こえたことを書いてください。番地や人の名前、原因や被害者についての憶測は書かないでください。<a href="rules.html">投稿のルール</a></p>'
+            '<div class="row"><button class="btn primary" type="submit">投稿する</button><span class="com-status small" aria-live="polite"></span></div>'
+            '</form></div>')
+
+def sns_links(words):
+    """X・Yahoo!リアルタイム検索・Googleニュースで、その場所の火事を探すリンク"""
+    q = ' '.join(words) + ' 火事'
+    return ('<div class="btn-row sns">'
+            f'<a class="btn" href="https://x.com/search?q={quote(q)}&amp;f=live" target="_blank" rel="noopener">Xで「{esc(q)}」を見る</a>'
+            f'<a class="btn" href="https://search.yahoo.co.jp/realtime/search?p={quote(q)}" target="_blank" rel="noopener">Yahoo!リアルタイム検索</a>'
+            f'<a class="btn" href="https://news.google.com/search?q={quote(q)}&amp;hl=ja&amp;gl=JP&amp;ceid=JP:ja" target="_blank" rel="noopener">ニュースを探す</a>'
+            '</div>')
+
+def live_block(ward=None, town=None, empty=None):
+    """いま報告が上がっている火事（受付サーバーから読み込み）"""
+    attrs = (f' data-ward="{esc(ward)}"' if ward else '') + (f' data-town="{esc(town)}"' if town else '')
+    empty = empty or ('この町から、いま上がっている報告はありません。' if town else f'{ward}から、いま上がっている報告はありません。' if ward else 'いま、23区内で上がっている報告はありません。')
+    return f'<div class="live" data-live{attrs} data-empty="{esc(empty)}"><p class="muted small live-loading">いまの報告を読み込んでいます…</p></div>'
+
+TOWN_INDEX_JSON = json.dumps([{'w': t['ward'], 't': t['base'], 'f': t['file'], 'p': ' '.join(t['parts'])[:80]} for t in TOWN_LIST], ensure_ascii=False).replace('</', '<\\/')
+
+def search_block(autofocus=False):
+    """町名検索（トップ・町名で探す）と現在地から探す"""
+    return (f'<div class="search big-search" data-search><label for="q" class="sr">町名・区名で探す</label>'
+            f'<div class="search-row"><input id="q" type="search" inputmode="search" autocomplete="off" placeholder="町名を入力（例：赤羽、豊洲、三軒茶屋）"{" autofocus" if autofocus else ""} aria-describedby="q-count">'
+            '<button type="button" class="btn geo-go">現在地</button></div>'
+            '<p id="q-count" class="small muted" aria-live="polite"></p><div class="results q-results"></div></div>'
+            f'<script type="application/json" id="town-index">{TOWN_INDEX_JSON}</script>')
 
 # ---------- 部品 ----------
 FIRE_ICON = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c2341c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-10z"/></svg>'
-NAV = [('index', 'トップ'), ('ranking', '区・署の比較'), ('towns', '町名で探す'), ('dial', 'サイレン・119'), ('about', 'データの出典')]
+NAV = [('index', 'いまの火事'), ('towns', '町名で探す'), ('dial', 'サイレン・119'), ('ranking', '火災件数の統計'), ('rules', '投稿のルール'), ('about', '出典')]
 
 def page(name, title, desc, body, og_image='og/index.png', full=True):
     nav = ''.join(f'<a href="{k}.html"{" aria-current=\"page\"" if k == name else ""}>{esc(v)}</a>' for k, v in NAV)
@@ -197,6 +279,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#c2341c">
+<meta name="kaji23-api" content="{esc(REPORTS_API)}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Barlow+Condensed:wght@500;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
@@ -214,13 +297,13 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
     footer = f'''<footer class="site-foot"><div class="wrap foot-grid">
   <div>
     <h3>{SITE_NAME}について</h3>
-    <p>東京消防庁と各消防署・東京都が公開している情報を、毎日自動で集めて区・消防署・町名ごとに整理している民間の非公式サイトです。東京消防庁・各区の公認や監修は受けていません。数字が食い違うときは、各ページの出典リンク先（公式発表）を優先してください。</p>
+    <p>「近くで火事？」を町名で確かめられる、民間の非公式サイトです。利用者の目撃報告・口コミ、報道、東京消防庁などの公開情報をまとめています。報告や口コミは利用者の投稿で、内容を確認したものではありません。東京消防庁・各区の公認や監修は受けていません。</p>
     <p style="margin-top:8px"><strong style="color:var(--ink)">火や煙が見えたら、すぐ119番。</strong>火事かどうかの確認だけで119番にかけないでください。</p>
   </div>
   <div><h3>さがす</h3><ul>
-    <li><a href="index.html#wards">区から探す</a></li><li><a href="towns.html">町名で探す</a></li><li><a href="ranking.html">区・消防署の比較</a></li></ul></div>
+    <li><a href="index.html">いまの火事</a></li><li><a href="towns.html">町名で探す</a></li><li><a href="index.html#wards">区から探す</a></li><li><a href="ranking.html">火災件数の統計</a></li></ul></div>
   <div><h3>確かめる</h3><ul>
-    <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="about.html">データの出典と集め方</a></li>
+    <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="about.html">データの出典と集め方</a></li>
     <li><a href="{TFD}/" rel="noopener" target="_blank">東京消防庁 ↗</a></li><li><a href="https://disaportal.gsi.go.jp/" rel="noopener" target="_blank">ハザードマップポータル ↗</a></li></ul></div>
 </div><div class="wrap small muted" style="padding-block:0 20px">データ取得：{FETCHED_LABEL}（東京消防庁 各消防署ページ）／人口：{jdate(pop["asof"])}現在（東京都の統計）　© {THIS_YEAR} {SITE_NAME}</div></footer>
 <script src="assets/site.js" defer></script>'''
@@ -328,42 +411,45 @@ def ward_page(w):
     station_names = '・'.join(s['name'] for s in sts)
     share_text = (f'【{name}の火災】{THIS_YEAR}年はこれまでに{w["ytd"]}件' + (f'（前年同時期{w["prev"]}件）' if w['prev'] is not None else '') +
                   f'。消防署別の件数と管轄の町名まとめ（出典：東京消防庁） #{name} #火事') if w['ytd'] is not None else f'{name}の火事・消防署情報まとめ #{name}'
-    title = f'{name}の火事・火災件数【{THIS_YEAR}年】消防署別まとめ｜{SITE_NAME}'
-    desc = (f'{name}の今年の火災は{w["ytd"]}件（{station_names}の公表値の合計）。' if w['ytd'] is not None else f'{name}の消防署（{station_names}）の情報。') + \
-           f'消防署ごとの件数、前年との比較、管轄の町名、人口あたりの件数を東京消防庁の公開データからまとめています。'
+    title = f'{name}で火事？いまの目撃情報・口コミ・火災件数【町名別】｜{SITE_NAME}'
+    desc = f'{name}で火事？サイレンや煙の目撃報告・口コミ・報道を、{len(towns_of(name))}の町ごとにリアルタイムでまとめています。消防署（{station_names}）ごとの火災件数も。'
     adj_links = ''.join(f'<a class="btn" href="{a["slug"]}.html">{esc(a["name"])}{f" {a["ytd"]}件" if a["ytd"] is not None else ""}</a>' for a in adj)
     body = f'''<div class="wrap">
 <nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <a href="index.html#wards">東京23区</a> ／ {esc(name)}</nav>
 <section class="hero">
   <span class="eyebrow">{esc(name)}の火事情報</span>
-  <h1>{esc(name)}の火事・火災件数</h1>
-  <p class="lead">{esc(name)}を管轄する{len(sts)}つの消防署（{esc(station_names)}）が公表している火災件数を、毎日集めてまとめています。数字の横に、元のページで読み取った箇所を載せています。</p>
+  <h1>{esc(name)}で火事？</h1>
+  <p class="lead">{esc(name)}の目撃報告・口コミ・報道を、町ごとにリアルタイムでまとめています。町名を選ぶと、その町のページが開きます。</p>
   {ALERT}
 </section>
+<section class="section" aria-labelledby="now">
+  <h2 id="now">いまの{esc(name)}</h2>
+  {live_block(ward=name)}
+  {report_block(w, title=f'{name}で気づいたことを報告')}
+</section>
+<section class="section" aria-labelledby="machi">
+  <h2 id="machi">{esc(name)}の町から探す（{len(towns_of(name))}町）</h2>
+  <div class="town-grid">{"".join(f'<a href="{t["file"]}">{esc(t["base"])}</a>' for t in towns_of(name))}</div>
+</section>
+<section class="section" aria-labelledby="news">
+  <h2 id="news">{esc(name)}で報道された火事</h2>
+  {news_list(news_for(name), show_ward=False)}
+  {NEWS_NOTE}
+</section>
+<section class="section" aria-labelledby="sns">
+  <h2 id="sns">SNS・ニュースで確かめる</h2>
+  {sns_links([name])}
+</section>
 <section class="section" aria-labelledby="sum">
-  <h2 id="sum">{esc(name)}のまとめ</h2>
+  <h2 id="sum">{esc(name)}の火災件数（統計）</h2>
+  <p class="small muted">ここからは、東京消防庁の各消防署が公表している火災件数の統計です。</p>
   {summary}
   {ward_chart}
-  {share_block(share_text, w["slug"] + ".html")}
 </section>
 <section class="section" aria-labelledby="sts">
   <h2 id="sts">消防署ごとの火災件数</h2>
   <p class="muted small">各署のページは更新日がばらばらです。カードごとの「時点」を確認してください。</p>
   <div class="stations">{"".join(cards)}</div>
-</section>
-<section class="section" aria-labelledby="news">
-  <h2 id="news">{esc(name)}の最近の火事（報道）</h2>
-  {news_list(news_for(name), show_ward=False)}
-  {NEWS_NOTE}
-  {report_block(w)}
-</section>
-<section class="section" aria-labelledby="siren">
-  <h2 id="siren">{esc(name)}でサイレンが聞こえたら</h2>
-  <ol class="steps">
-    <li><span><strong>火や煙が見える、焦げたにおいが強い</strong><br>すぐに119番へ通報してください。</span></li>
-    <li><span><strong>どこで何が起きたか確かめたい</strong><br>東京消防庁の災害情報案内 <span class="num" style="font-size:18px">{TEL["fire_info"]["tel"]}</span> で、出動中の災害を案内しています（場所は番地を伏せて案内）。</span></li>
-    <li><span><strong>救急車かもしれない</strong><br>サイレンの多くは救急出動です。東京消防庁全体では1日に{fmt(daily["rows"].get("救急件数", {}).get("day"))}件の救急出動がありました（{esc(daily["label"])}）。</span></li>
-  </ol>
 </section>
 <section class="section" aria-labelledby="adj">
   <h2 id="adj">となりの区</h2>
@@ -372,74 +458,172 @@ def ward_page(w):
 </div>'''
     return page(w['slug'], title, desc, body, og_image=f'og/{w["slug"]}.png')
 
-# ---------- トップ ----------
+# ---------- トップ（いまの火事） ----------
 def index_page(full=True):
     tiles = []
     for w in wards:
         r, c = w['pos']
-        lab = f'<span class="num">{w["per100k"]}</span>' if w['per100k'] is not None else '<span class="small">一部未掲載</span>'
-        tiles.append(f'<a class="tile {heat(w["per100k"])}" style="grid-row:{r};grid-column:{c}" href="{w["slug"]}.html" aria-label="{esc(w["name"])}：{"人口10万人あたり" + str(w["per100k"]) + "件" if w["per100k"] is not None else "一部の署が件数未掲載"}">{esc(w["name"].replace("区", ""))}{lab}</a>')
-    top5 = ranked[:5]
-    rising = sorted([s for s in stations.values() if s['status'] == 'ok' and s['prev']], key=lambda s: -(s['ytd'] - s['prev']))[:5]
-    top_rows = ''.join(f'<tr><td><a href="{w["slug"]}.html">{esc(w["name"])}</a></td><td class="n">{w["per100k"]}</td><td class="n">{w["ytd"]}</td></tr>' for w in top5)
-    rise_rows = ''.join(f'<tr><td><a href="{s["ward_url"]}.html#st-{s["slug"]}">{esc(s["name"])}</a><br><span class="small muted">{esc(s["ward_name"])}</span></td><td class="n">{s["ytd"]}</td><td class="n">{s["prev"]}</td><td class="n">+{s["ytd"] - s["prev"]}</td></tr>' for s in rising)
-    total_ytd = sum(w['ytd'] for w in wards if w['ytd'] is not None)
+        tiles.append(f'<a class="tile hx" style="grid-row:{r};grid-column:{c}" href="{w["slug"]}.html" data-ward-tile="{esc(w["name"])}">'
+                     f'{esc(w["name"].replace("区", ""))}<span class="small tile-n"></span></a>')
+    recent = [x for x in news['incidents']][:6]
+    f_day = fire_d.get('day')
     body = f'''<div class="wrap">
 <section class="hero">
-  <span class="eyebrow">東京消防庁の公開データを毎日集計</span>
-  <h1><span class="nb">東京23区の火事、</span><span class="nb">どこで何件？</span></h1>
-  <p class="lead">23区を管轄する58の消防署と東京消防庁が公開している火災件数を、区・消防署・町名ごとに整理しています。どの数字も、元のページのどこを読んだかまで確かめられます。</p>
-  <div class="btn-row"><a class="btn primary" href="#wards">区から探す</a><a class="btn" href="towns.html">町名で探す</a><a class="btn" href="dial.html">サイレンが聞こえたら</a></div>
+  <span class="eyebrow">東京23区・町名ごとにリアルタイム</span>
+  <h1><span class="nb">近くで火事？</span><span class="nb">町名で、いまの状況を。</span></h1>
+  <p class="lead">サイレンや煙に気づいたら、町名を入れてください。近所の人の目撃報告・口コミと、報道された火事をその町のページにまとめています。</p>
+  {search_block()}
   {ALERT}
 </section>
-<section class="section" aria-labelledby="daily">
-  <h2 id="daily">東京消防庁管内の火災（23区と多摩地区）</h2>
-  <div class="stats">
-    <div class="stat hot"><span class="k">{esc(re.sub(r"^令和\d+年|計$", "", daily["label"]))}の火災</span><span class="v">{fmt(fire_d.get("day"))}<small>件</small></span><span class="d">日次の速報値</span></div>
-    <div class="stat"><span class="k">今年の火災（累計）</span><span class="v">{fmt(fire_d.get("ytd"))}<small>件</small></span><span class="d">前年より {"+" if (fire_d.get("diff") or 0) > 0 else ""}{fmt(fire_d.get("diff"))}件</span></div>
-    <div class="stat"><span class="k">今年の火災による死者</span><span class="v">{fmt(daily["rows"].get("火災による死者", {}).get("ytd"))}<small>人</small></span><span class="d">負傷者 {fmt(daily["rows"].get("火災による傷者", {}).get("ytd"))}人</span></div>
-    <div class="stat"><span class="k">{esc(re.sub(r"^令和\d+年|計$", "", daily["label"]))}の救急出動</span><span class="v">{fmt(daily["rows"].get("救急件数", {}).get("day"))}<small>件</small></span><span class="d">サイレンの多くは救急です</span></div>
-  </div>
-  <p class="small muted">出典：<a href="{esc(daily["url"])}" target="_blank" rel="noopener">東京消防庁「災害・救急情報」</a>（{jdate(daily["up"])}更新の速報値）。23区だけでなく多摩地区（稲城市を除く）を含みます。</p>
+<section class="section" aria-labelledby="now">
+  <div class="sec-head"><h2 id="now">いま報告が上がっている場所</h2><span class="small muted live-updated"></span></div>
+  {live_block(empty='いま、23区内で上がっている報告はありません。サイレンや煙に気づいたら、下のボタンで知らせてください。')}
+</section>
+<section class="section" aria-labelledby="rep">
+  <h2 id="rep" class="sr">報告する</h2>
+  {report_block(title='サイレン・煙・火に気づいたら')}
 </section>
 <section class="section" aria-labelledby="recent">
-  <h2 id="recent">最近の23区の火事（報道）</h2>
-  <div class="two">
-    <div style="display:grid;gap:8px;min-width:0">{news_list(news['incidents'][:8], empty='直近30日に、23区の火事の報道は見つかっていません。')}{NEWS_NOTE}</div>
-    {report_block()}
-  </div>
+  <h2 id="recent">最近報道された23区の火事</h2>
+  {news_list(recent, empty='直近30日に、23区の火事の報道は見つかっていません。')}
+  {NEWS_NOTE}
 </section>
 <section class="section" id="wards" aria-labelledby="wh">
-  <div class="two">
-    <div style="display:grid;gap:12px;min-width:0">
-      <h2 id="wh">区から探す</h2>
-      <p class="muted small">数字は今年の火災件数を人口10万人あたりにしたもの。色が濃いほど多い区です。斜線は、区内に今年の件数を掲載していない消防署がある区です。</p>
-      <div class="tilemap">{"".join(tiles)}</div>
-      <div class="legend"><span>少</span><i style="background:var(--heat-1)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-4)"></i><span>多</span><i style="background:repeating-linear-gradient(45deg,#f1f2f4,#f1f2f4 3px,#e3e5e9 3px,#e3e5e9 6px)"></i><span>一部未掲載</span></div>
-    </div>
-    <div style="display:grid;gap:16px;min-width:0">
-      <div style="display:grid;gap:8px"><h3>人口あたりで多い区</h3>
-        <div class="table-box"><table><thead><tr><th>区</th><th class="n">10万人あたり</th><th class="n">今年</th></tr></thead><tbody>{top_rows}</tbody></table></div></div>
-      <div style="display:grid;gap:8px"><h3>前年より増えている消防署</h3>
-        <div class="table-box"><table><thead><tr><th>消防署</th><th class="n">今年</th><th class="n">前年同時期</th><th class="n">増減</th></tr></thead><tbody>{rise_rows}</tbody></table></div>
-        <a href="ranking.html">すべての区・消防署を比べる →</a></div>
-    </div>
-  </div>
+  <h2 id="wh">区から探す</h2>
+  <p class="muted small">区を選ぶと、その区の町名一覧と、いまの報告が見られます。数字はいま上がっている報告の件数です。</p>
+  <div class="tilemap">{"".join(tiles)}</div>
 </section>
-<section class="section" aria-labelledby="how">
-  <h2 id="how">このサイトの数字について</h2>
-  <div class="stats">
-    <div class="stat"><span class="k">今年の件数を集計できた署</span><span class="v">{N_OK}<small>/ 58署</small></span><span class="d">年ごとのみ{N_ANNUAL}署・未掲載{N_UNPUB}署</span></div>
-    <div class="stat"><span class="k">町名から管轄署を引ける地区</span><span class="v">{fmt(TOTAL_TOWNS)}<small>地区</small></span><span class="d">東京消防庁の管轄区域表から</span></div>
-    <div class="stat"><span class="k">掲載署の今年の合計</span><span class="v">{fmt(total_ytd)}<small>件</small></span><span class="d">署ごとに集計時点が違います</span></div>
-    <div class="stat"><span class="k">データを取得した日時</span><span class="v">{FETCHED.month}/{FETCHED.day}<small>{FETCHED.hour}:{FETCHED.minute:02d}</small></span><span class="d">毎日自動で取り直します</span></div>
-  </div>
-  <p class="muted">各消防署のサイトは書式がばらばらです。表の見出し（「本年累計」「前年同時期」「令和7年中」など）を読み分けて件数を取り出し、取り出した箇所をそのまま各カードに載せています。<a href="about.html">データの出典と集め方</a></p>
+<section class="section" aria-labelledby="tfd">
+  <h2 id="tfd">東京消防庁の発表（参考）</h2>
+  <p>{esc(re.sub(r"^令和\\d+年|計$", "", daily["label"]))}の火災は<strong class="num">{fmt(f_day)}</strong>件、救急出動は<strong class="num">{fmt(daily["rows"].get("救急件数", {}).get("day"))}</strong>件でした（東京消防庁管内・速報値）。サイレンの多くは救急車です。<a href="ranking.html">区・消防署ごとの火災件数の統計</a></p>
 </section>
 </div>'''
-    title = f'{SITE_NAME}｜東京23区の火事・火災件数を区と消防署ごとに'
-    desc = f'東京23区の火事はどこで何件？23区を管轄する58消防署の火災件数を、区・消防署・町名ごとにまとめています。データは東京消防庁の公開情報から毎日集計。'
+    title = f'{SITE_NAME}｜近くで火事？東京23区の火事の目撃情報を町名でリアルタイムに'
+    desc = '近くで火事？サイレンや煙に気づいたら町名で検索。東京23区の火事の目撃報告・口コミ・報道を、町ごとにリアルタイムでまとめています。'
     return page('index', title, desc, body, full=full)
+
+# ---------- 町ページ ----------
+def machi_page(t):
+    w = by_name[t['ward']]
+    base, ward = t['base'], t['ward']
+    sts = [stations[s] for s in t['stations'] if s in stations]
+    st_html = ''.join(
+        f'<li><a href="{w["slug"]}.html#st-{s["slug"]}">{esc(s["name"])}</a>'
+        + (f'<span class="small muted">　今年の火災 {s["ytd"]}件（{jdate(s["when"])}時点、署の管轄全体）</span>' if s['status'] == 'ok' else '')
+        + '</li>' for s in sts)
+    neighbors = [x for x in TOWN_LIST if x is not t and x['ward'] == ward and set(x['stations']) & set(t['stations'])][:40]
+    nb_html = ''.join(f'<a href="{x["file"]}">{esc(x["base"])}</a>' for x in neighbors)
+    parts = '、'.join(esc(p) for p in t['parts'])
+    body = f'''<div class="wrap">
+<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <a href="{w["slug"]}.html">{esc(ward)}</a> ／ {esc(base)}</nav>
+<section class="hero">
+  <span class="eyebrow">{esc(ward)}{esc(base)}の火事情報</span>
+  <h1>{esc(base)}（{esc(ward)}）で火事？</h1>
+  <p class="lead">{esc(base)}付近の目撃報告と口コミを、リアルタイムで表示しています。サイレンや煙に気づいたら、報告ボタンで近所の人と共有できます。</p>
+  {ALERT}
+</section>
+<section class="section" aria-labelledby="now">
+  <h2 id="now">いまの{esc(base)}</h2>
+  {live_block(ward=ward, town=base)}
+  {report_block(w, town=base, title=f'{base}で気づいたことを報告')}
+</section>
+<section class="section" aria-labelledby="board">
+  <h2 id="board">{esc(base)}の口コミ</h2>
+  <p class="small muted">火事やサイレン、消防車について、{esc(base)}の人が書き込んだ口コミです。いま起きている火事の口コミは、上の「火事のページ」にあります。</p>
+  {comment_block(ward, town=base, title=f'{base}の口コミを書く')}
+</section>
+<section class="section" aria-labelledby="sns">
+  <h2 id="sns">SNS・ニュースで確かめる</h2>
+  {sns_links([base])}
+  <p class="small muted">外部サイトの検索結果です。投稿の内容は確かめられていないものも含みます。</p>
+</section>
+<section class="section" aria-labelledby="news">
+  <h2 id="news">{esc(base)}で報道された火事</h2>
+  {news_list(news_for(ward, base), show_ward=False, empty=f'直近30日に、{base}の火事の報道は見つかっていません。')}
+</section>
+<section class="section" aria-labelledby="st">
+  <h2 id="st">{esc(base)}を受け持つ消防署</h2>
+  <ul class="plain">{st_html}</ul>
+  <p class="small muted">対象の地区：{parts}（東京消防庁の管轄区域表より）</p>
+  {f'<h3 style="font-size:15px">同じ消防署が受け持つ近くの町</h3><div class="town-grid">{nb_html}</div>' if nb_html else ''}
+</section>
+</div>'''
+    title = f'{base}（{ward}）の火事情報｜いまの目撃情報・口コミ｜{SITE_NAME}'
+    desc = f'{ward}{base}で火事？サイレンや煙の目撃情報、近所の人の口コミ、報道された火事を町ごとにリアルタイムでまとめています。管轄は{"・".join(s["name"] for s in sts) or "東京消防庁"}。'
+    return page(t['file'][:-5], title, desc, body, og_image='og/live.png')
+
+# ---------- 火事のページ ----------
+def fire_page():
+    blob = json.dumps({news_fire_id(x): {k: x[k] for k in ('ward', 'town', 'chome', 'building', 'injured', 'dead', 'sensitive', 'first', 'last', 'sources')}
+                       for x in news['incidents']}, ensure_ascii=False).replace('</', '<\\/')
+    towns_blob = json.dumps({f'{t["ward"]}|{t["base"]}': t['file'] for t in TOWN_LIST}, ensure_ascii=False).replace('</', '<\\/')
+    wards_blob = json.dumps({w['name']: w['slug'] for w in wards}, ensure_ascii=False)
+    body = f'''<div class="wrap">
+<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <span class="f-crumb">火事のページ</span></nav>
+<div data-fire>
+<section class="hero">
+  <span class="eyebrow f-kind">火事の目撃情報</span>
+  <h1 class="f-title">火事のページ</h1>
+  <p class="lead f-lead">読み込んでいます…</p>
+  <div class="f-stats stats"></div>
+  {ALERT}
+</section>
+<section class="section f-share-sec" aria-labelledby="share" hidden>
+  <h2 id="share">近所の人に知らせる</h2>
+  <p class="small muted">このページを共有すると、見た人も報告や口コミを追加できます。<strong>現場には近づかないでください。</strong></p>
+  <div class="share f-share"></div>
+</section>
+<section class="section f-rep-sec" aria-labelledby="rep" hidden>
+  <h2 id="rep">あなたも見た・聞いた？</h2>
+  <div class="f-report"></div>
+</section>
+<section class="section" aria-labelledby="com">
+  <h2 id="com">現場の口コミ</h2>
+  <div class="f-comments"></div>
+</section>
+<section class="section f-news-sec" aria-labelledby="src" hidden>
+  <h2 id="src">報道</h2>
+  <div class="f-news"></div>
+</section>
+<section class="section" aria-labelledby="sns">
+  <h2 id="sns">SNS・ニュースで確かめる</h2>
+  <div class="f-sns"></div>
+</section>
+</div>
+</div>
+<script type="application/json" id="news-fires">{blob}</script>
+<script type="application/json" id="town-files">{towns_blob}</script>
+<script type="application/json" id="ward-files">{wards_blob}</script>'''
+    title = f'火事の目撃情報｜{SITE_NAME}'
+    desc = '近所の人から寄せられたサイレン・煙・火の目撃報告と、現場の口コミ。東京23区の火事を町名ごとにリアルタイムで。'
+    return page('fire', title, desc, body, og_image='og/live.png')
+
+# ---------- 投稿のルール ----------
+def rules_page():
+    body = f'''<div class="wrap">
+<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ 投稿のルール</nav>
+<section class="hero"><span class="eyebrow">報告・口コミを書く前に</span><h1>投稿のルールと削除依頼</h1>
+<p class="lead">このサイトの報告と口コミは、近所の人どうしで「いま何が起きているか」を確かめるためのものです。火事にあった人や近所の人が傷つかないよう、次のルールを守ってください。</p></section>
+<section class="section"><h2>書いてよいこと</h2>
+<ul class="plain checks"><li>見えたこと・聞こえたこと（煙の色や方向、サイレン、消防車の台数、通行止めなど）</li><li>町名・丁目までの場所、目印になる大きな建物や交差点</li><li>火が消えた、消防車が引き上げたなどの様子</li></ul></section>
+<section class="section"><h2>書かないでください</h2>
+<ul class="plain ngs"><li>番地・部屋番号・表札など、家や人が特定できる情報</li><li>人の名前、顔や家の写真の場所、けがをした人についての憶測</li><li>原因や「放火」などの推測、誰かを責める書き込み、誹謗中傷</li><li>URL・電話番号・メールアドレス、宣伝</li></ul>
+<p class="small muted">番地・電話番号・URLなどは、自動で投稿できないようにしています。</p></section>
+<section class="section"><h2>不適切な口コミを見つけたら</h2>
+<p>各口コミの「通報」を押してください。<strong>3人から通報があると自動で非表示</strong>になります。運営者も確認し、ルールに反するものは削除します。</p>
+<p>ご自身や家族に関する書き込みの削除を急ぐ場合も、まず「通報」を押してください。そのうえで、下の欄から削除の依頼を送れます。</p>
+<form class="panel contact-form"><label for="ct-body"><strong>削除の依頼・お問い合わせ</strong></label>
+<textarea id="ct-body" name="body" rows="4" maxlength="1000" placeholder="対象のページ（町名や火事のページ）と、口コミの内容・投稿日時、削除してほしい理由を書いてください。"></textarea>
+<div class="row"><button class="btn primary" type="submit">送信する</button><span class="ct-status small" aria-live="polite"></span></div>
+<p class="small muted">返信が必要な場合のご連絡先は書かないでください（このフォームは返信できません）。内容は運営者だけが読みます。</p></form></section>
+<section class="section"><h2>報告と口コミのしくみ</h2>
+<ul class="plain"><li>報告と口コミは匿名です。会員登録はありません。</li>
+<li>連投を防ぐため、送信元の情報を元に戻せない形（日ごとに変わるハッシュ）で一時的に使います。IPアドレスそのものは保存しません。</li>
+<li>同じ町で2時間以内にあった報告は、同じ「火事のページ」にまとめます。</li>
+<li>報告の明細は30日で削除します。</li>
+<li>報告・口コミは利用者の投稿で、運営者が内容を確認したものではありません。消防への通報にもなりません。</li></ul></section>
+</div>'''
+    return page('rules', f'投稿のルールと削除依頼｜{SITE_NAME}', '火事どこ23区の目撃報告・口コミの投稿ルール、不適切な投稿の通報と削除依頼について。', body)
 
 # ---------- 比較 ----------
 def ranking_page():
@@ -489,23 +673,17 @@ def ranking_page():
 
 # ---------- 町名検索 ----------
 def towns_page():
-    data = []
-    for s in stations.values():
-        for t in s['towns']:
-            data.append({'t': t, 'w': s['ward_url'], 'wn': s['ward_name'], 's': s['slug'], 'sn': s['name'],
-                         'y': s['ytd'], 'as': jdate(s['when']) if s['ytd'] is not None else None})
-    blob = json.dumps(data, ensure_ascii=False).replace('</', '<\\/')
+    groups = ''.join(f'<details class="towns"><summary>{esc(w["name"])}（{len(towns_of(w["name"]))}町）</summary><div class="town-grid">'
+                     + ''.join(f'<a href="{t["file"]}">{esc(t["base"])}</a>' for t in towns_of(w["name"])) + '</div></details>'
+                     for w in sorted(wards, key=lambda w: w['name']))
     body = f'''<div class="wrap">
 <nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ 町名で探す</nav>
-<section class="hero"><span class="eyebrow">{fmt(len(data))}地区に対応</span><h1>町名から管轄の消防署を探す</h1>
-<p class="lead">住所の町名を入れると、その地区を受け持つ消防署と、その署の今年の火災件数が出ます。町名と消防署の対応は、東京消防庁の「住所から管轄消防署を探す」の表から作っています。</p></section>
-<section class="section"><div class="search"><label for="town-q">町名（例：赤羽、西新宿、豊洲）</label>
-<input id="town-q" type="search" inputmode="search" autocomplete="off" placeholder="町名を入力" aria-describedby="town-count">
-<p id="town-count" class="small muted" aria-live="polite"></p></div>
-<div id="town-results" class="results"></div></section>
-</div>
-<script type="application/json" id="towns-data">{blob}</script>'''
-    return page('towns', f'町名から管轄の消防署と火災件数を探す（東京23区）｜{SITE_NAME}', f'東京23区の{len(data)}地区について、町名から管轄の消防署とその署の火災件数を調べられます。', body)
+<section class="hero"><span class="eyebrow">東京23区の{len(TOWN_LIST)}町</span><h1>町名で探す</h1>
+<p class="lead">町名を入れると、その町のページが開きます。町のページでは、いまの目撃報告・口コミ・報道された火事・受け持つ消防署が見られます。</p>
+{search_block(autofocus=True)}</section>
+<section class="section"><h2>区ごとの町名一覧</h2>{groups}</section>
+</div>'''
+    return page('towns', f'町名で探す：東京23区の火事の目撃情報・口コミ（{len(TOWN_LIST)}町）｜{SITE_NAME}', f'東京23区の{len(TOWN_LIST)}町について、町名からいまの火事の目撃情報・口コミ・報道を調べられます。', body)
 
 # ---------- サイレン ----------
 def dial_page():
@@ -518,7 +696,7 @@ def dial_page():
 <li><span><strong>火や煙が見える・焦げたにおいが強い</strong><br>すぐに119番。住所と目印を落ち着いて伝えます。</span></li>
 <li><span><strong>出動中の火事を確かめたい</strong><br>東京消防庁の{esc(fi["name"])}へ。{esc(fi["note"])}<br><span class="tel-big">{esc(fi["tel"])}</span><span class="small muted">（{esc(fi["area"])}）</span></span></li>
 <li><span><strong>具合が悪い人がいて、救急車を呼ぶか迷う</strong><br>{esc(ems["name"])}へ。{esc(ems["note"])}<br><span class="tel-big">{esc(ems["tel"])}</span><span class="small muted">（つながらない場合 {esc(ems["alt"])}）</span></span></li>
-<li><span><strong>近所の消防署の火災件数を見る</strong><br><a href="towns.html">町名で探す</a>か、<a href="index.html#wards">区から探す</a>でどうぞ。</span></li>
+<li><span><strong>近所で何が起きているか知りたい</strong><br><a href="towns.html">町名で探す</a>と、近所の人の目撃報告と口コミが見られます。気づいたことを報告することもできます。</span></li>
 </ol>
 <p class="small muted">電話番号の出典：<a href="{esc(contacts["url"])}" target="_blank" rel="noopener">{esc(contacts["source"])}</a>（{jdate(contacts["checked"])}確認）。電話番号の表示は、タップしても発信できない場合があります。</p></section>
 <section class="section"><h2>火事に気づいたら</h2>
@@ -583,8 +761,9 @@ def build(report=None):
     for f in ('site.css', 'site.js'):
         shutil.copy(SITE / 'assets' / f, DIST / 'assets' / f)
     pages = {'index.html': index_page(), 'ranking.html': ranking_page(), 'towns.html': towns_page(),
-             'dial.html': dial_page(), 'about.html': about_page(report)}
+             'dial.html': dial_page(), 'about.html': about_page(report), 'fire.html': fire_page(), 'rules.html': rules_page()}
     for w in wards: pages[w['slug'] + '.html'] = ward_page(w)
+    for t in TOWN_LIST: pages[t['file']] = machi_page(t)
     for fn, h in pages.items(): (DIST / fn).write_text(h, encoding='utf-8')
     # 公開データ（誰でも検証できるように）
     public = {'fetchedAt': tfd['fetchedAt'], 'source': tfd_file, 'population_source': pop['url'], 'daily': daily,
@@ -596,7 +775,8 @@ def build(report=None):
     (DIST / 'data' / 'kaji23.json').write_text(json.dumps(public, ensure_ascii=False, indent=1), encoding='utf-8')
     # 内部用（OG画像・検査で使う）
     (DIST / 'data' / '_model.json').write_text(json.dumps({'wards': [{k: v for k, v in w.items() if k != 'stations'} | {'stations': [s['slug'] for s in w['stations']]} for w in wards],
-                                                            'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news}, ensure_ascii=False, default=str), encoding='utf-8')
+                                                            'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news,
+                                                            'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
     return sorted(pages)
 
 if __name__ == '__main__':

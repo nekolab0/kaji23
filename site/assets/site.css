@@ -25,6 +25,7 @@
   color-scheme: light;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
@@ -217,3 +218,48 @@ details.towns summary { cursor: pointer; color: var(--ink); font-weight: 700; fo
 .report-list li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; background: var(--bg); border-radius: 8px; }
 .report-list .n { font-family: var(--f-num); font-size: 20px; font-weight: 700; color: var(--fire); }
 .report-form[hidden] { display: none; }
+
+/* ===== いまの火事・町ページ ===== */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.big-search { gap: 6px; }
+.search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.big-search input { font-size: 18px; min-height: 54px; border-width: 2px; }
+.big-search .geo-go { min-height: 54px; }
+.q-results { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.q-results .result { padding: 10px 12px; }
+.btn.ghost { border-style: dashed; justify-self: start; min-height: 40px; font-size: 14px; }
+.fires { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.fire-card { border: 1.5px solid var(--fire); border-left-width: 6px; border-radius: var(--r); padding: 12px 14px; display: grid; gap: 6px; min-width: 0; background: var(--bg); }
+.fire-card.calm { border-color: var(--line); border-left-color: #b9bec8; }
+.fire-card .place { text-decoration: none; color: var(--ink); }
+.fire-card .place b { font-size: 18px; }
+.fire-card .row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.quote { margin: 0; font-size: 14px; color: var(--ink); background: var(--panel); border-radius: 8px; padding: 8px 10px; overflow-wrap: anywhere; }
+.live-empty { padding: 14px; border: 1px dashed var(--line); border-radius: var(--r); margin: 0; }
+.news-item .place { color: var(--ink); text-decoration: none; }
+.news-item .place:hover b { text-decoration: underline; }
+.report h3 { font-size: 16px; }
+.report-form label { font-weight: 700; margin-bottom: -4px; }
+.report-form .kinds .btn { flex: 1 1 auto; }
+.comments { display: grid; gap: 12px; }
+.com-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.com { border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; display: grid; gap: 4px; min-width: 0; }
+.com p { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.com-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.com-head .flag { margin-left: auto; font: inherit; font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; cursor: pointer; }
+.com-head .flag[disabled] { cursor: default; opacity: .7; }
+.com-form, .contact-form { display: grid; gap: 8px; }
+.com-form textarea, .contact-form textarea { font: inherit; font-size: 16px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; width: 100%; resize: vertical; background: var(--bg); color: var(--ink); }
+.com-form .row, .contact-form .row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.com-form[hidden] { display: none; }
+.town-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.town-grid a { display: inline-block; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--ink); font-size: 14px; }
+.town-grid a:hover { border-color: var(--ink); }
+details.towns .town-grid { margin-top: 8px; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+ul.checks li::marker { content: "○ "; color: var(--down); }
+ul.ngs li::marker { content: "× "; color: var(--up); }
+.tile-n { display: block; font-size: 11px; font-weight: 700; }
+.sns .btn { font-size: 14px; min-height: 42px; }
+h1, .fire-card .place b { word-break: auto-phrase; }
