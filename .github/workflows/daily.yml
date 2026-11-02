@@ -22,7 +22,7 @@ jobs:
       - run: sudo apt-get install -y fonts-noto-cjk
       - name: 東京消防庁から収集（朝の1回だけ）
         if: github.event.schedule != '7,37 * * * *'
-        run: node collector/run.mjs && cd site && node verify_live.mjs
+        run: node collector/run.mjs && cd site && python3 build.py && node verify_live.mjs
       - name: 報道から23区の火事を収集
         run: node collector/news_run.mjs
       - name: 受付サーバーのテスト
