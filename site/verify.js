@@ -225,6 +225,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   const offline = await page.evaluate(() => { const b = document.querySelector('[data-reports]'); return { hidden: b.querySelector('.report-form').offsetHeight === 0, msg: b.querySelector('.report-status').textContent }; });
   if (!offline.hidden || !/災害情報案内/.test(offline.msg)) repBad.push('保存先なしのとき案内が出ない');
   const fake = await browser.newContext({ viewport: { width: 375, height: 900 } });
+  await fake.route(/workers\.dev/, r => r.abort()); // 検査で本番の受付サーバーへ送らない
   await fake.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await fake.addInitScript(() => {
     // 共有保存領域の代わり（add と where().onSnapshot だけ）
