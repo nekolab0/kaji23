@@ -10,6 +10,7 @@
 // GET  /api/live?hours=6                            → いま報告が上がっている火事
 // GET  /api/incident?id=                            → 火事1件（件数・口コミ）
 // GET  /api/town?pref=&city=&town=                 → 町の火事（30日）と口コミ掲示板
+// GET  /api/counts                                  → 場所ごとの火事の件数（365日）
 // GET  /api/reports?hours=24                        → 区・町ごとの件数（旧形式）
 // POST /api/contact  {body}                         → 削除依頼・問い合わせ
 // GET  /f/<id>                                      → 共有用ページ
@@ -245,6 +246,13 @@ export async function handle(request, env, now = new Date()) {
     const i = await DB.prepare('SELECT * FROM incidents WHERE pref = ? AND ward = ? AND base = ? AND last_at > ? ORDER BY last_at DESC LIMIT 20').bind(area.pref, area.city, base, ago(30 * 864e5)).all();
     const c = await DB.prepare('SELECT * FROM comments WHERE pref = ? AND ward = ? AND base = ? AND hidden = 0 ORDER BY at DESC LIMIT 50').bind(area.pref, area.city, base).all();
     return json(env, { generatedAt: iso, incidents: i.results.map(incOut), comments: c.results.map(comOut) }, 200, { 'Cache-Control': 'public, max-age=30' });
+  }
+
+  // 場所ごとの火事の件数（検索候補の「記録○件」用。直近365日）
+  if (P === '/api/counts' && request.method === 'GET') {
+    const { results } = await DB.prepare("SELECT pref, ward, COALESCE(base, '') AS base, COUNT(*) AS n FROM incidents WHERE last_at > ? GROUP BY pref, ward, base").bind(ago(365 * 864e5)).all();
+    const counts = {}; for (const r of results) counts[`${r.pref || '東京都'}|${r.ward}|${r.base}`] = r.n;
+    return json(env, { generatedAt: iso, counts }, 200, { 'Cache-Control': 'public, max-age=300' });
   }
 
   // 旧形式（区・町ごとの件数）

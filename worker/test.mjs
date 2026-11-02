@@ -92,6 +92,8 @@ if (isMain) {
   r = await handle(req('GET', '/api/reports?hours=24'), env, at(42)); const old = await J(r);
   ok('旧形式の集計も動く', old.wards['北区'].total === 5);
   ok('他サイトからの読み込み許可（CORS）', r.headers.get('Access-Control-Allow-Origin') === 'https://example.jp');
+  r = await handle(req('GET', '/api/counts'), env, at(60)); const cnt = (await J(r)).counts;
+  ok('場所ごとの件数', cnt['東京都|北区|赤羽西'] === 2 && cnt['大阪府|大阪市北区|梅田'] === 1, JSON.stringify(cnt));
   r = await handle(req('POST', '/api/contact', { body: '赤羽西の口コミを削除してください' }), env, at(50));
   ok('削除依頼を受け付けて保存', r.status === 200 && db.prepare('SELECT COUNT(*) n FROM contact').get().n === 1);
   const salt = db.prepare("SELECT v FROM meta WHERE k='salt'").get();

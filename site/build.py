@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""火事どこ23区 静的サイト生成
+"""火事どこ 静的サイト生成（全国＋東京23区の詳しいページ）
 入力: data/raw/tfd_*.json（東京消防庁から収集）, pop_*.json（東京都の統計）, contacts.json
 出力: dist/（そのまま公開できる静的サイト）
 """
@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / 'data' / 'raw'
 DIST = ROOT / 'dist'
 SITE = ROOT / 'site'
-SITE_NAME = '火事どこ23区'
+SITE_NAME = '火事どこ'
 SITE_URL = os.environ.get('SITE_URL', '')  # 例: https://kaji23.example.jp （独自ドメイン取得後に設定）
 TFD = 'https://www.tfd.metro.tokyo.lg.jp'
 THIS_YEAR = 2026
@@ -266,10 +266,10 @@ def search_block(autofocus=False):
 
 # ---------- 部品 ----------
 FIRE_ICON = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c2341c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-10z"/></svg>'
-NAV = [('index', 'いまの火事'), ('towns', '町名で探す'), ('dial', 'サイレン・119'), ('ranking', '火災件数の統計'), ('rules', '投稿のルール'), ('about', '出典')]
+NAV = [('index', 'いまの火事'), ('index#regions', '地域から探す'), ('p-東京都', '東京23区'), ('dial', 'サイレン・119'), ('rules', '投稿のルール'), ('about', '出典')]
 
 def page(name, title, desc, body, og_image='og/index.png', full=True):
-    nav = ''.join(f'<a href="{k}.html"{" aria-current=\"page\"" if k == name else ""}>{esc(v)}</a>' for k, v in NAV)
+    nav = ''.join(f'<a href="{k.split("#")[0]}.html{("#" + k.split("#")[1]) if "#" in k else ""}"{" aria-current=\"page\"" if k == name else ""}>{esc(v)}</a>' for k, v in NAV)
     canon = f'{SITE_URL}/{name}.html' if SITE_URL else f'{name}.html'
     ogimg = f'{SITE_URL}/{og_image}' if SITE_URL else og_image
     head = f'''<title>{esc(title)}</title>
@@ -294,23 +294,23 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
     head += f'\n<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>'
     header = f'''<header class="site-head"><div class="wrap">
   <div class="head-row">
-    <a class="logo" href="index.html">{FIRE_ICON}<span>火事どこ<b>23区</b></span></a>
-    <div class="tel-chip">火事の確認は<br><strong>{TEL["fire_info"]["tel"]}</strong></div>
+    <a class="logo" href="index.html">{FIRE_ICON}<span>火事<b>どこ</b></span></a>
+    <div class="tel-chip">火や煙を見たら<br><strong>119番</strong></div>
   </div>
   <nav class="nav" aria-label="サイト内">{nav}</nav>
 </div></header>'''
     footer = f'''<footer class="site-foot"><div class="wrap foot-grid">
   <div>
     <h3>{SITE_NAME}について</h3>
-    <p>「近くで火事？」を町名で確かめられる、民間の非公式サイトです。利用者の目撃報告・口コミ、報道、東京消防庁などの公開情報をまとめています。報告や口コミは利用者の投稿で、内容を確認したものではありません。東京消防庁・各区の公認や監修は受けていません。</p>
+    <p>「今どこで火事？」を地名で確かめられる、民間の非公式サイトです。利用者の目撃報告・口コミ、報道、東京消防庁などの公開情報をまとめています。報告や口コミは利用者の投稿で、内容を確認したものではありません。消防機関・自治体の公認や監修は受けていません。</p>
     <p style="margin-top:8px"><strong style="color:var(--ink)">火や煙が見えたら、すぐ119番。</strong>火事かどうかの確認だけで119番にかけないでください。</p>
   </div>
   <div><h3>さがす</h3><ul>
-    <li><a href="index.html">いまの火事</a></li><li><a href="towns.html">町名で探す</a></li><li><a href="index.html#wards">区から探す</a></li><li><a href="ranking.html">火災件数の統計</a></li></ul></div>
+    <li><a href="index.html">いまの火事</a></li><li><a href="index.html#regions">地域から探す</a></li><li><a href="p-東京都.html#t23">東京23区</a></li><li><a href="ranking.html">23区の火災件数</a></li></ul></div>
   <div><h3>確かめる</h3><ul>
     <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="about.html">データの出典と集め方</a></li>
     <li><a href="{TFD}/" rel="noopener" target="_blank">東京消防庁 ↗</a></li><li><a href="https://disaportal.gsi.go.jp/" rel="noopener" target="_blank">ハザードマップポータル ↗</a></li></ul></div>
-</div><div class="wrap small muted" style="padding-block:0 20px">データ取得：{FETCHED_LABEL}（東京消防庁 各消防署ページ）／人口：{jdate(pop["asof"])}現在（東京都の統計）　© {THIS_YEAR} {SITE_NAME}</div></footer>
+</div><div class="wrap small muted" style="padding-block:0 20px">市区町村：総務省 全国地方公共団体コード／町名と位置：Geolonia 住所データ（CC BY 4.0）／23区の火災件数：東京消防庁 各消防署ページ（{FETCHED_LABEL}取得）　© {THIS_YEAR} {SITE_NAME}</div></footer>
 <script src="assets/areas.js" defer></script>
 <script src="assets/site.js" defer></script>'''
     inner = f'{head}\n{header}\n<main>\n{body}\n</main>\n{footer}'
@@ -421,7 +421,7 @@ def ward_page(w):
     desc = f'{name}で火事？サイレンや煙の目撃報告・口コミ・報道を、{len(towns_of(name))}の町ごとにリアルタイムでまとめています。消防署（{station_names}）ごとの火災件数も。'
     adj_links = ''.join(f'<a class="btn" href="{a["slug"]}.html">{esc(a["name"])}{f" {a["ytd"]}件" if a["ytd"] is not None else ""}</a>' for a in adj)
     body = f'''<div class="wrap">
-<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <a href="index.html#wards">東京23区</a> ／ {esc(name)}</nav>
+<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <a href="p-東京都.html">東京都</a> ／ {esc(name)}</nav>
 <section class="hero">
   <span class="eyebrow">{esc(name)}の火事情報</span>
   <h1>{esc(name)}で火事？</h1>
@@ -521,7 +521,7 @@ def machi_page(t):
     nb_html = ''.join(f'<a href="{x["file"]}">{esc(x["base"])}</a>' for x in neighbors)
     parts = '、'.join(esc(p) for p in t['parts'])
     body = f'''<div class="wrap">
-<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <a href="{w["slug"]}.html">{esc(ward)}</a> ／ {esc(base)}</nav>
+<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <a href="p-東京都.html">東京都</a> ／ <a href="{w["slug"]}.html">{esc(ward)}</a> ／ {esc(base)}</nav>
 <section class="hero">
   <span class="eyebrow">{esc(ward)}{esc(base)}の火事情報</span>
   <h1>{esc(base)}（{esc(ward)}）で火事？</h1>
@@ -561,10 +561,6 @@ def machi_page(t):
 
 # ---------- 火事のページ ----------
 def fire_page():
-    blob = json.dumps({news_fire_id(x): {k: x[k] for k in ('ward', 'town', 'chome', 'building', 'injured', 'dead', 'sensitive', 'first', 'last', 'sources')}
-                       for x in news['incidents']}, ensure_ascii=False).replace('</', '<\\/')
-    towns_blob = json.dumps({f'{t["ward"]}|{t["base"]}': t['file'] for t in TOWN_LIST}, ensure_ascii=False).replace('</', '<\\/')
-    wards_blob = json.dumps({w['name']: w['slug'] for w in wards}, ensure_ascii=False)
     body = f'''<div class="wrap">
 <nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <span class="f-crumb">火事のページ</span></nav>
 <div data-fire>
@@ -598,11 +594,9 @@ def fire_page():
 </section>
 </div>
 </div>
-<script type="application/json" id="news-fires">{blob}</script>
-<script type="application/json" id="town-files">{towns_blob}</script>
-<script type="application/json" id="ward-files">{wards_blob}</script>'''
+'''
     title = f'火事の目撃情報｜{SITE_NAME}'
-    desc = '近所の人から寄せられたサイレン・煙・火の目撃報告と、現場の口コミ。東京23区の火事を町名ごとにリアルタイムで。'
+    desc = '近所の人から寄せられたサイレン・煙・火の目撃報告と、現場の口コミ。全国の火事を町名ごとにリアルタイムで。'
     return page('fire', title, desc, body, og_image='og/live.png')
 
 # ---------- 投稿のルール ----------
@@ -758,20 +752,26 @@ def about_page(report):
 </div>'''
     return page('about', f'データの出典と集め方｜{SITE_NAME}', f'{SITE_NAME}の火災件数・管轄区域・人口データの出典と、各消防署ページからの読み取り方法、自動チェックの結果。', body)
 
+exec((SITE / 'nation.py').read_text(encoding='utf-8'))   # 全国版（都道府県・市区町村・町のページ、検索索引）
+
 def build(report=None):
     # og/（OGP画像）は og.js が作るので残す
     if DIST.exists():
         for p in DIST.iterdir():
-            if p.name == 'og': continue
+            if p.name in ('og',): continue
             shutil.rmtree(p) if p.is_dir() else p.unlink()
     (DIST / 'assets').mkdir(parents=True, exist_ok=True)
     (DIST / 'data').mkdir(exist_ok=True)
-    for f in ('site.css', 'site.js', 'areas.js'):
+    for f in ('site.css', 'site.js'):
         shutil.copy(SITE / 'assets' / f, DIST / 'assets' / f)
+    sizes = build_search_index(DIST)
+    (DIST / 'assets' / 'areas.js').write_text(areas_js(sizes), encoding='utf-8')
+    town_files(DIST)
     pages = {'index.html': index_page(), 'ranking.html': ranking_page(), 'towns.html': towns_page(),
              'dial.html': dial_page(), 'about.html': about_page(report), 'fire.html': fire_page(), 'rules.html': rules_page()}
     for w in wards: pages[w['slug'] + '.html'] = ward_page(w)
     for t in TOWN_LIST: pages[t['file']] = machi_page(t)
+    pages.update(national_pages())
     for fn, h in pages.items(): (DIST / fn).write_text(h, encoding='utf-8')
     # 公開データ（誰でも検証できるように）
     public = {'fetchedAt': tfd['fetchedAt'], 'source': tfd_file, 'population_source': pop['url'], 'daily': daily,
@@ -780,6 +780,7 @@ def build(report=None):
                         | {'stations': [s['slug'] for s in w['stations']]} for w in wards],
               'stations': [{k: s[k] for k in ('slug', 'name', 'ward', 'url', 'status', 'ytd', 'prev', 'annual', 'when', 'src', 'warn')}
                            | {'towns': s['towns']} for s in stations.values()]}
+    (DIST / 'data' / 'news.js').write_text(news_js(), encoding='utf-8')
     (DIST / 'data' / 'kaji23.json').write_text(json.dumps(public, ensure_ascii=False, indent=1), encoding='utf-8')
     # 内部用（OG画像・検査で使う）
     (DIST / 'data' / '_model.json').write_text(json.dumps({'wards': [{k: v for k, v in w.items() if k != 'stations'} | {'stations': [s['slug'] for s in w['stations']]} for w in wards],

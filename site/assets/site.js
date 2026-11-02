@@ -43,9 +43,31 @@
   function placeOf(x) { return x.place || ((x.pref === '東京都' && TOKYO23.indexOf(x.city || x.ward) >= 0 ? '' : (x.pref || '')) + (x.city || x.ward) + (x.town || '')); }
   function countsText(c) { return ['fire', 'smoke', 'siren'].filter(function (k) { return c[k]; }).map(function (k) { return KIND[k] + ' ' + c[k]; }).join('・'); }
   var TOWN_INDEX = readJSON('town-index') || [];
-  var TOWN_FILES = readJSON('town-files') || {};
-  TOWN_INDEX.forEach(function (t) { TOWN_FILES[t.w + '|' + t.t] = t.f; });
+  var TOWN_FILES = AREAS.towns23 || {};             // 23区の町ページ
+  var WARD_FILES = AREAS.tokyo23 || {};             // 23区の区ページ
   function townFile(pref, city, town) { return pref === '東京都' && town ? TOWN_FILES[city + '|' + baseTown(town)] : null; }
+  function is23(pref, city) { return pref === '東京都' && !!WARD_FILES[city]; }
+  function prefHref(p) { return 'p-' + p + '.html'; }
+  function cityHref(p, c) { return is23(p, c) ? WARD_FILES[c] + '.html' : 'c-' + p + '-' + c + '.html'; }
+  function townHref(p, c, t) {
+    var f = townFile(p, c, t); if (f) return f;
+    var code = codeOf(p, c); return code ? 'town.html?c=' + code + '&t=' + encodeURIComponent(baseTown(t)) : cityHref(p, c);
+  }
+  var CODE_OF = {}; Object.keys(AREAS.codes || {}).forEach(function (k) { CODE_OF[AREAS.codes[k][0] + '|' + AREAS.codes[k][1]] = k; });
+  function codeOf(p, c) { return CODE_OF[p + '|' + c]; }
+  // 外部の .js データ（ファイルのままでも読めるよう script タグで）
+  var loaded = {};
+  function loadScript(src) {
+    if (!loaded[src]) loaded[src] = new Promise(function (ok, ng) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = function () { delete loaded[src]; ng(new Error('読み込めませんでした')); }; document.head.appendChild(s); });
+    return loaded[src];
+  }
+  var shardWait = {}, shardData = {};
+  window.__kajiShard = function (i, list) { shardData[i] = list; if (shardWait[i]) shardWait[i](list); };
+  function loadShard(i) { return shardData[i] ? Promise.resolve(shardData[i]) : new Promise(function (ok, ng) { shardWait[i] = ok; loadScript('s/' + i + '.js').catch(ng); }); }
+  var townsWait = {}, townsData = {};
+  window.__kajiTowns = function (code, list) { townsData[code] = list; if (townsWait[code]) townsWait[code](list); };
+  function loadTowns(code) { return townsData[code] ? Promise.resolve(townsData[code]) : new Promise(function (ok, ng) { townsWait[code] = ok; loadScript('t/' + code + '.js').catch(ng); }); }
+  function loadNews() { return window.KAJI_NEWS ? Promise.resolve(window.KAJI_NEWS) : loadScript('data/news.js').then(function () { return window.KAJI_NEWS || {}; }, function () { return {}; }); }
 
   // ---------------- 共有ボタン・コピー ----------------
   function copyText(text, btn) {
@@ -156,10 +178,11 @@
   });
 
   // ---------------- いまの火事 ----------------
-  var liveBoxes = $$('[data-live]'), tiles = $$('[data-ward-tile]');
+  var liveBoxes = [], tiles = [];
   function fireCard(x) {
     var li = el('li', { class: 'fire-card' + (Date.now() - Date.parse(x.last) > 90 * 60000 ? ' calm' : '') });
     var a = el('a', { class: 'place', href: 'fire.html?id=' + encodeURIComponent(x.id) });
+    if (x.pref && !is23(x.pref, x.ward)) li.appendChild(el('span', { class: 'small muted' }, x.pref));
     a.appendChild(el('b', null, placeOf(x) + '付近')); li.appendChild(a);
     var row = el('div', { class: 'row' });
     row.appendChild(el('span', { class: 'tag warn' }, '報告 ' + x.counts.total + '件'));
@@ -171,6 +194,7 @@
     return li;
   }
   function loadLive() {
+    liveBoxes = $$('[data-live]'); tiles = $$('[data-ward-tile]');
     if (!liveBoxes.length && !tiles.length) return;
     if (!API) { liveBoxes.forEach(function (b) { b.innerHTML = ''; b.appendChild(el('p', { class: 'muted small' }, '目撃報告の受付を準備中です。')); }); return; }
     getJSON('/api/live?hours=6').then(function (j) {
@@ -191,7 +215,7 @@
       liveBoxes.forEach(function (b) { b.innerHTML = ''; b.appendChild(el('p', { class: 'muted small' }, 'いまの報告を読み込めませんでした。少し待ってから再読み込みしてください。')); });
     });
   }
-  loadLive(); if (liveBoxes.length || tiles.length) setInterval(loadLive, 60000);
+  loadLive(); if ($$('[data-live]').length || $$('[data-ward-tile]').length) setInterval(loadLive, 60000);
 
   // ---------------- 投稿欄（全国）: 場所＋「ボタンで報告」／「口コミを書く」 ----------------
   function fillCities(sel, pref, city) {
@@ -308,6 +332,180 @@
   }
   $$('[data-comments]').forEach(initComments);
 
+  // ---------------- 全国の検索（都道府県・市区町村・町名を1つの欄で。kaji.news と同じ使い方） ----------------
+  function kn(s) { return String(s || '').replace(/ヶ|ｹ/g, 'ケ').replace(/\s|　/g, ''); }
+  function hira(s) { return String(s || '').replace(/[ァ-ン]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0x60); }); }
+  function shardOf(a, b) { return (a.charCodeAt(0) * 31 + b.charCodeAt(0)) % 512; }
+  var liveCounts = null;
+  function countOf(key) { return ((AREAS.counts || {})[key] || 0) + ((liveCounts || {})[key] || 0); }
+  function sumLive(prefix) { var n = 0; Object.keys(liveCounts || {}).forEach(function (k) { if (k === prefix || k.indexOf(prefix + '|') === 0) n += liveCounts[k]; }); return n; }
+  function prefCount(p) { return ((AREAS.counts || {})[p] || 0) + sumLive(p); }
+  function cityCount(p, c) { return ((AREAS.counts || {})[p + '|' + c] || 0) + sumLive(p + '|' + c); }
+  function townCount(p, c, t) { return ((AREAS.counts || {})[p + '|' + c + '|' + t] || 0) + ((liveCounts || {})[p + '|' + c + '|' + t] || 0); }
+  function getLiveCounts() {
+    if (liveCounts || !API) return Promise.resolve();
+    return getJSON('/api/counts').then(function (j) { liveCounts = j.counts || {}; }, function () { liveCounts = {}; });
+  }
+  function searchAll(q0, scopePref) {
+    var q = kn(q0), qh = hira(q), out = [];
+    if (!q) return Promise.resolve(out);
+    var prefs = Object.keys(AREAS.prefs || {});
+    var qPref = prefs.filter(function (p) { return q.indexOf(p) === 0; })[0];        // 「神奈川県横浜市…」のように都道府県から書いたとき
+    var qRest = qPref ? q.slice(qPref.length) : q;
+    prefs.forEach(function (p) {
+      if (scopePref && p !== scopePref) return;
+      var short = p === '北海道' ? p : p.replace(/[都府県]$/, '');
+      if (!qRest || p.indexOf(q) >= 0 || (q.length >= 2 && short.indexOf(q) === 0) || (AREAS.pkana[p] || '').indexOf(qh) === 0 && qh.length >= 2)
+        if (!qPref || qPref === p) out.push({ type: 0, label: p, sub: '', href: prefHref(p), n: prefCount(p) });
+    });
+    if (qRest) {
+      prefs.forEach(function (p) {
+        if (scopePref && p !== scopePref) return;
+        if (qPref && p !== qPref) return;
+        var names = AREAS.prefs[p].slice(); (AREAS.parents[p] || []).forEach(function (x) { names.push(x[0]); });
+        names.forEach(function (c) {
+          var code = codeOf(p, c), kana = code ? (AREAS.kana[code] || '') : '';
+          if (kn(c).indexOf(qRest) >= 0 || (qh.length >= 2 && kana.indexOf(hira(qRest)) === 0))
+            out.push({ type: 1, label: c, sub: p, href: cityHref(p, c), n: cityCount(p, c) });
+        });
+      });
+    }
+    if (qRest.length < 2) return Promise.resolve(out);
+    // 町名: 2文字ずつの索引のうち、いちばん小さいファイルだけを読む
+    var best = null;
+    for (var i = 0; i < qRest.length - 1; i++) { var k = shardOf(qRest[i], qRest[i + 1]); if (best === null || AREAS.shards[k] < AREAS.shards[best]) best = k; }
+    return loadShard(best).then(function (list) {
+      var seen = 0;
+      for (var j = 0; j < list.length && seen < 400; j++) {
+        var e = list[j], ix = e.indexOf(':'), code = e.slice(0, ix), t = e.slice(ix + 1), a = AREAS.codes[code];
+        if (!a || (scopePref && a[0] !== scopePref) || (qPref && a[0] !== qPref)) continue;
+        if (kn(a[1].replace(/（.*）$/, '') + t).indexOf(qRest) < 0) continue;
+        seen++;
+        out.push({ type: 2, label: a[1].replace(/（.*）$/, '') + t, sub: a[0], href: townHref(a[0], a[1], t), n: townCount(a[0], a[1], t) });
+      }
+      return out;
+    }, function () { return out; });
+  }
+  $$('[data-nsearch]').forEach(function (box) {
+    var input = $('input', box), list = $('.nq-list', box), status = $('.nq-status', box), cur = -1, items = [], seq = 0, timer = null;
+    var scope = box.getAttribute('data-pref') || '';
+    function close() { list.hidden = true; input.setAttribute('aria-expanded', 'false'); cur = -1; }
+    function render(res) {
+      res.sort(function (a, b) { return (b.n - a.n) || (a.type - b.type) || (a.label.length - b.label.length); });
+      items = res.slice(0, 60); list.innerHTML = '';
+      if (!items.length) { list.hidden = false; list.appendChild(el('li', { class: 'nq-empty' }, '見つかりませんでした。丁目や番地を除いた地名で試してください。')); return; }
+      items.forEach(function (it, i) {
+        var li = el('li', { role: 'option', id: 'nq-o' + i, class: 'nq-item t' + it.type });
+        var a = el('a', { href: it.href, tabindex: '-1' });
+        var nm = el('span', { class: 'nq-name' }, it.label); if (it.sub) nm.appendChild(el('small', null, ' ' + it.sub));
+        a.appendChild(nm); a.appendChild(el('span', { class: 'nq-n' }, it.n ? it.n + '件' : ''));
+        li.appendChild(a); list.appendChild(li);
+      });
+      list.hidden = false; input.setAttribute('aria-expanded', 'true');
+    }
+    function run() {
+      var my = ++seq, q = input.value.trim();
+      if (!q) { close(); return; }
+      getLiveCounts().then(function () { return searchAll(q, scope); }).then(function (res) { if (my === seq) render(res); });
+    }
+    input.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(run, 120); });
+    input.addEventListener('focus', function () { if (input.value.trim()) run(); });
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault(); if (!items.length) return;
+        cur = (cur + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length;
+        $$('.nq-item', list).forEach(function (li, i) { li.setAttribute('aria-selected', i === cur ? 'true' : 'false'); });
+        input.setAttribute('aria-activedescendant', 'nq-o' + cur);
+        var on = $('#nq-o' + cur); if (on) on.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        var go = function () { var it = items[cur >= 0 ? cur : 0]; if (it) location.href = it.href; };
+        if (!items.length) { getLiveCounts().then(function () { return searchAll(input.value.trim(), scope); }).then(function (r) { render(r); go(); }); } else go();
+      } else if (e.key === 'Escape') close();
+    });
+    document.addEventListener('click', function (e) { if (!box.contains(e.target)) close(); });
+    var geo = $('.geo-go', box);
+    if (geo) {
+      if (!navigator.geolocation) geo.hidden = true;
+      geo.addEventListener('click', function () {
+        status.textContent = '現在地を調べています…';
+        locate().then(function (r) {
+          status.textContent = r.pref + r.city + (r.town || '') + 'のページを開きます';
+          location.href = r.base ? townHref(r.pref, r.city, r.base) : cityHref(r.pref, r.city);
+        }, function (e) { status.textContent = msg(e); });
+      });
+    }
+  });
+
+  // ---------------- 町のページ（23区以外。town.html?c=市区町村コード&t=町名） ----------------
+  function panelHTML(uid, title) {
+    return '<h3>' + title + '</h3><p class="small muted">同じ場所の近くの人の報告とまとめて「火事のページ」ができ、近所の人と共有できます。消防への通報にはなりません。<strong>火や煙が見えたら119番へ。</strong></p>' +
+      '<fieldset class="area"><legend class="sr">場所</legend><label class="small" for="pf-' + uid + '">都道府県</label><select id="pf-' + uid + '" name="pref"><option value="">都道府県を選ぶ</option>' +
+      Object.keys(AREAS.prefs).map(function (p) { return '<option>' + p + '</option>'; }).join('') + '</select>' +
+      '<label class="small" for="ct-' + uid + '">市区町村</label><select id="ct-' + uid + '" name="city"></select>' +
+      '<label class="small" for="tw-' + uid + '">町名（丁目まで・任意）</label><input id="tw-' + uid + '" name="town" maxlength="20" autocomplete="off" placeholder="例：本町2丁目">' +
+      '<button type="button" class="btn ghost geo-fill" hidden>現在地の場所を入れる</button></fieldset>' +
+      '<div class="tabs" role="tablist" aria-label="送り方"><button type="button" role="tab" id="tq-' + uid + '" aria-controls="pq-' + uid + '" aria-selected="true" data-tab="quick">ボタンで報告</button>' +
+      '<button type="button" role="tab" id="tt-' + uid + '" aria-controls="pt-' + uid + '" aria-selected="false" data-tab="text" tabindex="-1">口コミを書く</button></div>' +
+      '<form class="quick" id="pq-' + uid + '" role="tabpanel" aria-labelledby="tq-' + uid + '" data-pane="quick"><p class="small muted">いちばん近いものを押すだけで送れます。</p>' +
+      '<div class="btn-row kinds"><button type="submit" class="btn" name="kind" value="siren">サイレンが聞こえた</button><button type="submit" class="btn" name="kind" value="smoke">煙・においがする</button><button type="submit" class="btn primary" name="kind" value="fire">火が見える</button></div></form>' +
+      '<form class="text" id="pt-' + uid + '" role="tabpanel" aria-labelledby="tt-' + uid + '" data-pane="text" hidden><label class="sr" for="tx-' + uid + '">口コミ</label>' +
+      '<textarea id="tx-' + uid + '" name="body" maxlength="200" rows="3" placeholder="例：黒い煙が北の方に見えます。消防車が5台ほど来ています。"></textarea>' +
+      '<p class="small muted">見えたこと・聞こえたことを200文字まで。番地や人の名前、原因や被害者についての憶測は書かないでください。<a href="rules.html">投稿のルール</a></p>' +
+      '<button class="btn primary" type="submit">口コミを投稿する</button></form><p class="post-status small" aria-live="polite"></p>';
+  }
+  var tp = $('[data-town-page]');
+  if (tp) {
+    var prm = new URLSearchParams(location.search), code = prm.get('c') || '', tname = baseTown(prm.get('t') || '');
+    var ar = AREAS.codes[code];
+    var T = function (sel, t) { $(sel, tp).textContent = t; };
+    if (!ar || !tname) { T('.t-title', 'ページが見つかりません'); T('.t-lead', '地名で探し直してください。'); }
+    else {
+      var pref = ar[0], city = ar[1];
+      var f23 = townFile(pref, city, tname); if (f23) { location.replace(f23); }
+      var place = (is23(pref, city) ? '' : pref) + city + tname;
+      document.title = tname + '（' + pref + city + '）の火事どこ？今日のサイレン・火事情報｜火事どこ';
+      T('.t-eyebrow', pref + city + tname + 'の火事情報');
+      T('.t-title', tname + '（' + city + '）の火事はどこ？');
+      T('.t-lead', place + '付近の目撃報告・口コミと、報道された火事をまとめています。サイレンや煙に気づいたら、ここから近所の人と共有できます。');
+      T('.t-now', 'いまの' + tname); T('.t-board', tname + 'の口コミ'); T('.t-newsh', tname + 'で報道された火事');
+      var cr = $('.t-crumbs', tp); cr.innerHTML = '';
+      [['トップ', 'index.html'], [pref, prefHref(pref)]].concat(WARD_PARENT_OF(pref, city) ? [[WARD_PARENT_OF(pref, city), cityHref(pref, WARD_PARENT_OF(pref, city))]] : [])
+        .concat([[WARD_PARENT_OF(pref, city) ? city.slice(WARD_PARENT_OF(pref, city).length) : city, cityHref(pref, city)]]).forEach(function (x) { cr.appendChild(el('a', { href: x[1] }, x[0])); cr.appendChild(document.createTextNode(' ／ ')); });
+      cr.appendChild(document.createTextNode(tname));
+      $$('.t-sec', tp).forEach(function (s) { s.hidden = false; });
+      var lv = el('div', { class: 'live', 'data-live': '', 'data-pref': pref, 'data-city': city, 'data-town': tname, 'data-empty': 'いま、' + tname + 'で上がっている報告はありません。' });
+      $('.t-live', tp).appendChild(lv); loadLive();
+      var pn = el('div', { class: 'panel post', 'data-post': '', 'data-pref': pref, 'data-city': city, 'data-town': tname });
+      pn.innerHTML = panelHTML('tp', tname + 'で気づいたことを知らせる');
+      $('.t-post', tp).appendChild(pn); $('[name=pref]', pn).value = pref; $('[name=town]', pn).value = tname; initPanel(pn);
+      var cb = el('div', { class: 'comments', 'data-comments': '', 'data-pref': pref, 'data-city': city, 'data-town': tname });
+      cb.innerHTML = '<ul class="com-list" aria-live="polite"><li class="muted small">口コミを読み込んでいます…</li></ul>';
+      $('.t-comments', tp).appendChild(cb); initComments(cb);
+      var q = tname + ' 火事', sns = $('.t-sns', tp);
+      [['Xで「' + q + '」を見る', 'https://x.com/search?q=' + encodeURIComponent(q) + '&f=live'], ['Yahoo!リアルタイム検索', 'https://search.yahoo.co.jp/realtime/search?p=' + encodeURIComponent(q)],
+       ['ニュースを探す', 'https://news.google.com/search?q=' + encodeURIComponent(city + ' ' + q) + '&hl=ja&gl=JP&ceid=JP:ja']].forEach(function (l) { sns.appendChild(el('a', { class: 'btn', href: l[1], target: '_blank', rel: 'noopener' }, l[0])); });
+      loadNews().then(function (N) {
+        var box = $('.t-news', tp), ul = el('ul', { class: 'news' }), n = 0;
+        Object.keys(N).forEach(function (id) {
+          var x = N[id]; if (x.pref !== pref || x.city !== city || !x.town || baseTown(x.town) !== tname) return;
+          var li = el('li', { class: 'news-item' }); var a = el('a', { class: 'place', href: 'fire.html?id=' + encodeURIComponent(id) }); a.appendChild(el('b', null, x.city + x.town + (x.chome ? x.chome + '丁目' : '')));
+          li.appendChild(a); li.appendChild(el('span', { class: 'small muted' }, '最初の報道 ' + hm(x.first) + '　' + x.sources.map(function (s) { return s.name; }).join('・'))); ul.appendChild(li); n++;
+        });
+        if (n) box.appendChild(ul); else box.appendChild(el('p', { class: 'muted small' }, '直近30日に、' + tname + 'の火事の報道は見つかっていません。'));
+      });
+      loadTowns(code).then(function (list) {
+        var me = list.filter(function (x) { return x[0] === tname; })[0];
+        if (!me) { T('.t-lead', place + 'は町名の一覧にありませんでした。報告や口コミは送れます。'); }
+        var grid = $('.t-near', tp);
+        var near = list.filter(function (x) { return x[0] !== tname && x[1] != null; });
+        if (me && me[1] != null) near.sort(function (a, b) { return Math.hypot(a[1] - me[1], (a[2] - me[2]) * 0.81) - Math.hypot(b[1] - me[1], (b[2] - me[2]) * 0.81); });
+        near.slice(0, 24).forEach(function (x) { grid.appendChild(el('a', { href: townHref(pref, city, x[0]) }, x[0])); });
+      }, function () {});
+    }
+  }
+  function WARD_PARENT_OF(pref, city) { var r = null; (AREAS.parents[pref] || []).forEach(function (x) { if (x[1].indexOf(city) >= 0) r = x[0]; }); return r; }
+
   // ---------------- 問い合わせ・削除依頼 ----------------
   var ct = $('.contact-form');
   if (ct) {
@@ -324,7 +522,7 @@
   var fire = $('[data-fire]');
   if (fire) {
     var id = ''; try { id = new URLSearchParams(location.search).get('id') || ''; } catch (e) {}
-    var NEWS = readJSON('news-fires') || {}, WARD_FILES = readJSON('ward-files') || {};
+    var NEWS = {};
     var isNews = /^n-/.test(id);
     var shown = false;
     var stat = function (k, v, d, hot) {
@@ -353,9 +551,9 @@
       var crumb = $('.f-crumb');
       if (crumb) {
         crumb.innerHTML = '';
-        var wf = pref === '東京都' && WARD_FILES[ward]; if (wf) { crumb.appendChild(el('a', { href: wf + '.html' }, ward)); crumb.appendChild(document.createTextNode(' ／ ')); }
-        else { crumb.appendChild(document.createTextNode(pref + ward + ' ／ ')); }
-        var tf = townFile(pref, ward, town); if (tf) { crumb.appendChild(el('a', { href: tf }, baseTown(town))); crumb.appendChild(document.createTextNode(' ／ ')); }
+        crumb.appendChild(el('a', { href: prefHref(pref) }, pref)); crumb.appendChild(document.createTextNode(' ／ '));
+        if (codeOf(pref, ward) || is23(pref, ward)) { crumb.appendChild(el('a', { href: cityHref(pref, ward) }, ward)); crumb.appendChild(document.createTextNode(' ／ ')); }
+        if (town && codeOf(pref, ward)) { crumb.appendChild(el('a', { href: townHref(pref, ward, town) }, baseTown(town))); crumb.appendChild(document.createTextNode(' ／ ')); }
         crumb.appendChild(document.createTextNode('火事のページ'));
       }
       if (API && AREAS.prefs[pref] && AREAS.prefs[pref].indexOf(ward) >= 0) {
@@ -393,7 +591,7 @@
       shareButtons($('.f-share', fire), text, API + '/f/' + encodeURIComponent(x.id));
     };
     var renderNews = function (x) {
-      var place = x.ward + (x.town ? x.town + (x.chome ? x.chome + '丁目' : '') : '');
+      var place = placeOf({ pref: x.pref, city: x.city || x.ward, town: x.town ? x.town + (x.chome ? x.chome + '丁目' : '') : '' });
       setText('.f-kind', '報道された火事');
       setText('.f-title', place + 'の火事');
       setText('.f-lead', hm(x.first) + 'ごろから報道されている火事です。' + (x.building !== '建物不明' ? '建物：' + x.building + '。' : '') + '詳しくは報道各社の記事をご覧ください。');
@@ -404,16 +602,16 @@
       var ul = el('ul', { class: 'plain' });
       x.sources.forEach(function (s) { var li = el('li'); li.appendChild(el('a', { href: s.link, target: '_blank', rel: 'noopener nofollow' }, s.name + ' の記事')); li.appendChild(el('span', { class: 'small muted' }, '　' + hm(s.pub))); ul.appendChild(li); });
       $('.f-news', fire).appendChild(ul);
-      setup('東京都', x.ward, x.town, place + 'の火事');
+      setup(x.pref || '東京都', x.city || x.ward, x.town, place + 'の火事');
       var ss = $('.f-share-sec', fire); ss.hidden = false;
-      shareButtons($('.f-share', fire), '【報道】' + place + 'の火事（' + hm(x.first) + '〜）' + ' #' + x.ward + ' #火事', location.href);
+      shareButtons($('.f-share', fire), '【報道】' + place + 'の火事（' + hm(x.first) + '〜）' + ' #' + (x.city || x.ward) + ' #火事', location.href);
     };
     var notFound = function (t) {
       $$('.section', fire).forEach(function (s) { s.hidden = true; });
       setText('.f-title', '火事のページが見つかりません'); setText('.f-lead', t || 'URLが正しいか確かめてください。古い報告は表示されなくなることがあります。');
       var a = el('a', { class: 'btn', href: 'index.html' }, 'いまの火事を見る'); $('.f-stats', fire).appendChild(a);
     };
-    if (isNews) { if (NEWS[id]) renderNews(NEWS[id]); else notFound('この報道は表示期間（30日）を過ぎました。'); }
+    if (isNews) loadNews().then(function (N) { if (N[id]) renderNews(N[id]); else notFound('この報道は表示期間（30日）を過ぎました。'); });
     else if (!id) notFound();
     else if (!API) notFound('目撃報告の受付を準備中です。');
     else {

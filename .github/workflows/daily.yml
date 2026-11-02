@@ -23,8 +23,8 @@ jobs:
       - name: 東京消防庁から収集（朝の1回だけ）
         if: github.event.schedule != '7,37 * * * *'
         run: node collector/run.mjs && cd site && python3 build.py && node verify_live.mjs
-      - name: 報道から23区の火事を収集
-        run: node collector/news_run.mjs
+      - name: 報道から全国の火事を収集
+        run: node collector/news_jp.test.mjs && node collector/news_run.mjs
       - name: 受付サーバーのテスト
         run: node --no-warnings worker/test.mjs
       - name: 生成・検査

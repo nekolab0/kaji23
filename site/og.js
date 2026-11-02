@@ -15,25 +15,25 @@ h1{font-size:72px;font-weight:900;line-height:1.15;letter-spacing:.01em}
 const icon = '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c2341c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-10z"/></svg>';
 
 function wardHTML(w) {
-  return `<style>${css}</style><div class="brand">${icon}<span>火事どこ<b>23区</b></span></div>
+  return `<style>${css}</style><div class="brand">${icon}<span>火事<b>どこ</b></span></div>
 <h1>${esc(w.name)}で火事？<br>いま、どこで。</h1>
 <div class="sub">サイレン・煙の目撃情報と口コミを、町名ごとにリアルタイムで。<br>${esc(w.name)}の町名から探せます。</div>
 <span class="chip">近づかない・火や煙が見えたら119番</span>
-<div class="foot"><span>近所の人の報告＋報道＋東京消防庁の公開データ</span><span>火事どこ23区</span></div>`;
+<div class="foot"><span>近所の人の報告＋報道＋東京消防庁の公開データ</span><span>火事どこ</span></div>`;
 }
 function indexHTML() {
-  return `<style>${css}</style><div class="brand">${icon}<span>火事どこ<b>23区</b></span></div>
-<h1>近くで火事？<br>町名で、いまの状況を。</h1>
-<div class="sub">サイレン・煙の目撃情報と口コミを、東京23区の町ごとにリアルタイムで。</div>
+  return `<style>${css}</style><div class="brand">${icon}<span>火事<b>どこ</b></span></div>
+<h1>今、どこで<br>火事が起きている？</h1>
+<div class="sub">全国の火事の目撃情報・口コミ・報道を、<br>都道府県・市区町村・町ごとにリアルタイムで。</div>
 <span class="chip">見た・聞いたを報告して、近所と共有</span>
 <div class="foot"><span>近所の人の報告＋報道＋東京消防庁の公開データ</span><span>火や煙を見たら119番</span></div>`;
 }
 function liveHTML() {
-  return `<style>${css}</style><div class="brand">${icon}<span>火事どこ<b>23区</b></span></div>
+  return `<style>${css}</style><div class="brand">${icon}<span>火事<b>どこ</b></span></div>
 <h1>火事の目撃情報</h1>
 <div class="sub">いま近所の人から寄せられている<br>サイレン・煙・火の報告と、現場の口コミ。</div>
 <span class="chip">近づかない・火や煙が見えたら119番</span>
-<div class="foot"><span>東京23区・町名ごとにリアルタイム</span><span>火事どこ23区</span></div>`;
+<div class="foot"><span>全国・町名ごとにリアルタイム</span><span>火事どこ</span></div>`;
 }
 
 (async () => {

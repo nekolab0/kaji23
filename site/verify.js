@@ -102,22 +102,34 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   const extra = JSON.parse(fs.readFileSync(path.join(RAW, 'towns_extra.json'), 'utf8'));
   Object.entries(extra.wards).forEach(([k, v]) => v.towns.forEach(t => townBase[k].add(t)));
 
+  const AR = JSON.parse(fs.readFileSync(path.join(RAW, 'areas.json'), 'utf8'));
+  const TJ = JSON.parse(fs.readFileSync(path.join(RAW, 'towns_jp.json'), 'utf8')).towns;
+  const codeOfA = {}; Object.entries(AR.prefs).forEach(([p, l]) => l.forEach(([c, code]) => { codeOfA[p + '|' + c] = code; }));
+  const parentsA = new Set(Object.entries(AR.parents).flatMap(([p, l]) => l.map(([n]) => p + '|' + n)));
   // D10 町ページ
   const perWard = {}; model.towns.forEach(t => { perWard[t.ward] = (perWard[t.ward] || 0) + 1; });
   const noTown = wd.filter(w => !perWard[w.name]).map(w => w.name);
   const missing = model.towns.filter(t => !fs.existsSync(path.join(DIST, t.file))).map(t => t.file);
   add('D10 町ページ', model.towns.length >= 900 && !noTown.length && !missing.length, `${model.towns.length}町（渋谷区${perWard['渋谷区']}・目黒区${perWard['目黒区']}町を含む）${noTown.length ? '／町のない区：' + noTown.join('、') : ''}${missing.length ? '／ページなし：' + missing.slice(0, 5).join('、') : ''}`);
+  // D11 全国のデータとページ
+  const nCity = Object.values(AR.prefs).reduce((a, l) => a + l.length, 0), nTown = Object.values(TJ).reduce((a, l) => a + l.length, 0);
+  const prefMissing = Object.keys(AR.prefs).filter(p => !fs.existsSync(path.join(DIST, `p-${p}.html`)));
+  const cityPages = fs.readdirSync(DIST).filter(f => f.startsWith('c-')).length;
+  const shards = fs.readdirSync(path.join(DIST, 's')).length, townJs = fs.readdirSync(path.join(DIST, 't')).length;
+  add('D11 全国のデータとページ', Object.keys(AR.prefs).length === 47 && nCity >= 1890 && nTown >= 120000 && !prefMissing.length && cityPages >= 1880 && shards === 512 && townJs >= 1880,
+    `47都道府県・市区町村${nCity}・町${nTown.toLocaleString()}、都道府県ページ${47 - prefMissing.length}・市区町村ページ${cityPages}（23区は別ページ）、検索索引${shards}ファイル・町の位置${townJs}ファイル`);
   const nb = [], ids = new Set();
   const col = new Date(news.collectedAt || Date.now());
   for (const x of news.incidents) {
-    if (!townBase[x.ward]) nb.push(`${x.id}:23区以外`);
-    else if (x.town && !townBase[x.ward].has(x.town)) nb.push(`${x.id}:町名が区の管轄表にない`);
+    const pref = x.pref || '東京都', city = x.city || x.ward, code = codeOfA[pref + '|' + city];
+    if (!code && !parentsA.has(pref + '|' + city)) nb.push(`${x.id}:市区町村が一覧にない`);
+    else if (x.town && code && !(TJ[code] || []).some(t => t[0] === x.town) && !(pref === '東京都' && townBase[city] && townBase[city].has(x.town))) nb.push(`${x.id}:町名が一覧にない`);
     if (!x.sources.length || x.sources.length > 3 || x.sources.some(s => !/^https:\/\//.test(s.link) || !s.name)) nb.push(`${x.id}:報道元のリンク不正`);
     const age = (col - new Date(x.first)) / 864e5;
     if (!(age >= -0.1 && age <= 30)) nb.push(`${x.id}:日付が30日の範囲外`);
     if (ids.has(x.id)) nb.push(`${x.id}:重複`); ids.add(x.id);
   }
-  add('N1 報道された火事のデータ', !nb.length, nb.join(' / ') || `${news.incidents.length}件。区・町名は消防署の管轄表と一致、報道元リンクはhttps、30日以内、重複なし`);
+  add('N1 報道された火事のデータ', !nb.length, nb.join(' / ') || `${news.incidents.length}件。市区町村・町名は全国の一覧と一致、報道元リンクはhttps、30日以内、重複なし`);
 
   // W1 サイレン報告の受付サーバー（Cloudflare Worker）の動作テスト
   const wp = path.join(OUT, 'worker.json');
@@ -131,7 +143,9 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   const allPages = fs.readdirSync(DIST).filter(f => f.endsWith('.html'));
   const machi = allPages.filter(f => f.startsWith('m-')).sort();
   // ブラウザで開くのは、町ページ以外の全ページ＋町ページの見本（25ページに1つ）
-  const pages = allPages.filter(f => !f.startsWith('m-')).concat(machi.filter((f, i) => i % 25 === 0));
+  const cpages = allPages.filter(f => f.startsWith('c-')).sort();
+  const pages = allPages.filter(f => !f.startsWith('m-') && !f.startsWith('c-')).concat(machi.filter((f, i) => i % 25 === 0), cpages.filter((f, i) => i % 60 === 0),
+    ['town.html?c=23106&t=栄', 'town.html?c=14102&t=三ツ沢下町', 'fire.html?id=n-' + (news.incidents[0] ? news.incidents[0].id : '')]);
   const browser = await chromium.launch();
 
   // 受付サーバーの代わりに、本物の処理（worker/src/index.js）を検査用のSQLiteで動かす
@@ -185,8 +199,8 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     page.on('pageerror', e => consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${e.message}`));
     page.on('requestfailed', r => { if (!/fonts\.g|x\.com|twitter|yahoo|google|workers\.dev/.test(r.url())) reqFail.push(`${r.url()} ${r.failure() && r.failure().errorText}`); });
     for (const f of pages) {
-      await page.goto('file://' + path.join(DIST, f), { waitUntil: 'load' });
-      await page.waitForTimeout(f === 'index.html' || f.startsWith('m-') || f === 'fire.html' ? 150 : 0);
+      await page.goto('file://' + path.join(DIST, f.split('?')[0]) + (f.includes('?') ? '?' + f.split('?')[1].split('&').map(kv => kv.split('=').map(encodeURIComponent).join('=')).join('&') : ''), { waitUntil: 'load' });
+      await page.waitForTimeout(/^(index|fire|town)\.html|^m-|^p-/.test(f) ? 200 : 0);
       const realW = await page.evaluate(() => window.innerWidth);
       if (realW !== width) overflow.push(`${width}px ${f}: 表示幅が${realW}px（viewport設定が効いていない）`);
       const o = await page.evaluate(() => {
@@ -232,23 +246,34 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   for (const w of model.wards) {
     await page.goto('file://' + path.join(DIST, w.slug + '.html'));
     const items = await page.$$eval('.news-item', els => els.map(e => e.textContent));
-    const want = news.incidents.filter(x => x.ward === w.name);
+    const want = news.incidents.filter(x => (x.pref || '東京都') === '東京都' && (x.city || x.ward) === w.name);
     if (items.length !== want.length) newsBad.push(`${w.name}:表示${items.length}≠データ${want.length}`);
     items.forEach(t => { if (SENSITIVE.test(t)) newsBad.push(`${w.name}:配慮の要る語`); if (t.length > 160) newsBad.push(`${w.name}:長すぎる（見出し文の転載の疑い）`); });
     want.filter(x => x.sensitive).forEach(() => { if (items.some(t => /亡くなった方|けが人/.test(t))) newsBad.push(`${w.name}:配慮対象に死傷を表示`); });
   }
-  for (const x of news.incidents.filter(x => x.town)) {
-    const t = model.towns.find(t => t.ward === x.ward && t.base === x.town);
+  for (const x of news.incidents.filter(x => x.town && (x.pref || '東京都') === '東京都' && model.towns.some(t => t.ward === (x.city || x.ward)))) {
+    const t = model.towns.find(t => t.ward === (x.city || x.ward) && t.base === x.town);
     if (!t) { newsBad.push(`${x.id}:町ページなし`); continue; }
     const h = fs.readFileSync(path.join(DIST, t.file), 'utf8');
     if (!h.includes(encodeURIComponent('n-' + x.id).replace(/%2D/g, '-')) && !h.includes('n-' + x.id)) newsBad.push(`${t.file}:報道が出ていない`);
   }
   await page.goto('file://' + path.join(DIST, 'index.html'));
   const topNews = await page.$$eval('.news-item', els => els.length);
-  if (topNews !== Math.min(6, news.incidents.length)) newsBad.push(`トップ:表示${topNews}`);
+  if (topNews !== Math.min(12, news.incidents.length)) newsBad.push(`トップ:表示${topNews}`);
 
   // R7 町名検索と現在地
   const searchBad = [];
+  const sug = async (q) => { await page.fill('#nq', q); await page.waitForTimeout(500); return page.$$eval('.nq-item a', as => as.map(a => [a.querySelector('.nq-name').textContent, a.getAttribute('href')])); };
+  let s1 = await sug('中区');
+  if (!['名古屋市中区', '横浜市中区', '堺市中区'].every(n => s1.some(x => x[0].startsWith(n)))) searchBad.push('「中区」で政令市の中区が出ない');
+  if (!s1.some(x => /^town\.html\?c=\d{5}&t=/.test(x[1]))) searchBad.push('「中区」で町が出ない');
+  s1 = await sug('神奈川'); if (!s1[0] || s1[0][1] !== 'p-神奈川県.html') searchBad.push(`「神奈川」の先頭が${s1[0] && s1[0][1]}`);
+  s1 = await sug('横浜市神奈川区三ツ沢'); if (!s1.some(x => x[0].startsWith('横浜市神奈川区三ツ沢下町'))) searchBad.push('町名まで続けて書くと出ない');
+  s1 = await sug('赤羽西'); if (!s1[0] || s1[0][1] !== 'm-kita-赤羽西.html') searchBad.push(`23区の町は町ページへ: ${s1[0] && s1[0][1]}`);
+  s1 = await sug('府中市'); if (s1.filter(x => x[0].startsWith('府中市')).length < 2) searchBad.push('同じ名前の市（東京都・広島県の府中市）が両方出ない');
+  await page.fill('#nq', '大阪府'); await page.waitForTimeout(400); await page.press('#nq', 'Enter');
+  await page.waitForURL(/p-/, { timeout: 4000 }).catch(() => searchBad.push('Enterで都道府県ページへ移動しない'));
+  await page.goto('file://' + path.join(DIST, 'towns.html'));
   await page.fill('#q', '赤羽西');
   const r1 = await page.$$eval('.q-results a', as => as.map(a => a.getAttribute('href')));
   if (r1[0] !== 'm-kita-赤羽西.html') searchBad.push(`「赤羽西」の先頭が${r1[0]}`);
@@ -260,7 +285,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   const gctx = await mkctx(375, { geolocation: { latitude: 35.7781, longitude: 139.7186 }, permissions: ['geolocation'] });
   const gp = await gctx.newPage();
   await gp.goto('file://' + path.join(DIST, 'index.html'));
-  await gp.click('.geo-go');
+  await gp.click('[data-nsearch] .geo-go');
   await gp.waitForURL(/m-kita-/, { timeout: 5000 }).catch(() => {});
   if (!decodeURIComponent(gp.url()).endsWith('m-kita-赤羽西.html')) searchBad.push(`現在地→${decodeURIComponent(gp.url()).split('/').pop()}`);
   await gp.goto('file://' + path.join(DIST, 'index.html'));
@@ -270,6 +295,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   if (gv !== '東京都|北区|赤羽西2丁目') searchBad.push(`投稿欄の現在地が不正 ${gv}`);
   await gctx.close();
 
+  const AR = JSON.parse(fs.readFileSync(path.join(RAW, 'areas.json'), 'utf8'));
   // R11 報告→火事のページ→口コミ→通報→共有（受付サーバーは本物の処理を検査用DBで）
   const flowBad = [], flowOk = [];
   if (!API) flowBad.push('受付サーバーのURLが未設定');
@@ -316,8 +342,11 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
         .then(() => flowOk.push('火事のページから報告を追加'), () => flowBad.push('火事のページの報告が件数に反映されない'));
     }
     await fp.goto('file://' + path.join(DIST, 'index.html'));
+    await fp.waitForFunction(() => /赤羽西2丁目付近/.test(document.querySelector('[data-live]').textContent), null, { timeout: 5000 })
+      .then(() => flowOk.push('トップの一覧'), () => flowBad.push('トップに出ない'));
+    await fp.goto('file://' + path.join(DIST, 'p-東京都.html'));
     await fp.waitForFunction(() => /赤羽西2丁目付近/.test(document.querySelector('[data-live]').textContent) && /報告2/.test(document.querySelector('[data-ward-tile="北区"]').textContent), null, { timeout: 5000 })
-      .then(() => flowOk.push('トップの一覧と区の地図'), () => flowBad.push('トップに出ない'));
+      .then(() => flowOk.push('東京都ページの一覧と23区の地図'), () => flowBad.push('東京都ページに出ない'));
     clock += 200; await fp.goto('file://' + path.join(DIST, 'm-kita-赤羽西.html')); // 火事から3時間以上あと → 町の掲示板へ
     await fp.click('[data-post] [data-tab=text]');
     await fp.fill('[data-post] textarea', '夜中にサイレンが多い町です');
@@ -347,6 +376,16 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       await fp.click('[data-post] form.text button[type=submit]');
       const clink = await fp.waitForSelector('[data-post] .post-status a', { timeout: 5000 }).then(h => h.getAttribute('href'), () => null);
       if (clink !== olink) flowBad.push(`口コミが同じ場所の火事に付かない ${clink}`); else flowOk.push('場所だけ選んだ口コミが進行中の火事に付く');
+      // 全国の市区町村ページ・町ページに、いまの火事と口コミが出る
+      await fp.goto('file://' + path.join(DIST, 'c-大阪府-大阪市北区.html'));
+      await fp.waitForFunction(() => /梅田1丁目付近/.test(document.querySelector('[data-live]').textContent), null, { timeout: 5000 })
+        .then(() => flowOk.push('市区町村ページ（大阪市北区）'), () => flowBad.push('市区町村ページに出ない'));
+      const oc = AR.prefs['大阪府'].find(x => x[0] === '大阪市北区')[1];
+      await fp.goto('file://' + path.join(DIST, 'town.html') + '?c=' + oc + '&t=' + encodeURIComponent('梅田'));
+      await fp.waitForFunction(() => /梅田1丁目付近/.test((document.querySelector('[data-live]') || {}).textContent || '') && /梅田の方で煙/.test(document.querySelector('.t-comments').textContent), null, { timeout: 6000 })
+        .then(() => flowOk.push('全国の町ページ（梅田）'), () => flowBad.push('全国の町ページに報告・口コミが出ない'));
+      const near = await fp.$$eval('.t-near a', a => a.length);
+      if (near < 5) flowBad.push('近くの町が出ない');
     }
     const nid = news.incidents[0] && 'n-' + news.incidents[0].id;
     if (nid) {
@@ -373,7 +412,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   add('R4 サイト内リンク・ページ内リンク', !links.length, links.slice(0, 20).join(' / ') || `${allPages.length}ページすべてのリンク先とアンカーが存在`);
   add('R5 タイトル・見出し・説明文・OGP画像', !meta.length, meta.slice(0, 10).join(' / ') || `${allPages.length}ページすべてにあり`);
   add('R6 表示されている数字＝データ', !numbers.length, numbers.join(' / ') || '23区の統計と58署のカードすべて一致');
-  add('R7 町名検索・現在地', !searchBad.length, searchBad.join(' / ') || '「赤羽西」→赤羽西の町ページ、渋谷区の町も検索可、Enterで移動、現在地（北区赤羽西二丁目）→赤羽西の町ページ・投稿欄に東京都/北区/赤羽西2丁目');
+  add('R7 全国の検索・現在地', !searchBad.length, searchBad.join(' / ') || '「中区」→名古屋・横浜・堺の中区と町、「神奈川」→神奈川県、町名まで続けて入力、23区の町は町ページへ、同名の府中市は両方、Enterで移動、現在地→赤羽西の町ページ・投稿欄に東京都/北区/赤羽西2丁目');
   add('R9 出典ボックスの見出し', !provBad.length, provBad.join(' / ') || '出典の各行が「今年の件数／前年同時期／○○○○年」で始まる');
   add('R10 報道された火事の表示', !newsBad.length, newsBad.join(' / ') || `区ページの件数がデータと一致（計${news.incidents.length}件）、町ページにも振り分け、見出し文・配慮の要る語は表示なし`);
   add('R11 報告・火事のページ・口コミ・共有', !flowBad.length, flowBad.join(' / ') || flowOk.join('、') + 'を確認');
