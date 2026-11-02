@@ -3,3 +3,4 @@ dist/
 worker/deploy.log
 .wrangler/
 verify/tmp/
+__pycache__/
