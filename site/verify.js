@@ -127,6 +127,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     const c = await browser.newContext({ viewport: { width, height: 900 }, isMobile: width < 500, hasTouch: width < 500 });
     // フォントCDNは作業環境から到達できないため遮断（公開先では読み込まれる）
     await c.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    await c.route(/\/api\/reports?(\?|$)/, r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: '{"wards":{}}' }));
     return c;
   };
   const consoleErr = [], reqFail = [], overflow = [], links = [], meta = [], numbers = [];
@@ -216,7 +217,11 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
 
   // サイレン報告: 保存先がないときは案内だけ（ボタンを隠す）、保存先があるときは送信→集計が出る
   const repBad = [];
-  await page.goto('file://' + path.join(DIST, 'kita.html'));
+  const TMP = path.join(OUT, 'tmp'); fs.rmSync(TMP, { recursive: true, force: true }); fs.mkdirSync(path.join(TMP, 'assets'), { recursive: true });
+  for (const f of ['site.css', 'site.js']) fs.copyFileSync(path.join(DIST, 'assets', f), path.join(TMP, 'assets', f));
+  for (const f of ['kita.html', 'index.html']) fs.writeFileSync(path.join(TMP, f), fs.readFileSync(path.join(DIST, f), 'utf8').replace(/data-api="[^"]*"/g, 'data-api=""'));
+  const API = (fs.readFileSync(path.join(DIST, 'kita.html'), 'utf8').match(/data-api="([^"]*)"/) || [])[1] || '';
+  await page.goto('file://' + path.join(TMP, 'kita.html'));
   const offline = await page.evaluate(() => { const b = document.querySelector('[data-reports]'); return { hidden: b.querySelector('.report-form').offsetHeight === 0, msg: b.querySelector('.report-status').textContent }; });
   if (!offline.hidden || !/災害情報案内/.test(offline.msg)) repBad.push('保存先なしのとき案内が出ない');
   const fake = await browser.newContext({ viewport: { width: 375, height: 900 } });
@@ -233,7 +238,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   });
   const fp = await fake.newPage();
   const errs = []; fp.on('pageerror', e => errs.push(e.message));
-  await fp.goto('file://' + path.join(DIST, 'kita.html'));
+  await fp.goto('file://' + path.join(TMP, 'kita.html'));
   await fp.waitForFunction(() => !document.querySelector('.report-form button').disabled, null, { timeout: 5000 }).catch(() => repBad.push('ボタンが押せるようにならない'));
   const first = await fp.$eval('.report-list', e => e.textContent);
   if (!/北区 全体.*1/.test(first) || /火 1/.test(first)) repBad.push(`初期集計が不正「${first.slice(0, 60)}」`);
@@ -245,12 +250,36 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   await fp.click('.report button[value=siren]');
   const again = await fp.$eval('.report-status', e => e.textContent);
   if (!/10分/.test(again)) repBad.push('連投が止まらない');
-  await fp.goto('file://' + path.join(DIST, 'index.html'));
+  await fp.goto('file://' + path.join(TMP, 'index.html'));
   await fp.waitForFunction(() => !document.querySelector('.report-form button').disabled, null, { timeout: 5000 }).catch(() => {});
   await fp.click('.report button[value=siren]');
   if (!/区を選んで/.test(await fp.$eval('.report-status', e => e.textContent))) repBad.push('トップで区未選択を止めない');
   if (errs.length) repBad.push(errs.join(' / '));
   await fake.close();
+  if (API) {
+    // 本番の受付サーバーにつながる設定のとき: 集計の表示・送信内容・連投拒否の表示（サーバーは検査用の代役）
+    const ac = await browser.newContext({ viewport: { width: 375, height: 900 } });
+    await ac.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    const sent = []; let n = 0;
+    await ac.route(/\/api\/reports?(\?|$)/, async r => {
+      const h = { 'Access-Control-Allow-Origin': '*' };
+      if (r.request().method() === 'POST') { sent.push(JSON.parse(r.request().postData())); n++;
+        return r.fulfill(n === 1 ? { status: 200, headers: h, contentType: 'application/json', body: '{"ok":true}' } : { status: 429, headers: h, contentType: 'application/json', body: JSON.stringify({ error: '同じ区への報告は10分に1回までです' }) }); }
+      return r.fulfill({ status: 200, headers: h, contentType: 'application/json', body: JSON.stringify({ wards: { '北区': { siren: 2, smoke: 0, fire: 1, total: 3, last: new Date().toISOString(), towns: { '赤羽西1丁目': 2 } } } }) });
+    });
+    const ap = await ac.newPage(); const aerr = []; ap.on('pageerror', e => aerr.push(e.message));
+    await ap.goto('file://' + path.join(DIST, 'kita.html'));
+    await ap.waitForFunction(() => /北区 全体/.test(document.querySelector('.report-list').textContent), null, { timeout: 5000 }).catch(() => repBad.push('本番設定: 集計が表示されない'));
+    await ap.fill('.report .town-in', '赤羽西1丁目3番地');
+    await ap.click('.report button[value=smoke]');
+    await ap.waitForFunction(() => /報告しました/.test(document.querySelector('.report-status').textContent), null, { timeout: 5000 }).catch(() => repBad.push('本番設定: 送信完了が出ない'));
+    if (!sent[0] || sent[0].ward !== '北区' || sent[0].kind !== 'smoke' || sent[0].town !== '赤羽西1丁目') repBad.push(`本番設定: 送信内容が不正 ${JSON.stringify(sent[0])}`);
+    await ap.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
+    await ap.click('.report button[value=siren]');
+    await ap.waitForFunction(() => /10分/.test(document.querySelector('.report-status').textContent), null, { timeout: 5000 }).catch(() => repBad.push('本番設定: サーバーの連投拒否が表示されない'));
+    if (aerr.length) repBad.push(aerr.join(' / '));
+    await ac.close();
+  }
 
   // 町名検索
   await page.goto('file://' + path.join(DIST, 'towns.html'));
@@ -275,7 +304,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   add('R7 町名検索', searchOk && res2.length >= 1, `「赤羽」${res.length}件→赤羽消防署、「西新宿」${res2.length}件（${res2[0] || ''}）`);
   add('R9 出典ボックスの見出し', !provBad.length, provBad.join(' / ') || '出典の各行が「今年の件数／前年同時期／○○○○年」で始まる');
   add('R10 報道された火事の表示', !newsBad.length, newsBad.join(' / ') || `23区ページの件数がデータと一致（計${news.incidents.length}件）、見出し文・配慮の要る語は表示なし`);
-  add('R11 サイレン報告ボタン', !repBad.length, repBad.join(' / ') || '保存先なし→案内のみ表示、保存先あり→送信・町名の番地切り捨て・集計表示・10分の連投制限・区未選択の停止を確認');
+  add('R11 サイレン報告ボタン', !repBad.length, repBad.join(' / ') || `保存先なし→案内のみ、共有保存領域→送信・番地切り捨て・集計・10分制限・区未選択の停止${API ? '、本番の受付サーバー設定→集計表示・送信内容・サーバー側の連投拒否の表示' : ''}を確認`);
   add('R8 表の並べ替え', JSON.stringify(before) !== JSON.stringify(after), `並べ替え前:${before.join('・')} 後:${after.join('・')}`);
 
   const lp = path.join(OUT, 'live.json');
