@@ -1,15 +1,16 @@
+# Cloudflare の「GitHub から取り込み（Workers Builds）」で、このフォルダ（worker/）を自動公開する
 name = "kaji23-reports"
 main = "src/index.js"
 compatibility_date = "2025-10-01"
+workers_dev = true
 
 [[d1_databases]]
 binding = "DB"
 database_name = "kaji23"
-database_id = "（wrangler d1 create kaji23 の結果を貼る）"
+database_id = "4974a4be-68b3-4de6-bb89-786bd46cff1a"
 
 [vars]
-ALLOW_ORIGIN = "https://（公開するドメイン）"
-# SALT は wrangler secret put SALT で設定（公開しない）
+ALLOW_ORIGIN = "*"   # 独自ドメインを決めたら "https://（ドメイン）" に
 
 [triggers]
-crons = ["17 4 * * *"]
+crons = ["17 4 * * *"]   # 毎日、7日より古い報告を削除

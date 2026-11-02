@@ -3,10 +3,9 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import { handle } from './src/index.js';
 const db = new DatabaseSync(':memory:');
-db.exec(fs.readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
 const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
   bind: (...a) => { args = a; return o; }, first: async () => st.get(...args), run: async () => st.run(...args), all: async () => ({ results: st.all(...args) }) }; return o; } };
-const env = { DB: D1, SALT: 'test', ALLOW_ORIGIN: 'https://example.jp' };
+const env = { DB: D1, ALLOW_ORIGIN: 'https://example.jp' };
 const req = (method, path, body, ip = '1.2.3.4') => new Request('https://w.example' + path, { method, body: body && JSON.stringify(body), headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': ip } });
 const results = []; const ok = (name, cond, detail = '') => { results.push({ name, ok: !!cond, detail }); };
 const t0 = new Date('2026-11-02T10:00:00Z');
@@ -35,6 +34,8 @@ ok('区・町ごとの集計', j.wards['北区'].total === 3 && j.wards['北区'
 ok('他サイトからの読み込み許可（CORS）', r.headers.get('Access-Control-Allow-Origin') === 'https://example.jp');
 r = await handle(req('GET', '/api/reports?hours=1'), env, new Date(+t0 + 5 * 3600e3));
 ok('時間の範囲外は数えない', Object.keys((await r.json()).wards).length === 0);
+const salt = db.prepare("SELECT v FROM meta WHERE k='salt'").get();
+ok('表と塩を自動で用意（塩はランダム48桁）', salt && /^[0-9a-f]{48}$/.test(salt.v));
 const fails = results.filter(x => !x.ok);
 results.forEach(x => console.log(`${x.ok ? 'PASS' : 'FAIL'}  ${x.name}${x.detail !== '' ? ' — ' + x.detail : ''}`));
 fs.writeFileSync(new URL('../verify/worker.json', import.meta.url), JSON.stringify({ at: new Date().toISOString(), results }));

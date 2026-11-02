@@ -18,16 +18,10 @@
 - 利用者の報告（上記7）… 「サイレンが聞こえた／煙／火」をワンタップで。近くの人の報告が集まると、その区・町に件数が出る
 を組み合わせる。多摩地区・他県に広げるときは、録音で案内している消防本部の災害案内ダイヤル（自動発信＋文字起こし）や、市のメール配信（すぐメール等）を加える。
 
-## 受付サーバーの公開手順（初回だけ）
-```
-cd worker
-npx wrangler login                       # Cloudflare アカウント（無料）でログイン
-npx wrangler d1 create kaji23            # 表示された database_id を wrangler.toml に貼る
-npx wrangler d1 execute kaji23 --remote --file=schema.sql
-npx wrangler secret put SALT             # 長いランダム文字列を入力
-npx wrangler deploy                      # https://kaji23-reports.<名前>.workers.dev が発行される
-```
-発行されたURLを GitHub リポジトリの Settings → Variables に `REPORTS_API` として登録すると、次の生成からボタンがそこへ送信するようになる。無料枠（1日10万リクエスト・D1 5GB）で足りる想定。
+## 受付サーバーの公開
+Cloudflare の Workers & Pages で、このリポジトリを「GitHub から取り込み」済み（ルートディレクトリ `worker`）。`main` に push すると Cloudflare 側で自動公開される。
+データベース（D1 `kaji23`）の表とハッシュ用の塩は、受付サーバーが初回アクセス時に自動で作る。秘密鍵の登録は不要。
+公開先URLを `worker/url.txt` に書くと、次のサイト生成からボタンがそこへ送信する。
 
 ## 手動で動かす
 ```

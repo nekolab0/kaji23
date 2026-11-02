@@ -22,9 +22,25 @@ async function sha256(text) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 
+// 初回アクセス時に表を作り、ハッシュ用の塩をランダムに作って保存する（手作業の設定・秘密鍵の登録を不要にする）
+let ready = null;
+async function setup(env) {
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, ward TEXT NOT NULL, town TEXT,
+    kind TEXT NOT NULL CHECK (kind IN ('siren','smoke','fire')), at TEXT NOT NULL, who TEXT NOT NULL)`).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_reports_at ON reports(at)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_reports_who ON reports(who, ward, at)').run();
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)').run();
+  if (env.SALT) return env.SALT;
+  const rnd = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
+  await env.DB.prepare('INSERT OR IGNORE INTO meta (k, v) VALUES (?, ?)').bind('salt', rnd).run();
+  return (await env.DB.prepare('SELECT v FROM meta WHERE k = ?').bind('salt').first()).v;
+}
+
 export async function handle(request, env, now = new Date()) {
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return cors(env, new Response(null, { status: 204 }));
+  if (!ready || ready.env !== env) { const p = setup(env); ready = { env, p }; p.catch(() => { ready = null; }); }
+  const salt = await ready.p;
 
   if (url.pathname === '/api/report' && request.method === 'POST') {
     let body;
@@ -39,7 +55,7 @@ export async function handle(request, env, now = new Date()) {
     if (town && !/^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー々ヶケ0-9０-９・]+$/u.test(town)) return json(env, { error: '町名に使えない文字が含まれています' }, 400);
     const ip = request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For') || 'unknown';
     const day = now.toISOString().slice(0, 10);
-    const who = await sha256(`${ip}|${env.SALT || 'change-me'}|${day}`);
+    const who = await sha256(`${ip}|${salt}|${day}`);
     const since = new Date(now - COOLDOWN_MIN * 60e3).toISOString();
     const dup = await env.DB.prepare('SELECT COUNT(*) AS n FROM reports WHERE who = ? AND ward = ? AND at > ?').bind(who, ward, since).first();
     if (dup && dup.n > 0) return json(env, { error: `同じ区への報告は${COOLDOWN_MIN}分に1回までです`, cooldown: true }, 429);
@@ -68,6 +84,7 @@ export default {
   fetch: (request, env) => handle(request, env),
   // 毎日、古い報告を削除
   scheduled: async (event, env) => {
+    await setup(env);
     await env.DB.prepare('DELETE FROM reports WHERE at < ?').bind(new Date(Date.now() - KEEP_DAYS * 864e5).toISOString()).run();
   },
 };
