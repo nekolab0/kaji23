@@ -15,7 +15,9 @@ export const SOURCES = [
   { id: 'okayama', name: '岡山市消防局（災害情報）', url: 'https://syoubou.city.okayama.jp/fire/saigai/saigaipc.html', pref: '岡山県', type: 'sentence', wardCity: '岡山市' },
   ...['kurume', 'omuta', 'yame', 'chikugo', 'miyama', 'asakura'].map(k => ({
     id: 'chikugo-' + k, name: '筑後地区消防指令センター（消防出動情報）', url: `http://www.center-chikugo119.jp/fire/saigai/${k}PcSel.html`, pref: '福岡県', type: 'sentence' })),
-  { id: 'sendai', name: '仙台市消防局（災害情報）', url: 'http://sendaicity.bosai.info/sendaicity/input1/index.html', pref: '宮城県', type: 'sentence', wardCity: '仙台市' },
+  { id: 'sendai', name: '仙台市（杜の都防災Web 火災等の発生情報）', url: 'http://sendaicity.bosai.info/sendaicity/fireinfo/index.html', pref: '宮城県', type: 'sentence', wardCity: '仙台市' },
+  { id: 'nagano', name: '長野市消防局（長野市防災情報ポータル）', url: 'https://www.nagano-bousai.jp/', pref: '長野県', type: 'sentence' },
+  { id: 'kitakyushu', name: '北九州市消防局（もらって安心災害情報 配信履歴）', url: 'http://kitakyushu-fd.site2.ktaiwork.jp/', pref: '福岡県', type: 'sentence', wardCity: '北九州市' },
 ];
 
 const KNUM = { 〇: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
