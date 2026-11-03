@@ -1,4 +1,4 @@
-// 火事どこ: 町名検索・現在地・いまの火事・目撃報告（全国）・口コミ・火事のページ・共有
+// 火事速: 町名検索・現在地・いまの火事・目撃報告（全国）・口コミ・火事のページ・共有
 (function () {
   'use strict';
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
@@ -465,7 +465,7 @@
       var pref = ar[0], city = ar[1];
       var f23 = townFile(pref, city, tname); if (f23) { location.replace(f23); }
       var place = (is23(pref, city) ? '' : pref) + city + tname;
-      document.title = tname + '（' + pref + city + '）の火事どこ？今日のサイレン・火事情報｜火事どこ';
+      document.title = tname + '（' + pref + city + '）の火事どこ？今日のサイレン・火事情報｜火事速';
       T('.t-eyebrow', pref + city + tname + 'の火事情報');
       T('.t-title', tname + '（' + city + '）の火事はどこ？');
       T('.t-lead', place + '付近の目撃報告・口コミと、報道された火事をまとめています。サイレンや煙に気づいたら、ここから近所の人と共有できます。');
@@ -548,7 +548,7 @@
     };
     var setup = function (pref, ward, town, title) {
       if (shown) return; shown = true;
-      document.title = title + '｜火事どこ';
+      document.title = title + '｜火事速';
       var crumb = $('.f-crumb');
       if (crumb) {
         crumb.innerHTML = '';

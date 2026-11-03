@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""火事どこ 静的サイト生成（全国＋東京23区の詳しいページ）
+"""火事速（かじそく） 静的サイト生成（全国＋東京23区の詳しいページ）
 入力: data/raw/tfd_*.json（東京消防庁から収集）, pop_*.json（東京都の統計）, contacts.json
 出力: dist/（そのまま公開できる静的サイト）
 """
@@ -11,8 +11,8 @@ ROOT = Path(__file__).resolve().parent.parent
 RAW = ROOT / 'data' / 'raw'
 DIST = ROOT / 'dist'
 SITE = ROOT / 'site'
-SITE_NAME = '火事どこ'
-SITE_URL = (os.environ.get('SITE_URL') or 'https://nekolab0.github.io/kaji23').rstrip('/')  # 独自ドメインにしたら GitHub の変数 SITE_URL を設定するだけで全ページの正規URL・共有URL・サイトマップが切り替わる
+SITE_NAME = '火事速'
+SITE_URL = (os.environ.get('SITE_URL') or 'https://kajisoku.jp').rstrip('/')  # 独自ドメインにしたら GitHub の変数 SITE_URL を設定するだけで全ページの正規URL・共有URL・サイトマップが切り替わる
 TFD = 'https://www.tfd.metro.tokyo.lg.jp'
 THIS_YEAR = 2026
 
@@ -295,7 +295,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
     head += f'\n<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>'
     header = f'''<header class="site-head"><div class="wrap">
   <div class="head-row">
-    <a class="logo" href="index.html">{FIRE_ICON}<span>火事<b>どこ</b></span></a>
+    <a class="logo" href="index.html">{FIRE_ICON}<span>火事<b>速</b></span></a>
     <div class="tel-chip">火や煙を見たら<br><strong>119番</strong></div>
   </div>
   <nav class="nav" aria-label="サイト内">{nav}</nav>
@@ -631,7 +631,7 @@ def rules_page():
 <li>報告の明細は30日で削除します。</li>
 <li>報告・口コミは利用者の投稿で、運営者が内容を確認したものではありません。消防への通報にもなりません。</li></ul></section>
 </div>'''
-    return page('rules', f'投稿のルールと削除依頼｜{SITE_NAME}', '火事どこ23区の目撃報告・口コミの投稿ルール、不適切な投稿の通報と削除依頼について。', body)
+    return page('rules', f'投稿のルールと削除依頼｜{SITE_NAME}', '火事速の目撃報告・口コミの投稿ルール、不適切な投稿の通報と削除依頼について。', body)
 
 # ---------- 比較 ----------
 def ranking_page():
@@ -849,6 +849,9 @@ def build(report=None):
         + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in urls) + '</urlset>\n', encoding='utf-8')
     (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
+    _host = SITE_URL.split('://', 1)[-1].split('/')[0]
+    if '/' not in SITE_URL.split('://', 1)[-1] and not _host.endswith('github.io'):
+        (DIST / 'CNAME').write_text(_host + '\n', encoding='utf-8')  # GitHub Pages の独自ドメイン
     return sorted(pages)
 
 if __name__ == '__main__':

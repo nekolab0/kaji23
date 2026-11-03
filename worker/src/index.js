@@ -1,4 +1,4 @@
-// 火事どこ — 目撃報告・口コミの受付サーバー（Cloudflare Workers + D1）。全国の市区町村に対応
+// 火事速 — 目撃報告・口コミの受付サーバー（Cloudflare Workers + D1）。全国の市区町村に対応
 //
 // 報告（サイレン／煙・におい／火）を、同じ町・2時間以内なら同じ「火事」にまとめる。
 // 火事ごと・町ごとに口コミを投稿でき、3人が「不適切」と通報すると非表示になる。
@@ -36,7 +36,7 @@ const COMMENT_COOLDOWN_SEC = 60;  // 口コミは1分に1回
 const MERGE_HOURS = 2;            // 最後の報告から2時間以内なら同じ火事
 const HIDE_AT_FLAGS = 3;          // 3人が通報したら非表示
 const KEEP_REPORT_DAYS = 30;      // 報告の明細は30日で削除（火事の件数と口コミは残す）
-const DEFAULT_SITE = 'https://nekolab0.github.io/kaji23';
+const DEFAULT_SITE = 'https://kajisoku.jp';
 
 // ---------- 町名 ----------
 const Z2H = s => String(s).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
@@ -299,17 +299,17 @@ export async function handle(request, env, now = new Date()) {
     const site = (env.SITE_URL || DEFAULT_SITE).replace(/\/$/, '');
     const inc = await DB.prepare('SELECT * FROM incidents WHERE id = ?').bind(m[1]).first();
     const dest = `${site}/fire.html?id=${encodeURIComponent(m[1])}`;
-    let title = '火事の目撃情報｜火事どこ', desc = '「近くで火事？」を町名で確かめられるサイトです。';
+    let title = '火事の目撃情報｜火事速', desc = '「近くで火事？」を町名で確かめられるサイトです。';
     if (inc) {
       const place = placeName(inc.pref, inc.ward, inc.town);
       const parts = KINDS.filter(k => inc[k]).map(k => `${KIND_JA[k]}${inc[k]}`).join('・');
       const t = new Date(new Date(inc.last_at).getTime() + 9 * 3600e3);
-      title = inc.official ? `${place}付近で${inc.official_kind || '火災'}（消防出動）${inc.n ? ` 目撃報告${inc.n}件` : ''}｜火事どこ` : `${place}付近で火事の目撃情報 ${inc.n}件｜火事どこ`;
+      title = inc.official ? `${place}付近で${inc.official_kind || '火災'}（消防出動）${inc.n ? ` 目撃報告${inc.n}件` : ''}｜火事速` : `${place}付近で火事の目撃情報 ${inc.n}件｜火事速`;
       desc = `${parts}の報告、口コミ${inc.comments}件（最新 ${t.getUTCMonth() + 1}/${t.getUTCDate()} ${t.getUTCHours()}:${String(t.getUTCMinutes()).padStart(2, '0')}）。現場の状況を近所の人どうしで共有しています。近づかず、火や煙が見えたら119番へ。`;
     }
     const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">
-<meta property="og:type" content="article"><meta property="og:site_name" content="火事どこ"><meta property="og:title" content="${escHtml(title)}">
+<meta property="og:type" content="article"><meta property="og:site_name" content="火事速"><meta property="og:title" content="${escHtml(title)}">
 <meta property="og:description" content="${escHtml(desc)}"><meta property="og:url" content="${escHtml(dest)}"><meta property="og:image" content="${site}/og/live.png">
 <meta name="twitter:card" content="summary_large_image"><link rel="canonical" href="${escHtml(dest)}">
 <meta http-equiv="refresh" content="0;url=${escHtml(dest)}"></head><body><p><a href="${escHtml(dest)}">${escHtml(title)}</a></p>
@@ -320,7 +320,7 @@ export async function handle(request, env, now = new Date()) {
 }
 
 // ---------- 消防本部の出動情報を取り込む ----------
-const UA = 'kaji23-bot/1.0 (+https://nekolab0.github.io/kaji23/about.html; 火災の出動情報を町名単位で表示)';
+const UA = 'kaji23-bot/1.0 (+https://kajisoku.jp/about.html; 火災の出動情報を町名単位で表示)';
 // 取り出した1件を保存し、同じ場所・近い時刻の「火事」にまとめる（なければ新しく作る）
 export async function ingestOfficial(env, items, now = new Date()) {
   const DB = env.DB; let added = 0;
