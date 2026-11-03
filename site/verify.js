@@ -446,11 +446,12 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     const src = await getJ(API + '/api/sources');
     if (src) {
       const now = Date.now();
-      const stale = src.sources.filter(x => !x.last_try || now - Date.parse(x.last_try) > 2 * 3600e3).map(x => x.id);
+      const stale = src.sources.filter(x => x.last_try && now - Date.parse(x.last_try) > 2 * 3600e3).map(x => x.id);
+      const pending = src.sources.filter(x => !x.last_try).map(x => x.id);   // 追加したばかりでまだ読んでいない
       const bad = src.sources.filter(x => x.status && x.status !== 'ok').map(x => `${x.id}(${x.status})`);
       const okN = src.sources.filter(x => x.status === 'ok').length;
-      add('M2 消防本部の読み取り（5分ごと）', !stale.length && okN >= Math.ceil(src.sources.length / 2),
-        `読めている ${okN}/${src.sources.length}ページ、取り込み ${src.sources.reduce((a, x) => a + (x.items || 0), 0)}件${stale.length ? '／2時間以上止まっている：' + stale.join('、') : ''}`, stale.length || okN < src.sources.length / 2 ? 'error' : 'warn');
+      add('M2 消防本部の読み取り（5分ごと）', !stale.length && okN >= Math.ceil((src.sources.length - pending.length) / 2),
+        `読めている ${okN}/${src.sources.length}ページ、取り込み ${src.sources.reduce((a, x) => a + (x.items || 0), 0)}件${pending.length ? '（未実行：' + pending.join('、') + '）' : ''}${stale.length ? '／2時間以上止まっている：' + stale.join('、') : ''}`, stale.length || okN < (src.sources.length - pending.length) / 2 ? 'error' : 'warn');
       add('M3 読み取れていない消防本部', !bad.length, bad.join('、') || 'すべて読めている', 'warn');
     } else add('M2 消防本部の読み取り（5分ごと）', false, '読み取り状況を取得できない', lvl === 'error' && inCI ? 'error' : 'warn');
   }
