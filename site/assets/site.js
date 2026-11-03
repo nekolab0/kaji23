@@ -182,7 +182,6 @@
   function fireCard(x) {
     var li = el('li', { class: 'fire-card' + (Date.now() - Date.parse(x.last) > 90 * 60000 ? ' calm' : '') });
     var a = el('a', { class: 'place', href: 'fire.html?id=' + encodeURIComponent(x.id) });
-    if (x.pref && !is23(x.pref, x.ward)) li.appendChild(el('span', { class: 'small muted' }, x.pref));
     a.appendChild(el('b', null, placeOf(x) + '付近')); li.appendChild(a);
     var row = el('div', { class: 'row' });
     if (x.official) row.appendChild(el('span', { class: 'tag off' }, '消防の発表 ' + (x.official.kind || '火災')));
