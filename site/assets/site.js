@@ -20,9 +20,10 @@
   function cleanTown(t) {
     var s = z2h(String(t || '').trim()).replace(/\s/g, '');
     s = s.replace(/([一二三四五六七八九十]+)丁目/, function (_, k) { return (k.length === 1 ? KNUM[k] : k === '十' ? 10 : (k[0] === '十' ? 10 + KNUM[k[1]] : k)) + '丁目'; });
-    s = s.replace(/(\d+丁目).*$/, '$1').replace(/\d+(番地?|号|-|－|ー).*$/, '');
+    s = s.replace(/(\d+丁目).*$/, '$1').replace(/(\d{1,2})(?=条|線|軒)/g, function (_, d) { return kanjiNum(+d); }).replace(/\d+(番地?|号|-|－|ー).*$/, '');
     return s.slice(0, 20);
   }
+  function kanjiNum(n) { var K = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九']; return n <= 0 || n > 99 ? String(n) : (n >= 20 ? K[Math.floor(n / 10)] : '') + (n >= 10 ? '十' : '') + K[n % 10]; }
   function baseTown(t) { return cleanTown(t).replace(/\d+丁目$/, '').replace(/\d+$/, ''); }
   function ago(iso) {
     var m = Math.round((Date.now() - Date.parse(iso)) / 60000);

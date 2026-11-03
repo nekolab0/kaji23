@@ -18,6 +18,7 @@ if (isMain) {
   const t0 = new Date('2026-11-02T10:00:00Z'); const at = min => new Date(+t0 + min * 60e3);
   const J = async r => r.json();
 
+  ok('町名の整形（札幌の条は漢数字にそろえる）', cleanTown('北32条西7丁目') === '北三十二条西7丁目' && baseTown('二十四軒1条') === '二十四軒一条' && cleanTown('本町5号') === '本町');
   ok('町名の整形（漢数字・番地）', cleanTown('赤羽西二丁目3番地') === '赤羽西2丁目' && cleanTown('白金１丁目5-3') === '白金1丁目' && baseTown('赤羽西2丁目') === '赤羽西', cleanTown('赤羽西二丁目3番地'));
   // 報告 → 火事にまとまる
   let r = await handle(req('POST', '/api/report', { ward: '北区', town: '赤羽西2丁目', kind: 'siren' }), env, t0); const a = await J(r);

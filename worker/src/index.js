@@ -41,11 +41,15 @@ const DEFAULT_SITE = 'https://nekolab0.github.io/kaji23';
 // ---------- 町名 ----------
 const Z2H = s => String(s).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
 const KNUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+const KD = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+export const toKanjiNum = n => n <= 0 || n > 99 ? String(n) : (n >= 20 ? KD[Math.floor(n / 10)] : '') + (n >= 10 ? '十' : '') + KD[n % 10];
 export function cleanTown(t) {
   // 「赤羽西二丁目3番地」→「赤羽西2丁目」。番地・号は捨てる
   let s = Z2H(String(t || '').trim()).replace(/\s/g, '');
   s = s.replace(/([一二三四五六七八九十]+)丁目/, (_, k) => (k.length === 1 ? KNUM[k] : k === '十' ? 10 : k.length === 2 && k[0] === '十' ? 10 + KNUM[k[1]] : k) + '丁目');
   s = s.replace(/(\d+丁目).*$/, '$1');
+  // 「北32条西」→「北三十二条西」（町名データは条・線の数字が漢数字）
+  s = s.replace(/(\d{1,2})(?=条|線|軒)/g, (_, d) => toKanjiNum(+d));
   s = s.replace(/\d+(番地?|号|-|－|ー).*$/, '');
   return s.slice(0, 20);
 }

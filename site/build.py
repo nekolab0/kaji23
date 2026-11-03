@@ -12,7 +12,7 @@ RAW = ROOT / 'data' / 'raw'
 DIST = ROOT / 'dist'
 SITE = ROOT / 'site'
 SITE_NAME = '火事どこ'
-SITE_URL = os.environ.get('SITE_URL', '')  # 例: https://kaji23.example.jp （独自ドメイン取得後に設定）
+SITE_URL = (os.environ.get('SITE_URL') or 'https://nekolab0.github.io/kaji23').rstrip('/')  # 独自ドメインにしたら GitHub の変数 SITE_URL を設定するだけで全ページの正規URL・共有URL・サイトマップが切り替わる
 TFD = 'https://www.tfd.metro.tokyo.lg.jp'
 THIS_YEAR = 2026
 
@@ -270,8 +270,8 @@ NAV = [('index', 'いまの火事'), ('index#regions', '地域から探す'), ('
 
 def page(name, title, desc, body, og_image='og/index.png', full=True):
     nav = ''.join(f'<a href="{k.split("#")[0]}.html{("#" + k.split("#")[1]) if "#" in k else ""}"{" aria-current=\"page\"" if k == name else ""}>{esc(v)}</a>' for k, v in NAV)
-    canon = f'{SITE_URL}/{name}.html' if SITE_URL else f'{name}.html'
-    ogimg = f'{SITE_URL}/{og_image}' if SITE_URL else og_image
+    canon = f'{SITE_URL}/{quote(name)}.html' if name != 'index' else f'{SITE_URL}/'
+    ogimg = f'{SITE_URL}/{og_image}'
     head = f'''<title>{esc(title)}</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="{esc(desc)}">
@@ -281,6 +281,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
 <meta property="og:description" content="{esc(desc)}">
 <meta property="og:image" content="{esc(ogimg)}">
 <meta property="og:url" content="{esc(canon)}">
+<link rel="canonical" href="{esc(canon)}">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#c2341c">
@@ -308,7 +309,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
   <div><h3>さがす</h3><ul>
     <li><a href="index.html">いまの火事</a></li><li><a href="index.html#regions">地域から探す</a></li><li><a href="p-東京都.html#t23">東京23区</a></li><li><a href="ranking.html">23区の火災件数</a></li></ul></div>
   <div><h3>確かめる</h3><ul>
-    <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="about.html">データの出典と集め方</a></li>
+    <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="policy.html">運営者情報・プライバシーポリシー・利用規約</a></li><li><a href="about.html">データの出典と集め方</a></li>
     <li><a href="{TFD}/" rel="noopener" target="_blank">東京消防庁 ↗</a></li><li><a href="https://disaportal.gsi.go.jp/" rel="noopener" target="_blank">ハザードマップポータル ↗</a></li></ul></div>
 </div><div class="wrap small muted" style="padding-block:0 20px">市区町村：総務省 全国地方公共団体コード／町名と位置：Geolonia 住所データ（CC BY 4.0）／23区の火災件数：東京消防庁 各消防署ページ（{FETCHED_LABEL}取得）　© {THIS_YEAR} {SITE_NAME}</div></footer>
 <script src="assets/areas.js" defer></script>
@@ -757,9 +758,50 @@ def about_page(report):
 {rep}
 <section class="section" aria-labelledby="note"><h2 id="note">ご利用にあたって</h2>
 <p>このサイトは民間が独自に運営する非公式サイトです。東京消防庁・東京都・各区の公認や監修は受けていません。各消防署のページは更新日がばらばらで、集計時点がそろっていません。数字が食い違う場合は公式発表を優先してください。目撃報告・口コミは利用者の投稿で、消防の出動情報は各消防本部の公開ページから自動で取り出したものです。最新・正確な情報は各消防本部の発表をご確認ください。火や煙を見たら119番へ通報してください。</p>
-<p class="muted small">運営者・お問い合わせ：[運営者名・連絡先を記入]</p></section>
+<p class="muted small">運営者・お問い合わせ：<a href="policy.html#operator">運営者情報</a></p></section>
 </div>'''
     return page('about', f'データの出典と集め方｜{SITE_NAME}', f'{SITE_NAME}の火災件数・管轄区域・人口データの出典と、各消防署ページからの読み取り方法、自動チェックの結果。', body)
+
+# ---------- 運営者情報・プライバシーポリシー・利用規約 ----------
+OPERATOR = os.environ.get('SITE_OPERATOR') or '【運営者名を記入】'
+CONTACT = os.environ.get('SITE_CONTACT') or '【連絡先（メールアドレスまたはフォームのURL）を記入】'
+def policy_page():
+    body = f'''<div class="wrap">
+<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ 運営者情報・プライバシーポリシー・利用規約</nav>
+<section class="hero"><span class="eyebrow">{esc(SITE_NAME)}について</span><h1>運営者情報・プライバシーポリシー・利用規約</h1>
+<p class="lead">{esc(SITE_NAME)}（以下「本サイト」）の運営者と、情報の扱い、ご利用のルールをまとめています。</p></section>
+<section class="section" id="operator" aria-labelledby="op"><h2 id="op">運営者情報</h2>
+<ul class="plain"><li>サイト名：{esc(SITE_NAME)}</li><li>運営者：{esc(OPERATOR)}</li><li>お問い合わせ：{esc(CONTACT)}（投稿の削除依頼は<a href="rules.html">投稿のルール</a>の欄からも送れます）</li>
+<li>本サイトは民間の非公式サイトです。消防機関・自治体・報道機関の公認や監修は受けていません。</li></ul></section>
+<section class="section" id="privacy" aria-labelledby="pv"><h2 id="pv">プライバシーポリシー</h2>
+<h3>1. 集める情報</h3>
+<ul class="plain"><li><strong>目撃報告</strong>：選んだ場所（都道府県・市区町村・町名と丁目）、報告の種類（サイレン／煙・におい／火）、送信日時。</li>
+<li><strong>口コミ</strong>：本文（200文字まで）、場所、送信日時。会員登録はなく、名前やメールアドレスは集めません。</li>
+<li><strong>連投防止の情報</strong>：送信元の情報（IPアドレス）を、日ごとに変わる値と組み合わせて元に戻せない形（ハッシュ）にしたものだけを保存します。IPアドレスそのものは保存しません。</li>
+<li><strong>削除依頼・お問い合わせ</strong>：入力された本文と送信日時。</li>
+<li><strong>現在地</strong>：「現在地から調べる」を押したときだけ、端末の位置情報を使って町名を調べます（国土地理院の逆ジオコーダを利用）。位置情報そのものは本サイトに保存しません。</li>
+<li><strong>端末内の保存</strong>：報告の連投を防ぐため、最後に報告した時刻をお使いのブラウザ（localStorage）に保存することがあります。</li></ul>
+<h3>2. 使い道</h3>
+<p>火事の場所と状況を地域の人どうしで共有するための表示、同じ火事の報告のとりまとめ、連投・荒らしの防止、不適切な投稿への対応、件数の集計にだけ使います。</p>
+<h3>3. 保存期間</h3>
+<p>報告の明細は30日で削除します。火事ごとの件数と口コミは、削除依頼や通報による非表示の対象にならない限り残ります。</p>
+<h3>4. 第三者への提供</h3>
+<p>法令に基づく場合を除き、集めた情報を第三者に提供しません。本サイトはGitHub（ページの配信）とCloudflare（報告・口コミの受付）を利用しており、各社のサーバーにアクセスの記録が残ることがあります。</p>
+<h3>5. 外部サービス・広告</h3>
+<p>現在、アクセス解析や広告は使っていません。今後、Google AdSense などの広告配信やアクセス解析を導入する場合は、Cookie の利用と無効化の方法を含めてこのページでお知らせします。</p>
+<h3>6. 外部サイトへのリンク</h3>
+<p>報道記事、消防本部の公開ページ、X・Yahoo!リアルタイム検索などへのリンクがあります。リンク先での情報の扱いは各サイトの方針によります。</p></section>
+<section class="section" id="terms" aria-labelledby="tm"><h2 id="tm">利用規約</h2>
+<ol class="plain"><li><strong>情報の正確さ</strong>：目撃報告・口コミは利用者の投稿で、運営者が確認したものではありません。消防の出動情報・報道は各機関の公開情報から自動で取り出したもので、遅れや誤りがありえます。最新・正確な情報は各機関の発表をご確認ください。</li>
+<li><strong>緊急時</strong>：本サイトは119番通報の代わりにはなりません。火や煙を見たら119番へ。現場には近づかないでください。</li>
+<li><strong>投稿のルール</strong>：<a href="rules.html">投稿のルール</a>に反する投稿（個人や家の特定、誹謗中傷、原因や被害者についての憶測、宣伝など）はしないでください。運営者の判断で予告なく非表示・削除することがあります。</li>
+<li><strong>投稿の扱い</strong>：投稿の著作権は投稿者に残ります。投稿者は、本サイトでの表示、共有用の要約（件数・場所）への利用、表示に必要な範囲での改変を、運営者に無償で許可するものとします。</li>
+<li><strong>禁止事項</strong>：虚偽の報告、大量・自動の送信、サイトの運営を妨げる行為、法令や公序良俗に反する行為。</li>
+<li><strong>免責</strong>：本サイトの情報を利用して生じた損害について、運営者は故意または重大な過失がある場合を除き責任を負いません。</li>
+<li><strong>変更</strong>：本規約とプライバシーポリシーは、必要に応じて変更することがあります。変更後の内容はこのページに掲載した時点から有効とします。</li></ol>
+<p class="small muted">制定：2026年11月3日</p></section>
+</div>'''
+    return page('policy', f'運営者情報・プライバシーポリシー・利用規約｜{SITE_NAME}', f'{SITE_NAME}の運営者情報、目撃報告・口コミの情報の扱い（プライバシーポリシー）と利用規約。', body)
 
 # 受付サーバーが読む消防本部の出動情報ページ（worker/src/official.js の一覧から）
 _off = (ROOT / 'worker' / 'src' / 'official.js').read_text(encoding='utf-8')
@@ -780,7 +822,7 @@ def build(report=None):
     (DIST / 'assets' / 'areas.js').write_text(areas_js(sizes), encoding='utf-8')
     town_files(DIST)
     pages = {'index.html': index_page(), 'ranking.html': ranking_page(), 'towns.html': towns_page(),
-             'dial.html': dial_page(), 'about.html': about_page(report), 'fire.html': fire_page(), 'rules.html': rules_page()}
+             'dial.html': dial_page(), 'about.html': about_page(report), 'fire.html': fire_page(), 'rules.html': rules_page(), 'policy.html': policy_page()}
     for w in wards: pages[w['slug'] + '.html'] = ward_page(w)
     for t in TOWN_LIST: pages[t['file']] = machi_page(t)
     pages.update(national_pages())
@@ -798,6 +840,15 @@ def build(report=None):
     (DIST / 'data' / '_model.json').write_text(json.dumps({'wards': [{k: v for k, v in w.items() if k != 'stations'} | {'stations': [s['slug'] for s in w['stations']]} for w in wards],
                                                             'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news,
                                                             'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
+    # 検索エンジン向け: サイトマップと robots.txt（独自ドメインに移すと robots.txt がドメインの直下に置かれて有効になる）
+    today = datetime.date.today().isoformat()
+    skip = {'fire.html', 'town.html'}   # 中身が URL のパラメータで変わるページは載せない
+    urls = [(f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}') for fn in sorted(pages) if fn not in skip]
+    prio = lambda u: '1.0' if u.endswith('/') else '0.8' if '/p-' in u else '0.6'
+    (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in urls) + '</urlset>\n', encoding='utf-8')
+    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
+    (DIST / '.nojekyll').write_text('', encoding='utf-8')
     return sorted(pages)
 
 if __name__ == '__main__':

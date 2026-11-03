@@ -181,7 +181,9 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     const title = (h.match(/<title>([^<]*)<\/title>/) || [])[1];
     const h1 = (h.match(/<h1[\s>]/g) || []).length;
     const desc = /<meta name="description" content="[^"]+"/.test(h);
-    const og = (h.match(/property="og:image" content="([^"]+)"/) || [])[1];
+    const og = ((h.match(/property="og:image" content="([^"]+)"/) || [])[1] || '').replace(/^https?:\/\/.*?\/(?=og\/)/, '');
+    const can = (h.match(/rel="canonical" href="([^"]+)"/) || [])[1];
+    if (!can || !/^https:\/\//.test(can) || /[^\x21-\x7e]/.test(can)) meta.push(`${f}: 正規URLが不正 ${can}`);
     if (!title || h1 !== 1 || !desc || !og || !fileSet.has(og)) meta.push(`${f}: title=${!!title} h1=${h1} desc=${desc} og=${og}`);
     for (const m of h.matchAll(/<a [^>]*href="([^"]+)"/g)) {
       const href = m[1].replace(/&amp;/g, '&');
@@ -423,12 +425,37 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   add('R2 読み込み失敗', !reqFail.length, reqFail.slice(0, 8).join(' / ') || 'CSS・JS・画像すべて読み込み成功（Webフォント・外部サイトは作業環境の制限で除外）');
   add('R3 横はみ出し（375px・1280px）', !overflow.length, overflow.slice(0, 8).join(' / ') || 'はみ出しなし');
   add('R4 サイト内リンク・ページ内リンク', !links.length, links.slice(0, 20).join(' / ') || `${allPages.length}ページすべてのリンク先とアンカーが存在`);
-  add('R5 タイトル・見出し・説明文・OGP画像', !meta.length, meta.slice(0, 10).join(' / ') || `${allPages.length}ページすべてにあり`);
+  const sm = fs.existsSync(path.join(DIST, 'sitemap.xml')) ? fs.readFileSync(path.join(DIST, 'sitemap.xml'), 'utf8') : '';
+  const smN = (sm.match(/<loc>/g) || []).length;
+  if (smN < allPages.length - 5 || /<loc>[^<]*[^\x21-\x7e][^<]*<\/loc>/.test(sm)) meta.push(`サイトマップ ${smN}件`);
+  if (!fs.existsSync(path.join(DIST, 'robots.txt'))) meta.push('robots.txtがない');
+  add('R5 タイトル・見出し・説明文・OGP画像・正規URL・サイトマップ', !meta.length, meta.slice(0, 10).join(' / ') || `${allPages.length}ページすべてにあり、サイトマップ${smN}件`);
   add('R6 表示されている数字＝データ', !numbers.length, numbers.join(' / ') || '23区の統計と58署のカードすべて一致');
   add('R7 全国の検索・現在地', !searchBad.length, searchBad.join(' / ') || '「中区」→名古屋・横浜・堺の中区と町、「神奈川」→神奈川県、町名まで続けて入力、23区の町は町ページへ、同名の府中市は両方、Enterで移動、現在地→赤羽西の町ページ・投稿欄に東京都/北区/赤羽西2丁目');
   add('R9 出典ボックスの見出し', !provBad.length, provBad.join(' / ') || '出典の各行が「今年の件数／前年同時期／○○○○年」で始まる');
   add('R10 報道された火事の表示', !newsBad.length, newsBad.join(' / ') || `区ページの件数がデータと一致（計${news.incidents.length}件）、町ページにも振り分け、見出し文・配慮の要る語は表示なし`);
   add('R11 報告・火事のページ・口コミ・共有', !flowBad.length, flowBad.join(' / ') || flowOk.join('、') + 'を確認');
+
+  // M1〜M3 本番の監視（GitHub上で動くときだけ失敗扱い。失敗するとGitHubからメールが届く）
+  const inCI = !!process.env.CI;
+  const lvl = inCI ? 'error' : 'warn';
+  const getJ = async (u) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), 15000); try { const r = await fetch(u, { signal: c.signal }); return r.ok ? await r.json() : null; } catch (e) { return null; } finally { clearTimeout(t); } };
+  if (API) {
+    const live = await getJ(API + '/api/live?hours=1');
+    add('M1 受付サーバーの応答', !!live, live ? '本番の受付サーバーが応答' : (inCI ? '本番の受付サーバーに接続できない' : '作業環境から本番に接続できないため未確認'), live || inCI ? 'error' : 'warn');
+    const src = await getJ(API + '/api/sources');
+    if (src) {
+      const now = Date.now();
+      const stale = src.sources.filter(x => !x.last_try || now - Date.parse(x.last_try) > 2 * 3600e3).map(x => x.id);
+      const bad = src.sources.filter(x => x.status && x.status !== 'ok').map(x => `${x.id}(${x.status})`);
+      const okN = src.sources.filter(x => x.status === 'ok').length;
+      add('M2 消防本部の読み取り（5分ごと）', !stale.length && okN >= Math.ceil(src.sources.length / 2),
+        `読めている ${okN}/${src.sources.length}ページ、取り込み ${src.sources.reduce((a, x) => a + (x.items || 0), 0)}件${stale.length ? '／2時間以上止まっている：' + stale.join('、') : ''}`, stale.length || okN < src.sources.length / 2 ? 'error' : 'warn');
+      add('M3 読み取れていない消防本部', !bad.length, bad.join('、') || 'すべて読めている', 'warn');
+    } else add('M2 消防本部の読み取り（5分ごと）', false, '読み取り状況を取得できない', lvl === 'error' && inCI ? 'error' : 'warn');
+  }
+  const ageH = news.collectedAt ? (Date.now() - Date.parse(news.collectedAt)) / 36e5 : 999;
+  add('M4 報道の収集の鮮度', ageH < 3, `最終収集 ${ageH.toFixed(1)}時間前（30分ごとに収集）`, inCI ? 'error' : 'warn');
 
   const lp = path.join(OUT, 'live.json');
   if (fs.existsSync(lp)) {
