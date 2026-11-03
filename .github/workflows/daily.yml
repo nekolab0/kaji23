@@ -28,7 +28,7 @@ jobs:
       - name: 受付サーバーのテスト
         run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs
       - name: 生成・検査
-        env: { SITE_URL: '${{ vars.SITE_URL }}' }
+        env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}' }
         run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh
       - name: データを保存
         run: |

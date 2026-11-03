@@ -15,9 +15,8 @@ export const SOURCES = [
   { id: 'okayama', name: '岡山市消防局（災害情報）', url: 'https://syoubou.city.okayama.jp/fire/saigai/saigaipc.html', pref: '岡山県', type: 'sentence', wardCity: '岡山市' },
   ...['kurume', 'omuta', 'yame', 'chikugo', 'miyama', 'asakura'].map(k => ({
     id: 'chikugo-' + k, name: '筑後地区消防指令センター（消防出動情報）', url: `http://www.center-chikugo119.jp/fire/saigai/${k}PcSel.html`, pref: '福岡県', type: 'sentence' })),
-  { id: 'sendai', name: '仙台市（杜の都防災Web 火災等の発生情報）', url: 'http://sendaicity.bosai.info/sendaicity/fireinfo/index.html', pref: '宮城県', type: 'sentence', wardCity: '仙台市' },
+  { id: 'sendai', name: '仙台市（杜の都防災Web 火災等の発生情報）', url: 'http://sendaicity.bosai.info/sendaicity/fireinfo/index.html', pref: '宮城県', type: 'sentence', wardCity: '仙台市', current: true },
   { id: 'nagano', name: '長野市消防局（長野市防災情報ポータル）', url: 'https://www.nagano-bousai.jp/', pref: '長野県', type: 'sentence' },
-  { id: 'kitakyushu', name: '北九州市消防局（もらって安心災害情報 配信履歴）', url: 'http://kitakyushu-fd.site2.ktaiwork.jp/', pref: '福岡県', type: 'sentence', wardCity: '北九州市' },
 ];
 
 const KNUM = { 〇: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
@@ -120,10 +119,13 @@ function parseSentence(html, src, now) {
   for (const line of htmlText(html)) {
     const kind = fireKind(line); if (!kind) continue;
     const dt = line.match(/(\d{1,2})[月/](\d{1,2})日?\s*(\d{1,2})[:時](\d{2})/);
-    if (!dt) continue;
+    // 「いま出動中」だけを載せるページ（時刻なし）は、最初に見つけた時刻を出動時刻とみなす
+    if (!dt && !src.current) continue;
     const f = findCity(line, src); if (!f) continue;
-    const status = /鎮火/.test(line) ? '鎮火' : /鎮圧/.test(line) ? '鎮圧' : /出動/.test(line) ? '出動' : null;
-    out.push({ kind, city: f.city, town: townPart(f.rest), at: toISO(now, +dt[1], +dt[2], +dt[3], +dt[4]), status });
+    const status = /鎮火/.test(line) ? '鎮火' : /鎮圧/.test(line) ? '鎮圧' : /出動|出場/.test(line) ? '出動' : null;
+    const town = townPart(f.rest);
+    if (dt) out.push({ kind, city: f.city, town, at: toISO(now, +dt[1], +dt[2], +dt[3], +dt[4]), status });
+    else out.push({ kind, city: f.city, town, at: now.toISOString(), status, key: `${src.id}|${f.city}|${town}|${kind}|${new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10)}` });
   }
   return out;
 }
@@ -135,7 +137,7 @@ export function parseSource(html, src, now = new Date()) {
   for (const x of items) {
     if (!AREAS[src.pref] || !AREAS[src.pref].includes(x.city)) continue;
     if (now - new Date(x.at) > 48 * 3600e3 || new Date(x.at) - now > 3600e3) continue;
-    const k = `${x.city}|${x.town}|${x.at}`; if (seen.has(k)) continue; seen.add(k);
+    const k = x.key || `${x.city}|${x.town}|${x.at}`; if (seen.has(k)) continue; seen.add(k);
     res.push({ ...x, pref: src.pref, source: src.id });
   }
   return res;

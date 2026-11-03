@@ -51,3 +51,15 @@ cd site && ./run_all.sh          # 生成・検査（Playwright が必要）
 
 ## 全国展開の手順
 `collect_tfd.js` の区・署のリストと探索ルールを、各消防本部のサイト構成に合わせた「取得アダプタ」として追加する。`parse_station.js` の表の読み分けはそのまま使える。
+
+## 消防本部の出動情報
+- 受付サーバーが5分ごとに `worker/src/official.js` の一覧のページを読み、火災の出動だけを取り込む（robots.txt を守る）。
+- 状況確認: `https://kaji23-reports.kinde-32795.workers.dev/api/sources`（`?debug=1` で各ページの「火災・出動を含む行」の見本）。
+- 追加: 一覧に1行足す。日時・場所・種別が1行に書かれた文章形式ならそのまま読める。時刻のない「出動中」だけのページは `current: true`。
+- 京都市は海外からの接続を受け付けていないようで読めない（HTTP 522）。
+
+## 運用・公開前にやること
+- 独自ドメインを取得 → GitHub の Settings → Pages で設定し、Variables に `SITE_URL` を登録（正規URL・共有URL・サイトマップが切り替わる）。受付サーバーの `ALLOW_ORIGIN` もそのドメインに。
+- Google Search Console に登録して `sitemap.xml` を送信（独自ドメイン後）。
+- `policy.html` の運営者名・連絡先: Variables に `SITE_OPERATOR`・`SITE_CONTACT` を登録。
+- 監視: 毎回の自動チェックで受付サーバーの応答・消防ページの読み取り・報道の鮮度を確認。失敗すると GitHub からメールが届く。

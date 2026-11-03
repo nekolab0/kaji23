@@ -326,7 +326,7 @@ export async function ingestOfficial(env, items, now = new Date()) {
   const DB = env.DB; let added = 0;
   for (const x of items) {
     const base = x.town ? baseTown(x.town) || null : null;
-    const id = `${x.source}|${x.ward || x.city}|${x.town || ''}|${x.at}`;
+    const id = x.key || `${x.source}|${x.ward || x.city}|${x.town || ''}|${x.at}`;   // 時刻のないページは「場所・種別・日付」で同じ発表とみなす
     const old = await DB.prepare('SELECT id, inc FROM official WHERE id = ?').bind(id).first();
     if (old) { await DB.prepare('UPDATE official SET seen_last = ?, status = COALESCE(?, status) WHERE id = ?').bind(now.toISOString(), x.status || null, id).run(); continue; }
     const city = x.city;

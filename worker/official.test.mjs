@@ -23,6 +23,9 @@ ok('岡山: 目標物・距離は捨て、町名まで', o.length === 1 && o[0].
 const chikugo = '<p>11/02 14:20出動のうきは市浮羽町三春付近の枯草火災は、鎮火しました。</p><p>11/02 15:00出動の久留米市城南町付近の救急支援出動は終了しました。</p>';
 const c = parseSource(chikugo, src('chikugo-kurume'), now);
 ok('筑後: 広域でも市町名で振り分け・鎮火', c.length === 1 && c[0].city === 'うきは市' && c[0].town === '浮羽町三春' && c[0].kind === '枯草火災' && c[0].status === '鎮火', JSON.stringify(c));
+const sendai = '<li>青葉区愛子東五丁目で救急活動支援のため消防車が出場しています</li><li>太白区八木山香澄町付近で建物火災のため消防車が出場しています</li>';
+const sd = parseSource(sendai, src('sendai'), now), sd2 = parseSource(sendai, src('sendai'), new Date(+now + 600e3));
+ok('仙台: 時刻のない「出場中」ページは見つけた時刻で、同じ発表は同じキー', sd.length === 1 && sd[0].city === '仙台市太白区' && sd[0].town === '八木山香澄町' && sd[0].kind === '建物火災' && sd[0].key && sd[0].key === sd2[0].key, JSON.stringify(sd));
 ok('種別: 自動火災報知設備は火災にしない', fireKind('自動火災報知設備鳴動のため出動') === null && fireKind('●車両火災出動') === '車両火災');
 ok('町名: 番地は捨てる', townPart('赤羽西2丁目3番地付近') === '赤羽西2丁目' && townPart('浮羽町三春付近の枯草火災') === '浮羽町三春');
 ok('robots.txt: 禁止なら読まない', robotsAllows('User-agent: *\nDisallow: /', 'http://x.jp/a.html') === false && robotsAllows('User-agent: *\nDisallow: /admin/', 'http://x.jp/saigai/a.html') === true && robotsAllows('', 'http://x.jp/') === true);
