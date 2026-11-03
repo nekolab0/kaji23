@@ -18,7 +18,7 @@
 // 個人の特定を避けるため: 町名は丁目まで、番地・電話番号・URLは受け付けない。
 // IPアドレスは保存しない（日替わりの塩付きハッシュを連投防止にだけ使う）。
 import { AREAS } from './areas.js';
-import { SOURCES, parseSource, robotsAllows } from './official.js';
+import { SOURCES, parseSource, robotsAllows, htmlText } from './official.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
@@ -115,6 +115,7 @@ async function setup(env) {
   await run('CREATE INDEX IF NOT EXISTS idx_off_inc ON official(inc)');
   await run('CREATE INDEX IF NOT EXISTS idx_off_at ON official(at)');
   await run(`CREATE TABLE IF NOT EXISTS sources (id TEXT PRIMARY KEY, last_try TEXT, last_ok TEXT, status TEXT, items INTEGER, robots TEXT, robots_at TEXT)`);
+  try { await run('ALTER TABLE sources ADD COLUMN sample TEXT'); } catch (e) {}   // 読み取りの確認用: 火災・出動を含む行の見本
   for (const col of ['official INTEGER NOT NULL DEFAULT 0', 'official_kind TEXT', 'official_src TEXT']) { try { await run(`ALTER TABLE incidents ADD COLUMN ${col}`); } catch (e) {} }
   await run('CREATE TABLE IF NOT EXISTS contact (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL, at TEXT NOT NULL, who TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0)');
   if (env.SALT) return env.SALT;
@@ -263,7 +264,8 @@ export async function handle(request, env, now = new Date()) {
   if (P === '/api/sources' && request.method === 'GET') {
     const { results } = await DB.prepare('SELECT * FROM sources').all();
     const st = Object.fromEntries(results.map(r => [r.id, r]));
-    return json(env, { generatedAt: iso, sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items } : {}) })) });
+    const dbg = url.searchParams.get('debug') === '1';
+    return json(env, { generatedAt: iso, sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items, ...(dbg ? { sample: st[s.id].sample } : {}) } : {}) })) });
   }
 
   // 場所ごとの火事の件数（検索候補の「記録○件」用。直近365日）
@@ -352,7 +354,7 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
   const report = [];
   for (const src of due) {
     const s = st[src.id] || {};
-    let status = 'ok', items = 0;
+    let status = 'ok', items = 0, sample = null;
     try {
       // robots.txt は1日1回だけ取り直す
       let robots = s.robots, robotsAt = s.robots_at;
@@ -370,12 +372,13 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
           const cs = (html.match(/charset=["']?([\w-]+)/i) || [])[1] || (r.headers.get('content-type') || '').split('charset=')[1] || 'utf-8';
           if (!/utf-?8/i.test(cs)) { try { html = new TextDecoder(cs.trim().toLowerCase().replace('shift-jis', 'shift_jis')).decode(buf); } catch (e) {} }
           const found = parseSource(html, src, now);
+          sample = htmlText(html).filter(l => /火災|火事|出動|出場|災害|鎮火/.test(l)).slice(0, 12).map(l => l.slice(0, 120)).join('\n').slice(0, 1500);
           items = found.length;
           await ingestOfficial(env, found, now);
         }
       }
-      await DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, robots, robots_at) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = COALESCE(excluded.last_ok, sources.last_ok), status = excluded.status, items = excluded.items, robots = excluded.robots, robots_at = excluded.robots_at')
-        .bind(src.id, now.toISOString(), status === 'ok' ? now.toISOString() : null, status, items, robots || '', robotsAt).run();
+      await DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, robots, robots_at, sample) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = COALESCE(excluded.last_ok, sources.last_ok), status = excluded.status, items = excluded.items, robots = excluded.robots, robots_at = excluded.robots_at, sample = COALESCE(excluded.sample, sources.sample)')
+        .bind(src.id, now.toISOString(), status === 'ok' ? now.toISOString() : null, status, items, robots || '', robotsAt, sample).run();
     } catch (e) {
       status = 'エラー: ' + String(e && e.message || e).slice(0, 80);
       await DB.prepare('INSERT INTO sources (id, last_try, status, items) VALUES (?, ?, ?, 0) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, status = excluded.status, items = 0').bind(src.id, now.toISOString(), status).run();
