@@ -138,7 +138,7 @@ def index_page(full=True):
   {ALERT_JP}
 </section>
 <section class="section" aria-labelledby="now">
-  <div class="sec-head"><h2 id="now">いま報告が上がっている場所</h2><span class="small muted live-updated"></span></div>
+  <div class="sec-head"><h2 id="now">いま・直近24時間の火事</h2><span class="small muted live-updated"></span></div>
   <div class="two-col">
     {live_jp(empty='いま上がっている報告はありません。サイレンや煙に気づいたら、右の欄から知らせてください。')}
     {post_panel(title='サイレン・煙・火に気づいたら', note='全国どこからでも送れます。同じ場所の近くの人の報告とまとめて「火事のページ」ができ、近所の人と共有できます。消防への通報にはなりません。')}

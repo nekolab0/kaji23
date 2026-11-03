@@ -198,7 +198,7 @@
     liveBoxes = $$('[data-live]'); tiles = $$('[data-ward-tile]');
     if (!liveBoxes.length && !tiles.length) return;
     if (!API) { liveBoxes.forEach(function (b) { b.innerHTML = ''; b.appendChild(el('p', { class: 'muted small' }, '目撃報告の受付を準備中です。')); }); return; }
-    getJSON('/api/live?hours=6').then(function (j) {
+    getJSON('/api/live?hours=24').then(function (j) {
       liveBoxes.forEach(function (box) {
         var pf = box.getAttribute('data-pref'), w = box.getAttribute('data-city'), t = box.getAttribute('data-town');
         var list = j.incidents.filter(function (x) { return (!pf || (x.pref || '東京都') === pf) && (!w || x.ward === w) && (!t || (x.town && baseTown(x.town) === t)); });
