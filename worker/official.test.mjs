@@ -56,5 +56,10 @@ const wh = `<article id="post-1"><h2>火災誤報連絡</h2><time datetime="2026
 const wj = parseSource(wh.split('<article id="post-3">')[0], wp1, now), wa = parseSource(wh, { id: 't-aizu', name: '会津', pref: '福島県', type: 'wp' }, now);
 ok('WordPress: 投稿日＋覚知時刻、誤報は取り消しの印', wj.length === 2 && wj.some(x => x.town === '寺町3丁目' && x.kind === '建物火災' && x.at === '2026-11-01T20:58:00.000Z' && x.status !== '誤報') && wj.some(x => x.status === '誤報' && x.at === '2026-11-01T20:58:00.000Z'), JSON.stringify(wj));
 ok('WordPress: 「ただいま、○○町…地内の」', wa.some(x => x.city === '会津美里町' && x.town === '吉田字村中乙' && x.kind === 'その他火災' && x.at === '2026-11-02T06:12:00.000Z'), JSON.stringify(wa));
+
+const mz = parseSource('<p>火災情報（日向市消防本部） 11月02日13時45分頃、日向市大字富高付近で建物火災が発生しました。</p><p>彦根市消防本部から 11月02日 10:20 彦根市消防本部管内で火災が発生しました。</p>', { id: 't-mz', name: 'x', pref: '宮崎県', type: 'sentence' }, now);
+ok('見出しの「（○○市消防本部）」は町名にしない', mz.length === 1 && mz[0].city === '日向市' && mz[0].town === '大字富高', JSON.stringify(mz));
+const hk = parseSource('<p>彦根市消防本部から 11月02日 10:20 彦根市消防本部管内で火災が発生しました。</p>', { id: 't-hk', name: 'x', pref: '滋賀県', type: 'sentence' }, now);
+ok('町名が読めなければ市区町村までにする', hk.length === 1 && hk[0].city === '彦根市' && hk[0].town === '', JSON.stringify(hk));
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));
 process.exit(results.some(r => !r.ok) ? 1 : 0);

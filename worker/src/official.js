@@ -59,9 +59,21 @@ function toISO(now, mo, d, h, mi) {
 }
 
 // 文中の市区町村を探す（その都道府県の中で長い名前から。区だけのときは wardCity を前につける）
+// 町名として読めないもの（見出しの「（日向市消防本部）」「彦根市消防本部から」など）
+const BAD_TOWN = /消防|本部|署|から|メール|配信|情報|お知らせ|広域|組合|管内|^[）)・]|^$/;
+export const badTown = t => BAD_TOWN.test(t);
 function findCity(line, src) {
   const names = (AREAS[src.pref] || []).slice().sort((a, b) => b.length - a.length);
-  for (const n of names) { const i = line.indexOf(n); if (i >= 0) return { city: n, rest: line.slice(i + n.length) }; }
+  // 市区町村名が何度か出るとき（見出しと本文など）は、そのあとが町名として読める方を選ぶ
+  let first = null;
+  for (const n of names) {
+    for (let i = line.indexOf(n); i >= 0; i = line.indexOf(n, i + 1)) {
+      const rest = line.slice(i + n.length);
+      if (!first) first = { city: n, rest: '' };
+      if (!badTown(townPart(rest))) return { city: n, rest };
+    }
+    if (first) return first;   // 町名は読めないが、市区町村は分かる
+  }
   if (src.wardCity) {
     const wards = names.filter(n => n.startsWith(src.wardCity)).map(n => n.slice(src.wardCity.length)).sort((a, b) => b.length - a.length);
     for (const w of wards) { const i = line.indexOf(w); if (i >= 0) return { city: src.wardCity + w, rest: line.slice(i + w.length) }; }
@@ -135,7 +147,7 @@ function parseSentence(html, src, now) {
     if (!f && src.city) {
       const after = (dt ? line.slice(line.indexOf(dt[0]) + dt[0].length) : line).replace(/^[\s分頃ごろ、,。:]*(?:入電|覚知|発生|出動|出場)?[\s、,]*/, '').replace(/^(?:ただいま|先ほどの?|現在)[、,\s]*/, '');
       const t = townPart(after);
-      if (t && t.length <= 15 && !/火災|火事|出動|出場|消防|救急|災害|発生|鎮火|現在|お知らせ/.test(t)) f = { city: src.city, rest: after };
+      if (t && t.length <= 15 && !/火災|火事|出動|出場|消防|救急|災害|発生|鎮火|現在|お知らせ/.test(t) && !badTown(t)) f = { city: src.city, rest: after };
     }
     if (!f) continue;
     const status = cancel ? '誤報' : /鎮火/.test(line) ? '鎮火' : /鎮圧/.test(line) ? '鎮圧' : /出動|出場/.test(line) ? '出動' : null;

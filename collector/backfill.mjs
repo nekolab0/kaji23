@@ -7,7 +7,7 @@
 //  - 礼儀: robots.txt を守り、同じサイトは2秒に1ページ。BACKFILL_YEARS 年より古くなったら止める
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { parseSource, robotsAllows } from '../worker/src/official.js';
+import { parseSource, robotsAllows, badTown } from '../worker/src/official.js';
 import { SOURCES } from '../worker/src/official.js';
 import { decode } from './fetchutil.mjs';
 
@@ -55,7 +55,7 @@ await Promise.all(targets.map(async src => {
     for (const x of yearDated ? items : []) {
       const t = +new Date(x.at); oldestOnPage = Math.min(oldestOnPage, t);
       if (t < cutoff) continue;
-      const town = baseTown(x.town);
+      const town = badTown(x.town || '') ? '' : baseTown(x.town);
       const key = keyOf(x, town);
       if (x.status === '誤報') { cancels.add(key); continue; }
       const day = new Date(t + 9 * 3600e3).toISOString().slice(0, 10);

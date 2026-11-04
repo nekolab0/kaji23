@@ -14,6 +14,8 @@ const PREFS = Object.keys(areas.prefs);
 const TOKYO23 = areas.prefs['東京都'].slice(0, 23).map(x => x[0]);
 const queries = ['火事 when:1d', '火災 when:1d', '全焼 when:1d', '建物火災 when:1d',
   ...PREFS.map(p => `(火事 OR 火災) ${p} when:1d`),
+  // 見出しに「火事・火災」が入らない報道（「住宅1棟全焼」「倉庫焼ける」など）も拾う
+  ...PREFS.map(p => `(全焼 OR 半焼 OR 焼ける OR 燃える OR 焼損) ${p} when:1d`),
   ...TOKYO23.map(w => `(火事 OR 火災) "${w}" when:2d`)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const items = []; const seen = new Set(); let failed = 0;
