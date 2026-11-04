@@ -25,8 +25,10 @@ jobs:
         run: node collector/run.mjs && cd site && python3 build.py && node verify_live.mjs
       - name: 報道から全国の火事を収集
         run: node collector/news_jp.test.mjs && node collector/news_run.mjs
+      - name: 消防本部の発表を記録に足す（受付サーバーから）
+        run: node collector/official_run.mjs
       - name: 受付サーバーのテスト
-        run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs
+        run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs && node --no-warnings worker/mail.test.mjs
       - name: 生成・検査
         env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}' }
         run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh

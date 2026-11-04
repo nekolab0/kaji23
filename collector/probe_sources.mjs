@@ -12,7 +12,7 @@ import { parseSource, robotsAllows, htmlText } from '../worker/src/official.js';
 import { AREAS } from '../worker/src/areas.js';
 import { decode } from './fetchutil.mjs';
 
-const UA = 'kaji23-bot/1.0 (+https://kajisoku.jp/about.html; 火災の出動情報を町名単位で表示)';
+const UA = 'kaji23-bot/1.0 (+https://kajisoku.jp/about.html; fire dispatch info by town)';
 const OUT = new URL('../verify/probe_sources.json', import.meta.url);
 const LIMIT = +process.env.PROBE_LIMIT || 0;   // テスト用に市町村数を絞る
 const sleep = ms => new Promise(r => setTimeout(r, ms));

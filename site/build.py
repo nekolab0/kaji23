@@ -169,7 +169,7 @@ def jtime(iso):
 def news_fire_id(x): return 'n-' + x['id']
 def fire_href(fid):
     """報道された火事は、検索エンジンにも載る固定ページ（f-<ID>.html）。目撃報告の火事は fire.html?id= のまま"""
-    return f'f-{fid}.html' if fid.startswith('n-') else f'fire.html?id={quote(fid)}'
+    return f'f-{fid}.html' if fid.startswith(('n-', 'o-')) else f'fire.html?id={quote(fid)}'
 def town_link(ward, town):
     """町名から町ページへのリンク先（なければ区ページ）"""
     if town:
@@ -884,8 +884,14 @@ def build(report=None):
     skip = {'fire.html', 'town.html'}   # 中身が URL のパラメータで変わるページは載せない
     urls = [(f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}') for fn in sorted(pages) if fn not in skip]
     prio = lambda u: '1.0' if u.endswith('/') else '0.8' if '/p-' in u else '0.6'
-    (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in urls) + '</urlset>\n', encoding='utf-8')
+    # 1ファイル5万件までの決まりがあるので、4万件ずつに分けて索引（sitemap.xml）から指す
+    CH = 40000
+    parts = [urls[i:i + CH] for i in range(0, len(urls), CH)] or [[]]
+    for i, part in enumerate(parts, 1):
+        (DIST / f'sitemap-{i}.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in part) + '</urlset>\n', encoding='utf-8')
+    (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + ''.join(f'<sitemap><loc>{SITE_URL}/sitemap-{i}.xml</loc><lastmod>{today}</lastmod></sitemap>\n' for i in range(1, len(parts) + 1)) + '</sitemapindex>\n', encoding='utf-8')
     (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:

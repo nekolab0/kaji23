@@ -1,0 +1,21 @@
+// 火災メールの読み取りテスト（実際の配信の書式をまねた見本）
+import { parseMail, decodeHeader, mailText } from './src/mail.js';
+const now = new Date('2026-11-04T08:00:00Z');   // 日本時間 17:00
+const results = []; const ok = (n, c, d = '') => results.push({ name: n, ok: !!c, detail: String(d) });
+const b64 = s => Buffer.from(s, 'utf8').toString('base64');
+const mk = (from, subject, body, enc = 'base64') => `From: ${from}\r\nSubject: =?UTF-8?B?${b64(subject)}?=\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: ${enc}\r\n\r\n${enc === 'base64' ? b64(body) : Buffer.from(body, 'utf8').toString('latin1')}`;
+ok('件名のデコード', decodeHeader(`=?UTF-8?B?${b64('【火災発生】')}?=`) === '【火災発生】');
+const a = parseMail(mk('kasai@city.nagoya.lg.jp', '火災発生', '2026年11月04日16時28分頃、中川区本前田町　地内から火災の通報があり消防車が出動しています。'), now);
+ok('名古屋市: 送り主から政令市、区だけの書き方を名古屋市○○区に', a.items.length === 1 && a.items[0].city === '名古屋市中川区' && a.items[0].town === '本前田町' && a.items[0].pref === '愛知県', JSON.stringify(a));
+const b = parseMail(mk('info@mail.example-bousai.jp', '消防情報', '11月4日 15時10分\n長岡市今朝白一丁目付近で建物火災が発生し、消防車が出動しています。', '8bit'), now);
+ok('知らない送り主: 本文の市名（全国で1つだけ）で振り分け・日時と場所が別の行', b.items.length === 1 && b.items[0].pref === '新潟県' && b.items[0].city === '長岡市' && b.items[0].kind === '建物火災', JSON.stringify(b));
+const c = parseMail(mk('info@mail.example-bousai.jp', '消防情報', '11月4日 15時10分 府中市宮町付近で建物火災が発生しました。'), now);
+ok('同じ名前の市がほかの県にもある（府中市）: 県名がなければ採らない', c.items.length === 0, JSON.stringify(c));
+const d = parseMail(mk('info@mail.example-bousai.jp', '救急', '11月4日 15時10分 長岡市今朝白付近で救急出動しています。'), now);
+ok('救急は捨てる', d.items.length === 0);
+const e = parseMail(mk('kasai@city.nagoya.lg.jp', '火災誤報', '2026年11月04日16時28分頃、中川区本前田町　地内から火災との通報で消防車が出動しましたが、火災ではありませんでした。'), now);
+ok('誤報は捨てる', e.items.length === 0, JSON.stringify(e));
+const multi = `From: a@b.jp\r\nSubject: fire\r\nContent-Type: multipart/alternative; boundary="XX"\r\n\r\n--XX\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64('本文です')}\r\n--XX\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<p>html</p>\r\n--XX--`;
+ok('マルチパート: text/plain を使う', mailText(multi).text === '本文です', JSON.stringify(mailText(multi)));
+results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));
+process.exit(results.some(r => !r.ok) ? 1 : 0);

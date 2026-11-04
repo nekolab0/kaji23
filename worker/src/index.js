@@ -11,6 +11,7 @@
 // GET  /api/incident?id=                            → 火事1件（件数・口コミ）
 // GET  /api/town?pref=&city=&town=                 → 町の火事（30日）と口コミ掲示板
 // GET  /api/counts                                  → 場所ごとの火事の件数（365日）
+// GET  /api/official?days=7                         → 消防本部の発表（サイト生成用）
 // GET  /api/reports?hours=24                        → 区・町ごとの件数（旧形式）
 // POST /api/contact  {body}                         → 削除依頼・問い合わせ
 // GET  /f/<id>                                      → 共有用ページ
@@ -19,6 +20,7 @@
 // IPアドレスは保存しない（日替わりの塩付きハッシュを連投防止にだけ使う）。
 import { AREAS } from './areas.js';
 import { SOURCES, parseSource, robotsAllows, htmlText } from './official.js';
+import { parseMail } from './mail.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
@@ -272,6 +274,13 @@ export async function handle(request, env, now = new Date()) {
     return json(env, { generatedAt: iso, sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items, ...(dbg ? { sample: st[s.id].sample } : {}) } : {}) })) });
   }
 
+  // 消防本部の発表の記録（サイトの生成時に読み、火事のページ・町のページ・件数に使う）。場所は町名まで
+  if (P === '/api/official' && request.method === 'GET') {
+    const days = Math.min(60, Math.max(1, parseInt(url.searchParams.get('days') || '7', 10) || 7));
+    const { results } = await DB.prepare('SELECT source, pref, ward, town, base, kind, status, at, inc FROM official WHERE at > ? ORDER BY at').bind(ago(days * 864e5)).all();
+    return json(env, { generatedAt: iso, days, items: results.map(r => ({ ...r, source_name: (SOURCES.find(s => s.id === r.source) || {}).name || (/^mail-/.test(r.source) ? '消防メール（' + r.source.slice(5) + '）' : r.source), source_url: (SOURCES.find(s => s.id === r.source) || {}).url || null })) }, 200, { 'Cache-Control': 'public, max-age=120' });
+  }
+
   // 場所ごとの火事の件数（検索候補の「記録○件」用。直近365日）
   if (P === '/api/counts' && request.method === 'GET') {
     const { results } = await DB.prepare("SELECT pref, ward, COALESCE(base, '') AS base, COUNT(*) AS n FROM incidents WHERE last_at > ? GROUP BY pref, ward, base").bind(ago(365 * 864e5)).all();
@@ -320,15 +329,32 @@ export async function handle(request, env, now = new Date()) {
 }
 
 // ---------- 消防本部の出動情報を取り込む ----------
-const UA = 'kaji23-bot/1.0 (+https://kajisoku.jp/about.html; 火災の出動情報を町名単位で表示)';
+const UA = 'kaji23-bot/1.0 (+https://kajisoku.jp/about.html; fire dispatch info by town)';
 // 取り出した1件を保存し、同じ場所・近い時刻の「火事」にまとめる（なければ新しく作る）
 export async function ingestOfficial(env, items, now = new Date()) {
   const DB = env.DB; let added = 0;
+  // 同じページの発表は毎回ほぼ同じなので、既存かどうかは1回の問い合わせでまとめて調べる（D1の問い合わせ回数を抑える）
+  const ids = items.map(x => x.key || `${x.source}|${x.ward || x.city}|${x.town || ''}|${x.at}`);
+  let known = null;
+  if (ids.length) {
+    known = new Map();
+    for (let i = 0; i < ids.length; i += 80) {
+      const part = ids.slice(i, i + 80);
+      const { results } = await DB.prepare(`SELECT id, status FROM official WHERE id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+      for (const r of results) known.set(r.id, r.status);
+    }
+  }
   for (const x of items) {
     const base = x.town ? baseTown(x.town) || null : null;
     const id = x.key || `${x.source}|${x.ward || x.city}|${x.town || ''}|${x.at}`;   // 時刻のないページは「場所・種別・日付」で同じ発表とみなす
-    const old = await DB.prepare('SELECT id, inc FROM official WHERE id = ?').bind(id).first();
-    if (old) { await DB.prepare('UPDATE official SET seen_last = ?, status = COALESCE(?, status) WHERE id = ?').bind(now.toISOString(), x.status || null, id).run(); continue; }
+    if (known && known.has(id)) {   // すでにある発表は、状態（鎮火など）が変わったときだけ書き直す
+      const k = known.get(id); if (x.status && x.status !== k) await DB.prepare('UPDATE official SET seen_last = ?, status = ? WHERE id = ?').bind(now.toISOString(), x.status, id).run();
+      continue;
+    }
+    if (!known) {
+      const old = await DB.prepare('SELECT id, inc FROM official WHERE id = ?').bind(id).first();
+      if (old) { await DB.prepare('UPDATE official SET seen_last = ?, status = COALESCE(?, status) WHERE id = ?').bind(now.toISOString(), x.status || null, id).run(); continue; }
+    }
     const city = x.city;
     const t0 = new Date(x.at);
     let inc = await DB.prepare(`SELECT * FROM incidents WHERE pref = ? AND ward = ? AND (base = ? OR base IS NULL OR ? IS NULL) AND first_at > ? AND first_at < ? ORDER BY (base = ?) DESC, last_at DESC LIMIT 1`)
@@ -349,7 +375,7 @@ export async function ingestOfficial(env, items, now = new Date()) {
 }
 
 // 1回の実行で読むページ数を絞り、古い順に回す（各ページはおよそ5〜10分に1回）
-export async function pollSources(env, now = new Date(), fetcher = fetch, perRun = 6) {
+export async function pollSources(env, now = new Date(), fetcher = fetch, perRun = 8) {
   await setup(env);
   const DB = env.DB;
   const { results } = await DB.prepare('SELECT * FROM sources').all();
@@ -392,8 +418,23 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
   return report;
 }
 
+// 火災メールを受け取る（Cloudflare Email Routing で、このWorker宛に転送したメール）
+export async function receiveMail(env, raw, now = new Date()) {
+  await setup(env);
+  const r = parseMail(raw, now);
+  const added = r.items.length ? await ingestOfficial(env, r.items, now) : 0;
+  await env.DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, sample) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = excluded.last_ok, status = excluded.status, items = sources.items + excluded.items, sample = excluded.sample')
+    .bind('mail-' + (r.from || 'unknown'), now.toISOString(), now.toISOString(), 'メール', added, (r.subject || '').slice(0, 200)).run();
+  return { ...r, added };
+}
+
 export default {
   fetch: (request, env) => handle(request, env),
+  email: async (message, env) => {
+    const buf = new Uint8Array(await new Response(message.raw).arrayBuffer());
+    let raw = ''; for (let i = 0; i < buf.length; i += 8192) raw += String.fromCharCode.apply(null, buf.subarray(i, i + 8192));
+    await receiveMail(env, raw);
+  },
   scheduled: async (event, env) => {
     await setup(env);
     if (event.cron === '17 4 * * *') {

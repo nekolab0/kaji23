@@ -582,7 +582,8 @@
       var x = j.incident, place = placeOf(x), calm = Date.now() - Date.parse(x.last) > 90 * 60000;
       var off = j.official || [], o0 = off[0];
       setText('.f-kind', (x.official ? '消防の発表あり' : '火事の目撃情報') + (calm ? '（落ち着いている可能性）' : ''));
-      setText('.f-title', place + '付近で火事' + (x.official ? '' : '？'));
+      var fixedU = fire.hasAttribute('data-pref');   // 固定ページ（消防の発表）は見出しをHTMLのまま
+      if (!fixedU) setText('.f-title', place + '付近で火事' + (x.official ? '' : '？'));
       setText('.f-lead', (o0 ? o0.name.replace(/（.*$/, '') + 'が' + hm(o0.at) + 'に' + o0.kind + 'で出動したと発表しています' + (o0.status === '鎮火' ? '（鎮火）' : '') + '。' : '') +
         (x.counts.total ? '近所の人から' + x.counts.total + '件の報告がありました（最新 ' + ago(x.last) + '）。' : (o0 ? '近所の人からの報告はまだありません。' : '')) +
         (calm ? '時間がたっているため、落ち着いている可能性があります。' : ''));
@@ -600,7 +601,7 @@
         });
       }
       st.appendChild(stat('口コミ', String(j.comments.length), '下に表示'));
-      setup(x.pref || '東京都', x.ward, x.town, place + '付近の火事の目撃情報');
+      setup(x.pref || '東京都', x.ward, x.town, fixedU ? document.title.replace(/｜火事速$/, '') : place + '付近の火事の目撃情報');
       var ss = $('.f-share-sec', fire); ss.hidden = false;
       var tags = ' #' + x.ward + (x.town ? ' #' + baseTown(x.town) : '') + ' #火事';
       var text = (x.official ? '【消防出動】' + place + '付近で' + (x.official.kind || '火災') + (x.counts.total ? '　目撃報告' + x.counts.total + '件' : '') : '【火事の目撃情報】' + place + '付近　報告' + x.counts.total + '件（' + countsText(x.counts) + '）') + '　' + hm(x.last) + '時点' + tags;
@@ -624,6 +625,10 @@
       shareButtons($('.f-share', fire), '【報道】' + place + 'の火事（' + hm(x.first) + '〜）' + ' #' + (x.city || x.ward) + ' #火事', location.href);
     };
     var notFound = function (t) {
+      if (fire.hasAttribute('data-pref')) {   // 固定ページは書き込み済みの中身を残し、口コミ欄などだけ足す
+        setup(fire.getAttribute('data-pref'), fire.getAttribute('data-city'), fire.getAttribute('data-town') || '', document.title.replace(/｜火事速$/, ''));
+        return;
+      }
       $$('.section', fire).forEach(function (s) { s.hidden = true; });
       setText('.f-title', '火事のページが見つかりません'); setText('.f-lead', t || 'URLが正しいか確かめてください。古い報告は表示されなくなることがあります。');
       var a = el('a', { class: 'btn', href: 'index.html' }, 'いまの火事を見る'); $('.f-stats', fire).appendChild(a);
