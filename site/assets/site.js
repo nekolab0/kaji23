@@ -560,15 +560,24 @@
         if (town && codeOf(pref, ward)) { crumb.appendChild(el('a', { href: townHref(pref, ward, town) }, baseTown(town))); crumb.appendChild(document.createTextNode(' ／ ')); }
         crumb.appendChild(document.createTextNode('火事のページ'));
       }
-      if (API && AREAS.prefs[pref] && AREAS.prefs[pref].indexOf(ward) >= 0) {
+      var past = !id && fire.hasAttribute('data-pref');   // さかのぼって記録した過去の火事（報告・口コミは町・市区町村のページで）
+      if (past) {
+        var pc = $('.f-comments', fire); pc.innerHTML = '';
+        var pp = el('p', { class: 'small muted' }, '過去の火事のため、この火事への報告・口コミは受け付けていません。近くで気づいたことは ');
+        var pl = el('a', { href: town && codeOf(pref, ward) ? townHref(pref, ward, town) : cityHref(pref, ward) }, (town ? baseTown(town) : ward) + 'のページ');
+        pp.appendChild(pl); pp.appendChild(document.createTextNode(' から共有できます。')); pc.appendChild(pp);
+      }
+      if (!past && API && AREAS.prefs[pref] && AREAS.prefs[pref].indexOf(ward) >= 0) {
         $('.f-rep-sec', fire).hidden = false;
         var r = makePanel(pref, ward, town); $('.f-report', fire).appendChild(r); initPanel(r);
       }
       // 口コミの一覧
+      if (past) { /* 上で案内済み */ } else {
       var cb = el('div', { class: 'comments', 'data-comments': '', 'data-pref': pref, 'data-city': ward, 'data-inc': id });
       if (town) cb.setAttribute('data-town', town);
       cb.innerHTML = '<ul class="com-list" aria-live="polite"><li class="muted small">口コミを読み込んでいます…</li></ul>';
       $('.f-comments', fire).appendChild(cb); initComments(cb);
+      }
       // SNS
       var q = (town ? baseTown(town) : ward) + ' 火事', sns = $('.f-sns', fire);
       [['Xで「' + q + '」を見る', 'https://x.com/search?q=' + encodeURIComponent(q) + '&f=live'],

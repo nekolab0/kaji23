@@ -40,8 +40,28 @@ OFFICIAL = json.load(open(_op, encoding='utf-8'))['fires'] if _op.exists() else 
 _news_key = {(r['pref'], r['city'], r['town'], r['day']): r for r in RECORDS}
 _news_city_day = {}
 for r in RECORDS: _news_city_day.setdefault((r['pref'], r['city'], r['day']), []).append(r)
-for oid, v in OFFICIAL.items():
+TOWN_NAMES = {code: {t[0] for t in ts} for code, ts in TOWNS_JP.items()}
+_TOWN_SORTED = {}
+def norm_town(pref, city, t):
+    """発表の町名を、全国の町名一覧にある町名に合わせる（「丸谷町○○工場」→「丸谷町」）。合わなければ空（市区町村まで）"""
+    if not t: return ''
+    code = CODE_OF.get((pref, city))
+    if not code: return ''
+    names = TOWN_NAMES.get(code, ())
+    if t in names: return t
+    if code not in _TOWN_SORTED: _TOWN_SORTED[code] = sorted(names, key=len, reverse=True)
+    t2 = t.replace('ヶ', 'ケ')
+    for n in _TOWN_SORTED[code]:
+        if t.startswith(n) or t2.startswith(n.replace('ヶ', 'ケ')): return n
+    return ''
+_off_seen = set()
+for oid, v in sorted(OFFICIAL.items(), key=lambda kv: (kv[0].startswith('o-b-'), kv[0])):   # 受付サーバーの分（火事のページがある）を先に
     pref, city, town, day, kind, at, sname, surl, status = (list(v) + [''] * 9)[:9]
+    if status == '誤報': continue
+    town = norm_town(pref, city, town)
+    dk = (pref, city, town, day) if town else (pref, city, (at or day)[:16])
+    if dk in _off_seen: continue   # さかのぼって取り込んだ分と、受付サーバーの分の重なり
+    _off_seen.add(dk)
     o = {'kind': kind, 'at': at, 'name': sname, 'url': surl, 'status': status}
     hit = _news_key.get((pref, city, town, day))
     if hit is None:   # 町名のない報道と同じ日・同じ市区町村
@@ -61,7 +81,6 @@ for r in RECORDS:
     if town: COUNTS[f'{pref}|{city}|{town}'] += 1
     par = WARD_PARENT.get((pref, city))
     if par: COUNTS[f'{pref}|{par}'] += 1
-TOWN_NAMES = {code: {t[0] for t in ts} for code, ts in TOWNS_JP.items()}
 def static_town_file(p, c, t): return f'm-{p}-{c}-{t}.html'
 STATIC_TOWNS = set()
 for r in RECORDS:
@@ -299,6 +318,7 @@ def city_page(p, c):
   <h2 id="news">{esc(c)}で報道された火事</h2>
   {news_list_jp(news_in(pref=p, city=c), empty=f'直近30日に、{c}の火事の報道は見つかっていません。', show_pref=False)}
 </section>
+{dial_block(p, c)}
 {city_records(p, c)}
 {main}
 <section class="section" aria-labelledby="sns">
@@ -440,7 +460,7 @@ def static_fire_page(r):
     ld = [bc_ld(cr + [(f'{jmd(day)}の火事', None)])]
     return fire_page({'name': fire_href(r['fid'])[:-5], 'title': title, 'desc': desc, 'kind': kind_label, 'h1': f'{place}の火事（{jmd(day)}）',
                       'lead': lead, 'news': news_html, 'crumb': crumb_html, 'after': after, 'ld': ld,
-                      'id': r['fid'] if x else r['fid'][2:], 'pref': p, 'city': c, 'town': t})
+                      'id': r['fid'] if x else ('' if r['fid'].startswith('o-b-') else r['fid'][2:]), 'pref': p, 'city': c, 'town': t})   # さかのぼった分は受付サーバーに火事がない
 
 def static_town_page(p, c, t):
     code = CODE_OF[(p, c)]
@@ -471,19 +491,33 @@ def area_desc(p, c=None):
     return (head + f'{where}の最新は{jmd(r["day"])} {(r["city"] if c is None or r["city"] != c else "") + r["town"]}の{k if k.endswith("火災") else (k + "の火事") if k else "火事"}。'
             + (f'直近30日の火事{recent}件。' if recent else '') + (f'記録{len(rs)}件。' if len(rs) > recent else '') + 'サイレン・煙の目撃報告と口コミも町ごとにリアルタイムで。')
 
+_dp = RAW / 'dial_numbers.json'
+DIAL = json.load(open(_dp, encoding='utf-8'))['dial'] if _dp.exists() else {}
+def dial_block(p, c):
+    """市区町村ページ: 火災・災害の案内ダイヤル（サイレンが聞こえたときの確認先）と出動情報ページ"""
+    par = WARD_PARENT.get((p, c))
+    d = DIAL.get(f'{p}|{c}') or (DIAL.get(f'{p}|{par}') if par else None)
+    if not d: return ''
+    tels = ''.join(f'<li><a class="num" href="tel:{esc(t.replace("-", ""))}">{esc(t)}</a></li>' for t in d.get('tel', []))
+    webs = ''.join(f'<li><a href="{esc(u)}" target="_blank" rel="noopener">{esc(c if not par else par)}の消防の出動情報（公式）↗</a></li>' for u in d.get('web', []))
+    return (f'<section class="section" aria-labelledby="dial"><h2 id="dial">{esc(c)}の火災・災害を電話で確かめる</h2>'
+            f'<p class="small">サイレンが聞こえたら、消防本部の案内ダイヤルで、いま出動している火災・災害を確かめられます。<strong>確認のための119番はやめてください</strong>（緊急の通報がつながりにくくなります）。</p>'
+            + (f'<ul class="plain">{tels}</ul>' if tels else '') + (f'<ul class="plain">{webs}</ul>' if webs else '')
+            + '<p class="small muted">番号・ページは各消防本部の公表によるものです。変わることがあるため、つながらないときは公式サイトでご確認ください。</p></section>')
+
 def city_records(p, c):
     """市区町村ページ: これまでの火事の記録（新しい順）と、年・種別・町ごとの件数"""
     rs = records_in(p, c)
     if not rs: return ''
     years = collections.Counter(r['day'][:4] for r in rs)
-    kinds = collections.Counter(rec_kind(r) or '種別不明' for r in rs)
+    kinds = collections.Counter(rec_kind(r) for r in rs if rec_kind(r))
     towns = collections.Counter((r['city'], r['town']) for r in rs if r['town'])
     yrs = '・'.join(f'{y}年 {n}件' for y, n in sorted(years.items(), reverse=True)[:6])
     kd = '・'.join(f'{k} {n}件' for k, n in kinds.most_common(6))
     tw = ''.join(f'<a href="{esc(town_href(p, cc2, t))}">{esc((cc2[len(c):] if cc2 != c else "") + t)}<span class="cnt">{n}</span></a>'
                  for (cc2, t), n in towns.most_common(40))
     return (f'<section class="section" aria-labelledby="rec"><h2 id="rec">{esc(c)}の火事の記録（{len(rs)}件）</h2>'
-            f'<p class="small">{yrs}</p><p class="small">{kd}</p>'
+            f'<p class="small">{yrs}</p>' + (f'<p class="small">{kd}</p>' if kd else '')
             + (f'<h3 style="font-size:15px">火事の記録が多い町</h3><div class="town-grid">{tw}</div>' if tw else '')
             + f'<h3 style="font-size:15px">最近の火事</h3>{record_list(rs[:20])}'
             f'<p class="small muted">当サイトが報道・消防本部の発表・自治体のオープンデータから記録した火事です（{SITE_NAME}の収録分。すべての火事ではありません）。</p></section>')
