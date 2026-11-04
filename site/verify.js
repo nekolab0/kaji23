@@ -166,7 +166,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     // フォントCDNは作業環境から到達できないため遮断（公開先では読み込まれる）
     await c.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
     // 後に登録した経路が優先される: まず外部への送信を止め、そのうえで受付サーバーと地理院を代役に
-    await c.route(/workers\.dev|api\.kajisoku\.jp|x\.com|twitter\.com|yahoo\.co\.jp|news\.google\.com/, r => r.abort()); // 本番・外部へは送らない
+    await c.route(/workers\.dev|api\.kajisoku\.jp|x\.com|twitter\.com|yahoo\.co\.jp|googlesyndication\.com|news\.google\.com/, r => r.abort()); // 本番・外部へは送らない
     if (API) await c.route(u => u.href.startsWith(API + '/'), apiRoute);
     await c.route(/mreversegeocoder\.gsi\.go\.jp/, r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify({ results: { muniCd: '13117', lv01Nm: '赤羽西二丁目' } }) }));

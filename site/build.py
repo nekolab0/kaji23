@@ -268,7 +268,33 @@ def search_block(autofocus=False):
 FIRE_ICON = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c2341c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-10z"/></svg>'
 NAV = [('index', 'いまの火事'), ('index#regions', '地域から探す'), ('p-東京都', '東京23区'), ('dial', 'サイレン・119'), ('rules', '投稿のルール'), ('about', '出典')]
 
+ADS = json.loads((SITE / 'ads.json').read_text(encoding='utf-8'))
+ADS_CLIENT = (ADS.get('client') or '').strip()
+ADS_SLOT = (ADS.get('slot') or '').strip()
+# 広告は「区切りの間」にだけ置く（ポップアップ・画面下固定・全画面は使わない）。ボタンのすぐ近くには置かない
+AD_AFTER = ('recent', 'news', 'rg', 'cities', 'wl', 'tl', 'near', 'st')  # 報告・投稿ボタンのある「いまの火事」の直後は避ける（誤クリック防止）。1ページ2つまで
+AD_AFTER_FIRE = ('com',)                      # 火事のページは口コミの後だけ（報告・共有ボタンから離す）
+NO_AD_PAGES = ('policy', 'rules', 'about', 'dial')
+def ad_unit():
+    return (f'<aside class="ad" aria-label="広告"><div class="ad-label">スポンサーリンク</div>'
+            f'<ins class="adsbygoogle" style="display:block" data-ad-client="{esc(ADS_CLIENT)}" data-ad-slot="{esc(ADS_SLOT)}" '
+            f'data-ad-format="auto" data-full-width-responsive="true"></ins>'
+            f'<script>(adsbygoogle=window.adsbygoogle||[]).push({{}});</script></aside>')
+def insert_ads(name, body):
+    if not (ADS_CLIENT and ADS_SLOT) or name in NO_AD_PAGES:
+        return body
+    keys = AD_AFTER_FIRE if name == 'fire' else AD_AFTER
+    n = 0
+    def rep(m):
+        nonlocal n
+        if n >= 2: return m.group(0)
+        n += 1
+        return m.group(0) + '\n' + ad_unit()
+    pat = re.compile(r'<section class="section[^"]*"[^>]*? aria-labelledby="(?:' + '|'.join(keys) + r')"[^>]*>.*?</section>', re.S)
+    return pat.sub(rep, body)
+
 def page(name, title, desc, body, og_image='og/index.png', full=True):
+    body = insert_ads(name, body)
     nav = ''.join(f'<a href="{k.split("#")[0]}.html{("#" + k.split("#")[1]) if "#" in k else ""}"{" aria-current=\"page\"" if k == name else ""}>{esc(v)}</a>' for k, v in NAV)
     canon = f'{SITE_URL}/{quote(name)}.html' if name != 'index' else f'{SITE_URL}/'
     ogimg = f'{SITE_URL}/{og_image}'
@@ -290,6 +316,8 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Barlow+Condensed:wght@500;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
 <link rel="stylesheet" href="assets/site.css">'''
+    if ADS_CLIENT:
+        head += f'\n<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={esc(ADS_CLIENT)}" crossorigin="anonymous"></script>'
     ld = {"@context": "https://schema.org", "@type": "WebPage", "name": title, "description": desc, "inLanguage": "ja",
           "isPartOf": {"@type": "WebSite", "name": SITE_NAME}}
     head += f'\n<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>'
@@ -788,7 +816,7 @@ def policy_page():
 <h3>4. 第三者への提供</h3>
 <p>法令に基づく場合を除き、集めた情報を第三者に提供しません。本サイトはGitHub（ページの配信）とCloudflare（報告・口コミの受付）を利用しており、各社のサーバーにアクセスの記録が残ることがあります。</p>
 <h3>5. 外部サービス・広告</h3>
-<p>現在、アクセス解析や広告は使っていません。今後、Google AdSense などの広告配信やアクセス解析を導入する場合は、Cookie の利用と無効化の方法を含めてこのページでお知らせします。</p>
+<p>本サイトは{"" if ADS_CLIENT else "今後、"}第三者配信の広告サービス「Google AdSense」を利用{"しています" if ADS_CLIENT else "する予定です"}。Google などの第三者配信事業者は、Cookie を使って、利用者が本サイトや他のサイトに過去にアクセスした情報に基づいて広告を配信することがあります。Google が広告 Cookie を使うことで、Google やそのパートナーは本サイトや他のサイトへのアクセス情報に基づいて適切な広告を表示できます。利用者は <a href="https://adssettings.google.com/" rel="noopener" target="_blank">Google の広告設定</a> でパーソナライズ広告を無効にできます。また <a href="https://www.aboutads.info/choices/" rel="noopener" target="_blank">www.aboutads.info</a> で、第三者配信事業者の Cookie を無効にできます。詳しくは <a href="https://policies.google.com/technologies/ads?hl=ja" rel="noopener" target="_blank">Google の広告に関するポリシー</a> をご覧ください。広告はページの区切りの間にだけ表示し、画面を覆うポップアップ型の広告は使いません。アクセス解析は現在使っていません。</p>
 <h3>6. 外部サイトへのリンク</h3>
 <p>報道記事、消防本部の公開ページ、X・Yahoo!リアルタイム検索などへのリンクがあります。リンク先での情報の扱いは各サイトの方針によります。</p></section>
 <section class="section" id="terms" aria-labelledby="tm"><h2 id="tm">利用規約</h2>
@@ -849,6 +877,8 @@ def build(report=None):
         + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in urls) + '</urlset>\n', encoding='utf-8')
     (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
+    if ADS_CLIENT:
+        (DIST / 'ads.txt').write_text(f"google.com, {ADS_CLIENT.replace('ca-pub-', 'pub-')}, DIRECT, f08c47fec0942fa0\n", encoding='utf-8')
     _host = SITE_URL.split('://', 1)[-1].split('/')[0]
     if '/' not in SITE_URL.split('://', 1)[-1] and not _host.endswith('github.io'):
         (DIST / 'CNAME').write_text(_host + '\n', encoding='utf-8')  # GitHub Pages の独自ドメイン
