@@ -49,6 +49,8 @@
   function townFile(pref, city, town) { return pref === '東京都' && town ? TOWN_FILES[city + '|' + baseTown(town)] : null; }
   function is23(pref, city) { return pref === '東京都' && !!WARD_FILES[city]; }
   function prefHref(p) { return 'p-' + p + '.html'; }
+  // 報道された火事は固定ページ（f-<ID>.html）、目撃報告の火事は fire.html?id=
+  function fireHref(id) { return /^n-/.test(id) ? 'f-' + id + '.html' : 'fire.html?id=' + encodeURIComponent(id); }
   function cityHref(p, c) { return is23(p, c) ? WARD_FILES[c] + '.html' : 'c-' + p + '-' + c + '.html'; }
   function townHref(p, c, t) {
     var f = townFile(p, c, t); if (f) return f;
@@ -182,7 +184,7 @@
   var liveBoxes = [], tiles = [];
   function fireCard(x) {
     var li = el('li', { class: 'fire-card' + (Date.now() - Date.parse(x.last) > 90 * 60000 ? ' calm' : '') });
-    var a = el('a', { class: 'place', href: 'fire.html?id=' + encodeURIComponent(x.id) });
+    var a = el('a', { class: 'place', href: fireHref(x.id) });
     a.appendChild(el('b', null, placeOf(x) + '付近')); li.appendChild(a);
     var row = el('div', { class: 'row' });
     if (x.official) row.appendChild(el('span', { class: 'tag off' }, '消防の発表 ' + (x.official.kind || '火災')));
@@ -457,7 +459,7 @@
   }
   var tp = $('[data-town-page]');
   if (tp) {
-    var prm = new URLSearchParams(location.search), code = prm.get('c') || '', tname = baseTown(prm.get('t') || '');
+    var prm = new URLSearchParams(location.search), code = prm.get('c') || tp.getAttribute('data-c') || '', tname = baseTown(prm.get('t') || tp.getAttribute('data-t') || '');
     var ar = AREAS.codes[code];
     var T = function (sel, t) { $(sel, tp).textContent = t; };
     if (!ar || !tname) { T('.t-title', 'ページが見つかりません'); T('.t-lead', '地名で探し直してください。'); }
@@ -490,7 +492,7 @@
         var box = $('.t-news', tp), ul = el('ul', { class: 'news' }), n = 0;
         Object.keys(N).forEach(function (id) {
           var x = N[id]; if (x.pref !== pref || x.city !== city || !x.town || baseTown(x.town) !== tname) return;
-          var li = el('li', { class: 'news-item' }); var a = el('a', { class: 'place', href: 'fire.html?id=' + encodeURIComponent(id) }); a.appendChild(el('b', null, x.city + x.town + (x.chome ? x.chome + '丁目' : '')));
+          var li = el('li', { class: 'news-item' }); var a = el('a', { class: 'place', href: fireHref(id) }); a.appendChild(el('b', null, x.city + x.town + (x.chome ? x.chome + '丁目' : '')));
           li.appendChild(a); li.appendChild(el('span', { class: 'small muted' }, '最初の報道 ' + hm(x.first) + '　' + x.sources.map(function (s) { return s.name; }).join('・'))); ul.appendChild(li); n++;
         });
         if (n) box.appendChild(ul); else box.appendChild(el('p', { class: 'muted small' }, '直近30日に、' + tname + 'の火事の報道は見つかっていません。'));
@@ -523,6 +525,7 @@
   var fire = $('[data-fire]');
   if (fire) {
     var id = ''; try { id = new URLSearchParams(location.search).get('id') || ''; } catch (e) {}
+    if (!id) id = fire.getAttribute('data-id') || '';   // 報道された火事の固定ページ（f-*.html）
     var NEWS = {};
     var isNews = /^n-/.test(id);
     var shown = false;
@@ -605,8 +608,9 @@
     };
     var renderNews = function (x) {
       var place = placeOf({ pref: x.pref, city: x.city || x.ward, town: x.town ? x.town + (x.chome ? x.chome + '丁目' : '') : '' });
+      var fixed = fire.hasAttribute('data-pref');   // 固定ページは見出し・タイトルをHTMLのまま使う
       setText('.f-kind', '報道された火事');
-      setText('.f-title', place + 'の火事');
+      if (!fixed) setText('.f-title', place + 'の火事');
       setText('.f-lead', hm(x.first) + 'ごろから報道されている火事です。' + (x.building !== '建物不明' ? '建物：' + x.building + '。' : '') + '詳しくは報道各社の記事をご覧ください。');
       var st = $('.f-stats', fire); st.innerHTML = '';
       st.appendChild(stat('最初の報道', hm(x.first), ago(x.first), true));
@@ -614,8 +618,8 @@
       var ns = $('.f-news-sec', fire); ns.hidden = false;
       var ul = el('ul', { class: 'plain' });
       x.sources.forEach(function (s) { var li = el('li'); li.appendChild(el('a', { href: s.link, target: '_blank', rel: 'noopener nofollow' }, s.name + ' の記事')); li.appendChild(el('span', { class: 'small muted' }, '　' + hm(s.pub))); ul.appendChild(li); });
-      $('.f-news', fire).appendChild(ul);
-      setup(x.pref || '東京都', x.city || x.ward, x.town, place + 'の火事');
+      $('.f-news', fire).innerHTML = ''; $('.f-news', fire).appendChild(ul);
+      setup(x.pref || '東京都', x.city || x.ward, x.town, fixed ? document.title.replace(/｜火事速$/, '') : place + 'の火事');
       var ss = $('.f-share-sec', fire); ss.hidden = false;
       shareButtons($('.f-share', fire), '【報道】' + place + 'の火事（' + hm(x.first) + '〜）' + ' #' + (x.city || x.ward) + ' #火事', location.href);
     };
@@ -624,7 +628,14 @@
       setText('.f-title', '火事のページが見つかりません'); setText('.f-lead', t || 'URLが正しいか確かめてください。古い報告は表示されなくなることがあります。');
       var a = el('a', { class: 'btn', href: 'index.html' }, 'いまの火事を見る'); $('.f-stats', fire).appendChild(a);
     };
-    if (isNews) loadNews().then(function (N) { if (N[id]) renderNews(N[id]); else notFound('この報道は表示期間（30日）を過ぎました。'); });
+    if (isNews) loadNews().then(function (N) {
+      if (N[id]) renderNews(N[id]);
+      else if (fire.hasAttribute('data-pref')) {   // 固定ページは書き込み済みの中身を残し、口コミ欄などだけ足す
+        var c0 = fire.getAttribute('data-city'), t0 = fire.getAttribute('data-town') || '';
+        setup(fire.getAttribute('data-pref'), c0, t0, document.title.replace(/｜火事速$/, ''));
+      }
+      else notFound('この報道は表示期間（30日）を過ぎました。');
+    });
     else if (!id) notFound();
     else if (!API) notFound('目撃報告の受付を準備中です。');
     else {
