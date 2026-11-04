@@ -36,7 +36,9 @@ const FIRE = /(建物|車両|林野|枯草|枯れ草|船舶|航空機|その他�
 const NOT_FIRE = /報知|救急|救助|警戒|調査|ガス|水難|鎮火済みの?訓練|訓練|予防|誤報|火災では(?:あり|な)|火災ではない|の疑い(?:で|のため)出動したが|警報器|注意報|警報|統計|件数|運動|ポスター|研修|条例|届出|動画|罹災|発生しておりません|発生していません|ありません|テレホン|ダイヤル|お問い合わせ|案内/;
 export function fireKind(s) {
   if (!FIRE.test(s) || NOT_FIRE.test(s.replace(/火災出動|火災のため/, ''))) return null;
-  const m = s.match(FIRE); return (m[1] ? m[1].replace('枯れ草', '枯草').replace('その他の', 'その他') : '') + '火災';
+  // 「火災発生連絡 … 福祉建物火災が発生」のように何度か出るときは、種別が分かるもの（建物・車両など）を優先
+  const all = [...s.matchAll(new RegExp(FIRE.source, 'g'))];
+  const m = all.find(x => x[1]) || all[0]; return (m[1] ? m[1].replace('枯れ草', '枯草').replace('その他の', 'その他') : '') + '火災';
 }
 
 // 町名だけを取り出す（「北32条西7丁目」「太秦中筋町」など。目標物・距離・番地は捨てる）
@@ -131,7 +133,7 @@ function parseSentence(html, src, now) {
     let f = findCity(line, src);
     // 1つの市だけを扱うページ（市名が書かれない）: 日時のあとの文から町名を読む
     if (!f && src.city) {
-      const after = (dt ? line.slice(line.indexOf(dt[0]) + dt[0].length) : line).replace(/^[\s分頃ごろ、,。:]*(?:入電|覚知|発生|出動|出場)?[\s、,]*/, '');
+      const after = (dt ? line.slice(line.indexOf(dt[0]) + dt[0].length) : line).replace(/^[\s分頃ごろ、,。:]*(?:入電|覚知|発生|出動|出場)?[\s、,]*/, '').replace(/^(?:ただいま|先ほどの?|現在)[、,\s]*/, '');
       const t = townPart(after);
       if (t && t.length <= 15 && !/火災|火事|出動|出場|消防|救急|災害|発生|鎮火|現在|お知らせ/.test(t)) f = { city: src.city, rest: after };
     }
@@ -144,15 +146,45 @@ function parseSentence(html, src, now) {
   return out;
 }
 
+// 消防メールのブログ版（WordPress）: 投稿ごとに読む。本文に日付がないときは投稿日（＋本文の「覚知 05時58分」などの時刻）を使う
+function parseWP(html, src, now) {
+  const out = [];
+  const posts = String(html).split(/<article\b/i).slice(1);
+  for (const raw of posts.length ? posts : [String(html)]) {
+    const post = ('<article' + raw.split(/<\/article>/i)[0]).replace(/<\/time>|<\/a>/gi, m => m + '\n').replace(/<p\b/gi, '\n<p');
+    const lines = htmlText(post);
+    const text = lines.join(' ');
+    // 本文に日時があれば、文章形式の読み取りでそのまま（投稿日時の欄・見出しは除いて）
+    const bodyOnly = htmlText(post.replace(/<time[\s\S]*?<\/time>/gi, '').replace(/<h\d[\s\S]*?<\/h\d>/gi, '').replace(/<(?:div|span|p)[^>]*class=["'][^"']*(?:entry-meta|posted-on|byline|entry-date)[^"']*["'][\s\S]*?<\/(?:div|span|p)>/gi, '')).join(' ');
+    const own = parseSentence(`<p>${bodyOnly.replace(/</g, '')}</p>`, src, now);
+    if (own.length) { out.push(...own); continue; }
+    const iso = (post.match(/<time[^>]+datetime=["']([^"']+)["']/i) || [])[1];
+    let d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) { const m = text.match(/(20\d{2})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})/); if (m) d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] - 9, +m[5])); }
+    if (!d || isNaN(d)) continue;
+    const j = new Date(d.getTime() + 9 * 3600e3);
+    const y = j.getUTCFullYear(), mo = j.getUTCMonth() + 1, da = j.getUTCDate();
+    // 本文の覚知・発生の時刻（なければ投稿の時刻）
+    const tm = text.match(/(?:覚知|発生|入電|出動)[^0-9]{0,6}(\d{1,2})(?:時|:)(\d{1,2})/) || [null, j.getUTCHours(), j.getUTCMinutes()];
+    let at = new Date(Date.UTC(y, mo - 1, da, +tm[1] - 9, +tm[2]));
+    if (at - d > 3600e3) at = new Date(at - 864e5);   // 投稿より後の時刻なら前の日
+    const body = lines.filter(l => !/^(\d{4}年\d{1,2}月\d{1,2}日|投稿者|カテゴリー|Posted|by )/.test(l)).join(' ');
+    const stamp = `${mo}月${da}日${String(at.getTime() === d.getTime() ? j.getUTCHours() : new Date(at.getTime() + 9 * 3600e3).getUTCHours())}時${new Date(at.getTime() + 9 * 3600e3).getUTCMinutes()}分 `;
+    const x = parseSentence(`<p>${(stamp + body.replace(/^.*?(?=ただいま|先ほど|[^\s]+[市町村区])/, '')).replace(/</g, '')}</p>`, src, now);
+    for (const it of x) out.push({ ...it, at: at.toISOString() });
+  }
+  return out;
+}
+
 export function parseSource(html, src, now = new Date(), opts = {}) {
   const keepMs = (opts.hours || 48) * 3600e3;
-  const items = src.type === 'sapporo' ? parseSapporo(html, src, now) : parseSentence(html, src, now);
+  const items = src.type === 'sapporo' ? parseSapporo(html, src, now) : src.type === 'wp' ? parseWP(html, src, now) : parseSentence(html, src, now);
   // 重複（同じ市区町村・町・時刻）を除き、48時間以内のものだけ
   const seen = new Set(), res = [];
   for (const x of items) {
     if (!AREAS[src.pref] || !AREAS[src.pref].includes(x.city)) continue;
     if (now - new Date(x.at) > keepMs || new Date(x.at) - now > 3600e3) continue;
-    const k = x.key || `${x.city}|${x.town}|${x.at}`; if (seen.has(k)) continue; seen.add(k);
+    const k = (x.key || `${x.city}|${x.town}|${x.at}`) + (x.status === '誤報' ? '|誤報' : ''); if (seen.has(k)) continue; seen.add(k);
     res.push({ ...x, pref: src.pref, source: src.id });
   }
   return res;

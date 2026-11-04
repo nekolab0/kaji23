@@ -47,5 +47,14 @@ const ichikawa = { id: 't-ichikawa', name: '市川市消防局', pref: '千葉�
 const ic = parseSource('<p>11月2日午後8時6分頃市川市南大野2丁目4番付近で発生した、中高層建物火災は、鎮火いたしました。</p>', ichikawa, now);
 ok('市名つき・番地は捨てる・中高層建物火災', ic.length === 1 && ic[0].town === '南大野2丁目' && ic[0].kind === '建物火災' && ic[0].status === '鎮火', JSON.stringify(ic));
 ok('お知らせ・警報器・件数は火災にしない', fireKind('住宅用火災警報器を設置しましょう') === null && fireKind('火災件数（速報値）11月01日現在') === null && fireKind('現在、火災等の災害は発生していません。') === null);
+
+// WordPress（本文に日付がない）: 投稿日＋本文の覚知時刻
+const wp1 = { id: 't-joetsu', name: '上越市', pref: '新潟県', type: 'wp', city: '上越市' };
+const wh = `<article id="post-1"><h2>火災誤報連絡</h2><time datetime="2026-11-02T06:10:00+09:00">2026年11月2日 06:10</time><p>上越南消防署</p><p>覚知 05時58分</p><p>上越市寺町3丁目6-37付近の福祉建物火災は、火災ではありませんでした。</p></article>
+<article id="post-2"><h2>火災発生連絡</h2><time datetime="2026-11-02T05:58:00+09:00">2026年11月2日 05:58</time><p>上越南消防署</p><p>覚知 05時58分</p><p>上越市寺町3丁目6-37付近で福祉建物火災が発生しました。</p></article>
+<article id="post-3"><h2>災害情報</h2><time datetime="2026-11-02T15:12:00+09:00">2026年11月2日 15:12</time><p>ただいま、会津美里町吉田字村中乙地内の、その他火災のため消防車が出動しています。</p></article>`;
+const wj = parseSource(wh.split('<article id="post-3">')[0], wp1, now), wa = parseSource(wh, { id: 't-aizu', name: '会津', pref: '福島県', type: 'wp' }, now);
+ok('WordPress: 投稿日＋覚知時刻、誤報は取り消しの印', wj.length === 2 && wj.some(x => x.town === '寺町3丁目' && x.kind === '建物火災' && x.at === '2026-11-01T20:58:00.000Z' && x.status !== '誤報') && wj.some(x => x.status === '誤報' && x.at === '2026-11-01T20:58:00.000Z'), JSON.stringify(wj));
+ok('WordPress: 「ただいま、○○町…地内の」', wa.some(x => x.city === '会津美里町' && x.town === '吉田字村中乙' && x.kind === 'その他火災' && x.at === '2026-11-02T06:12:00.000Z'), JSON.stringify(wa));
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));
 process.exit(results.some(r => !r.ok) ? 1 : 0);

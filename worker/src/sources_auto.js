@@ -426,7 +426,7 @@ export const AUTO_SOURCES = [
  },
  {
   "id": "a-nagoya-fd-site2-ktaiwork-jp-cat-2",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://nagoya-fd.site2.ktaiwork.jp/?cat=2",
   "name": "名古屋市消防局（火災情報メール）",
   "pref": "愛知県",
@@ -434,7 +434,7 @@ export const AUTO_SOURCES = [
  },
  {
   "id": "a-kagoshima-city-fd-site-ktaiwork-jp-cat-2",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
   "name": "鹿児島市消防局（安心ネットワーク119）",
   "pref": "鹿児島県",
@@ -442,7 +442,7 @@ export const AUTO_SOURCES = [
  },
  {
   "id": "a-fukuyama-fd-site2-ktaiwork-jp",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://fukuyama-fd.site2.ktaiwork.jp/",
   "name": "福山地区消防組合（火災情報メール）",
   "pref": "広島県",
@@ -450,14 +450,14 @@ export const AUTO_SOURCES = [
  },
  {
   "id": "a-kohoku-fd-site-ktaiwork-jp",
-  "type": "sentence",
+  "type": "wp",
   "url": "http://kohoku-fd.site.ktaiwork.jp/",
   "name": "湖北地域消防本部（火災情報）",
   "pref": "滋賀県"
  },
  {
   "id": "a-kashiwa-city-site2-ktaiwork-jp-cat-3",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
   "name": "柏市（かしわメール配信サービス 火災情報）",
   "pref": "千葉県",
@@ -465,7 +465,7 @@ export const AUTO_SOURCES = [
  },
  {
   "id": "a-hadano-city-site-ktaiwork-jp-cat-5",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://hadano-city.site.ktaiwork.jp/?cat=5",
   "name": "秦野市（メール配信 火災情報）",
   "pref": "神奈川県",
@@ -473,7 +473,7 @@ export const AUTO_SOURCES = [
  },
  {
   "id": "a-ueda-city-site-ktaiwork-jp-cat-6",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://ueda-city.site.ktaiwork.jp/?cat=6",
   "name": "上田市（メール配信 火災情報）",
   "pref": "長野県",
@@ -481,7 +481,7 @@ export const AUTO_SOURCES = [
  },
  {
   "id": "a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://joetsu-city.site.ktaiwork.jp/category/%E7%81%AB%E7%81%BD%E6%83%85%E5%A0%B1/",
   "name": "上越市（安全メール 火災情報）",
   "pref": "新潟県",
@@ -489,21 +489,21 @@ export const AUTO_SOURCES = [
  },
  {
   "id": "a-aizuwakamatsu-fd-site2-ktaiwork-jp",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://aizuwakamatsu-fd.site2.ktaiwork.jp/",
   "name": "会津若松地方広域市町村圏整備組合消防本部（火災情報）",
   "pref": "福島県"
  },
  {
   "id": "a-miyazaki-pref-site-ktaiwork-jp-category-e6-b6-88-e9-98-b2",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://miyazaki-pref.site.ktaiwork.jp/category/%E6%B6%88%E9%98%B2/",
   "name": "宮崎県内の消防本部（火災情報メール）",
   "pref": "宮崎県"
  },
  {
   "id": "a-hikone-city-site-ktaiwork-jp",
-  "type": "sentence",
+  "type": "wp",
   "url": "https://hikone-city.site.ktaiwork.jp/",
   "name": "彦根市（メール配信システム）",
   "pref": "滋賀県",

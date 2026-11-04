@@ -58,7 +58,7 @@ for (const [url, x] of byUrl) {
   const a = areaOf(x.pref, x.cities);
   out.push({ id: idOf(url), name: `${x.cities.slice(0, 3).join('・')}${x.cities.length > 3 ? 'ほか' : ''}の消防（出動情報）`, url, ...a, type: 'sentence', ...(x.current ? { current: true } : {}), why: x.why });
 }
-for (const k of KTAIWORK) if (!manualUrls.has(k.url) && !byUrl.has(k.url)) out.push({ id: idOf(k.url), type: 'sentence', ...k, why: '消防メール' });
+for (const k of KTAIWORK) if (!manualUrls.has(k.url) && !byUrl.has(k.url)) out.push({ id: idOf(k.url), type: 'wp', ...k, why: '消防メール' });
 // 同じ id が重ならないように
 const seen = new Set(); const list = out.filter(s => !seen.has(s.id) && seen.add(s.id));
 fs.writeFileSync(OUT, `// 自動生成（collector/build_sources.mjs）: 全国の消防の出動情報ページ。調査 ${probe.generatedAt.slice(0, 10)}・${list.length}ページ\n// 手で直すときは official.js の SOURCES に書く（こちらは作り直すと上書きされる）\nexport const AUTO_SOURCES = ${JSON.stringify(list.map(({ why, ...s }) => s), null, 1)};\n`);
