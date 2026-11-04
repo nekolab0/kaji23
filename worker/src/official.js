@@ -8,7 +8,8 @@
 import { AREAS } from './areas.js';
 
 // type: sapporo … 札幌圏（表形式）／ sentence … 「日時＋場所＋種別」が1行ずつ書かれた文章形式
-export const SOURCES = [
+import { AUTO_SOURCES } from './sources_auto.js';
+const MANUAL_SOURCES = [
   { id: 'sapporo', name: '札幌市消防局（札幌圏消防出動情報）', url: 'https://www.119.city.sapporo.jp/saigai/sghp.html', pref: '北海道', type: 'sapporo',
     sections: { '札幌市': '札幌市', '江別市': '江別市', '千歳市': '千歳市', '恵庭市': '恵庭市', '北広島市': '北広島市', '石狩北部地区消防事務組合': null } },
   { id: 'kyoto', name: '京都市消防局（災害情報案内）', url: 'https://disif.city.kyoto.lg.jp/annai/main/', pref: '京都府', type: 'sentence', wardCity: '京都市' },
@@ -18,6 +19,8 @@ export const SOURCES = [
   { id: 'sendai', name: '仙台市（杜の都防災Web 火災等の発生情報）', url: 'http://sendaicity.bosai.info/sendaicity/fireinfo/index.html', pref: '宮城県', type: 'sentence', wardCity: '仙台市', current: true },
   { id: 'nagano', name: '長野市消防局（長野市防災情報ポータル）', url: 'https://www.nagano-bousai.jp/', pref: '長野県', type: 'sentence' },
 ];
+// 手で書いた一覧（札幌の表など）が先、調査で見つけた全国のページ（sources_auto.js）があと
+export const SOURCES = [...MANUAL_SOURCES, ...AUTO_SOURCES.filter(a => !MANUAL_SOURCES.some(m => m.url === a.url))];
 
 const KNUM = { 〇: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
 const z2h = s => String(s).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[：]/g, ':').replace(/[／]/g, '/');
@@ -120,7 +123,7 @@ function parseSentence(html, src, now) {
     // 「午後3時48分」「午前0時30分」を24時間の書き方に
     const line = raw.replace(/(午前|午後)\s*(\d{1,2})時/g, (_, ap, h) => `${(+h % 12) + (ap === '午後' ? 12 : 0)}時`);
     const kind = fireKind(line); if (!kind) continue;
-    const dt = line.match(/(\d{1,2})[月/](\d{1,2})日?(?:\s*[（(][日月火水木金土][）)])?\s*(\d{1,2})(?::(\d{2})|時(\d{1,2})分?)/);
+    const dt = line.match(/(?:(20\d{2})[年/.-])?(\d{1,2})[月/](\d{1,2})日?(?:\s*[（(][日月火水木金土][）)])?\s*(\d{1,2})(?::(\d{2})|時(\d{1,2})分?)/);
     // 「いま出動中」だけを載せるページ（時刻なし）は、最初に見つけた時刻を出動時刻とみなす
     if (!dt && !src.current) continue;
     let f = findCity(line, src);
@@ -133,7 +136,7 @@ function parseSentence(html, src, now) {
     if (!f) continue;
     const status = /鎮火/.test(line) ? '鎮火' : /鎮圧/.test(line) ? '鎮圧' : /出動|出場/.test(line) ? '出動' : null;
     const town = townPart(f.rest);
-    if (dt) out.push({ kind, city: f.city, town, at: toISO(now, +dt[1], +dt[2], +dt[3], +(dt[4] || dt[5])), status });
+    if (dt) out.push({ kind, city: f.city, town, at: dt[1] ? new Date(Date.UTC(+dt[1], +dt[2] - 1, +dt[3], +dt[4] - 9, +(dt[5] || dt[6]))).toISOString() : toISO(now, +dt[2], +dt[3], +dt[4], +(dt[5] || dt[6])), status });
     else out.push({ kind, city: f.city, town, at: now.toISOString(), status, key: `${src.id}|${f.city}|${town}|${kind}|${new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10)}` });
   }
   return out;
