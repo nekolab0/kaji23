@@ -82,22 +82,25 @@ function srcFor(url, munis) {
   const desig = cities.find(c => (AREAS[pref] || []).some(n => n.startsWith(c) && n !== c && n.endsWith('区')));
   if (desig) s.wardCity = desig;
   if (cities.length === 1 && (AREAS[pref] || []).includes(cities[0])) s.city = cities[0];
-  if (/119\.city\.sapporo/.test(url)) s.type = 'sapporo';
+  if (/119\.city\.sapporo/.test(url)) { s.type = 'sapporo'; s.sections = { '札幌市': '札幌市', '江別市': '江別市', '千歳市': '千歳市', '恵庭市': '恵庭市', '北広島市': '北広島市', '石狩北部地区消防事務組合': null }; }
   return s;
 }
 async function check(url, munis) {
   const r = await politeFetch(url);
   const res = { url, pref: munis[0].pref, cities: [...new Set(munis.map(m => m.city))], status: r.status };
   if (r.status !== 'ok') return res;
-  const src = srcFor(url, munis);
+  let src; try { src = srcFor(url, munis); } catch (e) { res.status = 'エラー: ' + e.message; return res; }
   res.src = { pref: src.pref, wardCity: src.wardCity || null, city: src.city || null };
   res.final = r.finalUrl;
   const lines = htmlText(r.html);
   res.fireLines = lines.filter(l => /火災|火事/.test(l) && l.length < 200).slice(0, 10);
   res.dates = lines.filter(l => /\d{1,2}[月/]\d{1,2}/.test(l)).length;
   res.ktaiwork = /ktaiwork/.test(url);
-  const recent = parseSource(r.html, src, new Date());
-  const wide = parseSource(r.html, src, new Date(), { hours: 24 * 31 });   // 過去分も（小さな市は48時間に火事がないことが多い）
+  let recent = [], wide = [];
+  try {
+    recent = parseSource(r.html, src, new Date());
+    wide = parseSource(r.html, src, new Date(), { hours: 24 * 31 });   // 過去分も（小さな市は48時間に火事がないことが多い）
+  } catch (e) { res.parseError = String(e.message).slice(0, 100); }
   res.items48h = recent.length; res.items30d = wide.length;
   res.sample = wide.slice(0, 5).map(x => `${x.at.slice(0, 16)} ${x.city}${x.town} ${x.kind}${x.status ? '・' + x.status : ''}`);
   // ページ送り（WordPress の ?paged=2 など）があるか
@@ -105,7 +108,11 @@ async function check(url, munis) {
   return res;
 }
 
-const munis = await discover();
+// 市町村の一覧は一度集めたら保存して使い回す（入口サイトへの負担を減らす）
+const MF = new URL('../verify/probe_munis.json', import.meta.url);
+let munis;
+if (fs.existsSync(MF) && !process.env.PROBE_REDISCOVER) munis = JSON.parse(fs.readFileSync(MF, 'utf8'));
+else { munis = await discover(); fs.writeFileSync(MF, JSON.stringify(munis, null, 1)); }
 const byUrl = new Map();
 for (const m of munis) for (const u of m.web || []) { if (!byUrl.has(u)) byUrl.set(u, []); byUrl.get(u).push(m); }
 console.log(`公式ページ ${byUrl.size}件を確認`);
