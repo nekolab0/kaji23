@@ -96,8 +96,9 @@ async function check(url, munis) {
   res.fireLines = lines.filter(l => /火災|火事/.test(l) && l.length < 200).slice(0, 10);
   res.dates = lines.filter(l => /\d{1,2}[月/]\d{1,2}/.test(l)).length;
   res.ktaiwork = /ktaiwork/.test(url);
-  const wide = parseSource(r.html, src, new Date());
-  res.items48h = wide.length;
+  const recent = parseSource(r.html, src, new Date());
+  const wide = parseSource(r.html, src, new Date(), { hours: 24 * 31 });   // 過去分も（小さな市は48時間に火事がないことが多い）
+  res.items48h = recent.length; res.items30d = wide.length;
   res.sample = wide.slice(0, 5).map(x => `${x.at.slice(0, 16)} ${x.city}${x.town} ${x.kind}${x.status ? '・' + x.status : ''}`);
   // ページ送り（WordPress の ?paged=2 など）があるか
   res.paged = /[?&]paged=2|\/page\/2\//.test(r.html);
@@ -109,9 +110,9 @@ const byUrl = new Map();
 for (const m of munis) for (const u of m.web || []) { if (!byUrl.has(u)) byUrl.set(u, []); byUrl.get(u).push(m); }
 console.log(`公式ページ ${byUrl.size}件を確認`);
 const checks = await pool([...byUrl.entries()], 4, async ([u, ms], k) => { if (k % 50 === 0) console.log(`  ${k}/${byUrl.size}`); return check(u, ms); });
-const good = checks.filter(c => c.items48h > 0).sort((a, b) => b.items48h - a.items48h);
+const good = checks.filter(c => c.items30d > 0).sort((a, b) => b.items30d - a.items30d);
 const out = { generatedAt: new Date().toISOString(), municipalities: munis.length, pages: checks.length,
-  withFires48h: good.length, items48h: good.reduce((a, c) => a + c.items48h, 0), checks, munis };
+  withFires30d: good.length, items30d: good.reduce((a, c) => a + c.items30d, 0), items48h: good.reduce((a, c) => a + c.items48h, 0), checks, munis };
 fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
-console.log(`市町村 ${munis.length}・公式ページ ${checks.length}・直近48時間に火災が読めたページ ${good.length}（計${out.items48h}件）`);
-for (const c of good.slice(0, 40)) console.log(`  ${c.items48h}件 ${c.pref}${c.cities.join('・')} ${c.url}`);
+console.log(`市町村 ${munis.length}・公式ページ ${checks.length}・過去30日の火災が読めたページ ${good.length}（30日 計${out.items30d}件・48時間 ${out.items48h}件）`);
+for (const c of good.slice(0, 60)) console.log(`  ${c.items30d}件 ${c.pref}${c.cities.join('・')} ${c.url}`);

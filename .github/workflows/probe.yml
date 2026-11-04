@@ -15,8 +15,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: 消防の出動情報ページ
+        if: ${{ !contains(github.ref_name, 'opendata') }}
         run: node collector/probe_sources.mjs || true
       - name: オープンデータ
+        if: ${{ !contains(github.ref_name, 'sources') }}
         run: node collector/probe_opendata.mjs || true
       - name: 結果を保存
         run: |

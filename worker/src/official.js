@@ -137,13 +137,14 @@ function parseSentence(html, src, now) {
   return out;
 }
 
-export function parseSource(html, src, now = new Date()) {
+export function parseSource(html, src, now = new Date(), opts = {}) {
+  const keepMs = (opts.hours || 48) * 3600e3;
   const items = src.type === 'sapporo' ? parseSapporo(html, src, now) : parseSentence(html, src, now);
   // 重複（同じ市区町村・町・時刻）を除き、48時間以内のものだけ
   const seen = new Set(), res = [];
   for (const x of items) {
     if (!AREAS[src.pref] || !AREAS[src.pref].includes(x.city)) continue;
-    if (now - new Date(x.at) > 48 * 3600e3 || new Date(x.at) - now > 3600e3) continue;
+    if (now - new Date(x.at) > keepMs || new Date(x.at) - now > 3600e3) continue;
     const k = x.key || `${x.city}|${x.town}|${x.at}`; if (seen.has(k)) continue; seen.add(k);
     res.push({ ...x, pref: src.pref, source: src.id });
   }
