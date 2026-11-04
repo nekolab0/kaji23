@@ -30,7 +30,7 @@ export function htmlText(html) {
 
 // 火災の種別か（救急・救助・警戒・自動火災報知設備の鳴動などは除く）
 const FIRE = /(建物|車両|林野|枯草|枯れ草|船舶|航空機|その他の?)?火災/;
-const NOT_FIRE = /報知|救急|救助|警戒|調査|ガス|水難|鎮火済みの?訓練|訓練|予防/;
+const NOT_FIRE = /報知|救急|救助|警戒|調査|ガス|水難|鎮火済みの?訓練|訓練|予防|誤報|火災では(?:あり|な)|火災ではない|の疑い(?:で|のため)出動したが/;
 export function fireKind(s) {
   if (!FIRE.test(s) || NOT_FIRE.test(s.replace(/火災出動|火災のため/, ''))) return null;
   const m = s.match(FIRE); return (m[1] ? m[1].replace('枯れ草', '枯草').replace('その他の', 'その他') : '') + '火災';
@@ -118,10 +118,17 @@ function parseSentence(html, src, now) {
   const out = [];
   for (const line of htmlText(html)) {
     const kind = fireKind(line); if (!kind) continue;
-    const dt = line.match(/(\d{1,2})[月/](\d{1,2})日?\s*(\d{1,2})[:時](\d{2})/);
+    const dt = line.match(/(\d{1,2})[月/](\d{1,2})日?(?:\s*[（(][日月火水木金土][）)])?\s*(\d{1,2})[:時](\d{2})/);
     // 「いま出動中」だけを載せるページ（時刻なし）は、最初に見つけた時刻を出動時刻とみなす
     if (!dt && !src.current) continue;
-    const f = findCity(line, src); if (!f) continue;
+    let f = findCity(line, src);
+    // 1つの市だけを扱うページ（市名が書かれない）: 日時のあとの文から町名を読む
+    if (!f && src.city) {
+      const after = (dt ? line.slice(line.indexOf(dt[0]) + dt[0].length) : line).replace(/^[\s分頃ごろ、,。:]*(?:入電|覚知|発生|出動|出場)?[\s、,]*/, '');
+      const t = townPart(after);
+      if (t && t.length <= 15 && !/火災|火事|出動|出場|消防|救急|災害|発生|鎮火|現在|お知らせ/.test(t)) f = { city: src.city, rest: after };
+    }
+    if (!f) continue;
     const status = /鎮火/.test(line) ? '鎮火' : /鎮圧/.test(line) ? '鎮圧' : /出動|出場/.test(line) ? '出動' : null;
     const town = townPart(f.rest);
     if (dt) out.push({ kind, city: f.city, town, at: toISO(now, +dt[1], +dt[2], +dt[3], +dt[4]), status });
