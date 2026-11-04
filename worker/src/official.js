@@ -30,7 +30,7 @@ export function htmlText(html) {
 
 // 火災の種別か（救急・救助・警戒・自動火災報知設備の鳴動などは除く）
 const FIRE = /(建物|車両|林野|枯草|枯れ草|船舶|航空機|その他の?)?火災/;
-const NOT_FIRE = /報知|救急|救助|警戒|調査|ガス|水難|鎮火済みの?訓練|訓練|予防|誤報|火災では(?:あり|な)|火災ではない|の疑い(?:で|のため)出動したが/;
+const NOT_FIRE = /報知|救急|救助|警戒|調査|ガス|水難|鎮火済みの?訓練|訓練|予防|誤報|火災では(?:あり|な)|火災ではない|の疑い(?:で|のため)出動したが|警報器|注意報|警報|統計|件数|運動|ポスター|研修|条例|届出|動画|罹災|発生しておりません|発生していません|ありません|テレホン|ダイヤル|お問い合わせ|案内/;
 export function fireKind(s) {
   if (!FIRE.test(s) || NOT_FIRE.test(s.replace(/火災出動|火災のため/, ''))) return null;
   const m = s.match(FIRE); return (m[1] ? m[1].replace('枯れ草', '枯草').replace('その他の', 'その他') : '') + '火災';
@@ -39,7 +39,7 @@ export function fireKind(s) {
 // 町名だけを取り出す（「北32条西7丁目」「太秦中筋町」など。目標物・距離・番地は捨てる）
 export function townPart(s) {
   let t = s.replace(/^[、,\s]+/, '');
-  t = t.split(/付近|地内|地先|方面|周辺|[、,（(\s]|で[、，]?|の(?:建物|車両|枯草|林野|その他|火災)/)[0];
+  t = t.split(/付近|地内|地先|方面|周辺|[、,（(\s]|で[、，]?|の(?:建物|車両|枯草|林野|その他|火災)|(?:中高層)?(?:建物|車両|林野|枯草|枯れ草|その他|船舶)?火災|火事/)[0];
   t = t.replace(/([0-9]+|[一二三四五六七八九十]+)番(地)?.*$/, '').replace(/[0-9]+[-－][0-9].*$/, '');
   return t.slice(0, 20);
 }
@@ -116,9 +116,11 @@ function parseSapporo(html, src, now) {
 //      「11月03日 02:31入電 岡山市北区辰巳地内、目標○○交差点 東 430メートル付近で、建物火災のため消防車が出動しています。」
 function parseSentence(html, src, now) {
   const out = [];
-  for (const line of htmlText(html)) {
+  for (const raw of htmlText(html)) {
+    // 「午後3時48分」「午前0時30分」を24時間の書き方に
+    const line = raw.replace(/(午前|午後)\s*(\d{1,2})時/g, (_, ap, h) => `${(+h % 12) + (ap === '午後' ? 12 : 0)}時`);
     const kind = fireKind(line); if (!kind) continue;
-    const dt = line.match(/(\d{1,2})[月/](\d{1,2})日?(?:\s*[（(][日月火水木金土][）)])?\s*(\d{1,2})[:時](\d{2})/);
+    const dt = line.match(/(\d{1,2})[月/](\d{1,2})日?(?:\s*[（(][日月火水木金土][）)])?\s*(\d{1,2})(?::(\d{2})|時(\d{1,2})分?)/);
     // 「いま出動中」だけを載せるページ（時刻なし）は、最初に見つけた時刻を出動時刻とみなす
     if (!dt && !src.current) continue;
     let f = findCity(line, src);
@@ -131,7 +133,7 @@ function parseSentence(html, src, now) {
     if (!f) continue;
     const status = /鎮火/.test(line) ? '鎮火' : /鎮圧/.test(line) ? '鎮圧' : /出動|出場/.test(line) ? '出動' : null;
     const town = townPart(f.rest);
-    if (dt) out.push({ kind, city: f.city, town, at: toISO(now, +dt[1], +dt[2], +dt[3], +dt[4]), status });
+    if (dt) out.push({ kind, city: f.city, town, at: toISO(now, +dt[1], +dt[2], +dt[3], +(dt[4] || dt[5])), status });
     else out.push({ kind, city: f.city, town, at: now.toISOString(), status, key: `${src.id}|${f.city}|${town}|${kind}|${new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10)}` });
   }
   return out;

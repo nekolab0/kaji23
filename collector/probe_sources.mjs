@@ -103,6 +103,26 @@ async function check(url, munis) {
   } catch (e) { res.parseError = String(e.message).slice(0, 100); }
   res.items48h = recent.length; res.items30d = wide.length;
   res.sample = wide.slice(0, 5).map(x => `${x.at.slice(0, 16)} ${x.city}${x.town} ${x.kind}${x.status ? '・' + x.status : ''}`);
+  // 取れなかったページ: 同じサイトの「過去の出動情報・履歴・一覧」へのリンクを1段だけたどる
+  if (!wide.length && !process.env.PROBE_NO_FOLLOW) {
+    const base = new URL(r.finalUrl || url);
+    const cand = [...r.html.matchAll(/<a\s[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => {
+      let h; try { h = new URL(m[1], base).href; } catch (e) { return null; }
+      return { h, t: m[2].replace(/<[^>]+>/g, '').trim() };
+    }).filter(x => x && new URL(x.h).host === base.host && x.h !== base.href && !/\.(pdf|jpe?g|png|gif|zip|xlsx?|docx?)$/i.test(x.h)
+      && /過去|履歴|これまで|一覧|出動情報|災害情報|火災情報|発生状況|past|old|rireki|list|saigai|kasai/i.test(x.t + ' ' + x.h)
+      && !/予防|統計|警報器|採用|入札|申請|届出|講習|訓練|イベント|お知らせ一覧|サイトマップ/.test(x.t));
+    const uniq = [...new Map(cand.map(x => [x.h, x])).values()].slice(0, 6);
+    for (const c of uniq) {
+      const r2 = await politeFetch(c.h); if (r2.status !== 'ok') continue;
+      let w2 = []; try { w2 = parseSource(r2.html, src, new Date(), { hours: 24 * 31 }); } catch (e) {}
+      if (w2.length > (res.followed ? res.followed.items30d : 0)) {
+        let rc = []; try { rc = parseSource(r2.html, src, new Date()); } catch (e) {}
+        res.followed = { url: c.h, text: c.t.slice(0, 40), items30d: w2.length, items48h: rc.length, sample: w2.slice(0, 5).map(x => `${x.at.slice(0, 16)} ${x.city}${x.town} ${x.kind}${x.status ? '・' + x.status : ''}`) };
+      }
+    }
+    if (res.followed) { res.items30d = res.followed.items30d; res.items48h = res.followed.items48h; }
+  }
   // ページ送り（WordPress の ?paged=2 など）があるか
   res.paged = /[?&]paged=2|\/page\/2\//.test(r.html);
   return res;

@@ -39,5 +39,13 @@ ok('ktaiwork: 誤報を捨て、区を名古屋市○○区に', kt.length === 2
 const single = { id: 't-nagaoka', name: '長岡市消防本部', pref: '新潟県', type: 'sentence', city: '長岡市' };
 const sg = parseSource('<p>11月02日 16:17 今朝白一丁目付近で建物火災が発生し、消防車が出動しています。</p><p>11月02日 15:00 現在、出動中の災害はありません</p>', single, now);
 ok('単独市ページ: 市名がなくても町名を読む', sg.length === 1 && sg[0].city === '長岡市' && sg[0].town === '今朝白一丁目' && sg[0].kind === '建物火災', JSON.stringify(sg));
+
+const nemuro = { id: 't-nemuro', name: '根室市消防本部', pref: '北海道', type: 'sentence', city: '根室市' };
+const nm = parseSource('<p>11月02日午後03時48分昭和町4丁目建物火災のため消防車が出動しました。</p><p>11月02日午前00時30分珸瑤瑁1丁目林野火災のため消防車が出動しました。</p><p>住宅用火災警報器を設置しましょう</p>', nemuro, now);
+ok('午前・午後の時刻、町名の直後に「建物火災」', nm.length === 2 && nm.some(x => x.town === '昭和町4丁目' && x.kind === '建物火災' && x.at === '2026-11-02T06:48:00.000Z') && nm.some(x => x.town === '珸瑤瑁1丁目' && x.kind === '林野火災' && x.at === '2026-11-01T15:30:00.000Z'), JSON.stringify(nm));
+const ichikawa = { id: 't-ichikawa', name: '市川市消防局', pref: '千葉県', type: 'sentence', city: '市川市' };
+const ic = parseSource('<p>11月2日午後8時6分頃市川市南大野2丁目4番付近で発生した、中高層建物火災は、鎮火いたしました。</p>', ichikawa, now);
+ok('市名つき・番地は捨てる・中高層建物火災', ic.length === 1 && ic[0].town === '南大野2丁目' && ic[0].kind === '建物火災' && ic[0].status === '鎮火', JSON.stringify(ic));
+ok('お知らせ・警報器・件数は火災にしない', fireKind('住宅用火災警報器を設置しましょう') === null && fireKind('火災件数（速報値）11月01日現在') === null && fireKind('現在、火災等の災害は発生していません。') === null);
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));
 process.exit(results.some(r => !r.ok) ? 1 : 0);
