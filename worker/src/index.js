@@ -12,6 +12,7 @@
 // GET  /api/town?pref=&city=&town=                 → 町の火事（30日）と口コミ掲示板
 // GET  /api/counts                                  → 場所ごとの火事の件数（365日）
 // GET  /api/official?days=7                         → 消防本部の発表（サイト生成用）
+// （/api/incident・/api/town の sns）                  → X の投稿のID（口コミ・未確認。X_BEARER 設定時）
 // GET  /api/reports?hours=24                        → 区・町ごとの件数（旧形式）
 // POST /api/contact  {body}                         → 削除依頼・問い合わせ
 // GET  /f/<id>                                      → 共有用ページ
@@ -21,6 +22,7 @@
 import { AREAS } from './areas.js';
 import { SOURCES, parseSource, robotsAllows, htmlText } from './official.js';
 import { parseMail } from './mail.js';
+import { pollX, snsFor } from './xposts.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
@@ -254,7 +256,8 @@ export async function handle(request, env, now = new Date()) {
     const t = inc ? await DB.prepare("SELECT kind, strftime('%Y-%m-%dT%H:%M:00Z', at) AS m, COUNT(*) AS n FROM reports WHERE inc = ? GROUP BY kind, m ORDER BY m").bind(id).all() : { results: [] };
     const o = inc ? await DB.prepare('SELECT source, kind, status, at, town FROM official WHERE inc = ? ORDER BY at').bind(id).all() : { results: [] };
     const official = o.results.map(x => { const sc = SOURCES.find(s => s.id === x.source) || {}; return { ...x, name: sc.name || x.source, url: sc.url || null }; });
-    return json(env, { generatedAt: iso, incident: incOut(inc), comments: c.results.map(comOut), timeline: t.results, official }, 200, { 'Cache-Control': 'public, max-age=15' });
+    const sns = inc ? await snsFor(env, { inc: id }) : [];
+    return json(env, { generatedAt: iso, incident: incOut(inc), comments: c.results.map(comOut), timeline: t.results, official, sns }, 200, { 'Cache-Control': 'public, max-age=15' });
   }
 
   if (P === '/api/town' && request.method === 'GET') {
@@ -263,7 +266,9 @@ export async function handle(request, env, now = new Date()) {
     if (!area || !base) return json(env, { error: '場所が正しくありません' }, 400);
     const i = await DB.prepare('SELECT * FROM incidents WHERE pref = ? AND ward = ? AND base = ? AND last_at > ? ORDER BY last_at DESC LIMIT 20').bind(area.pref, area.city, base, ago(30 * 864e5)).all();
     const c = await DB.prepare('SELECT * FROM comments WHERE pref = ? AND ward = ? AND base = ? AND hidden = 0 ORDER BY at DESC LIMIT 50').bind(area.pref, area.city, base).all();
-    return json(env, { generatedAt: iso, incidents: i.results.map(incOut), comments: c.results.map(comOut) }, 200, { 'Cache-Control': 'public, max-age=30' });
+    const sinceQ = url.searchParams.get('since'); const since = /^\d{4}-\d{2}-\d{2}/.test(sinceQ || '') ? new Date(sinceQ).toISOString() : ago(7 * 864e5);
+    const sns = await snsFor(env, { pref: area.pref, ward: area.city, base, since });
+    return json(env, { generatedAt: iso, incidents: i.results.map(incOut), comments: c.results.map(comOut), sns }, 200, { 'Cache-Control': 'public, max-age=30' });
   }
 
   // 消防本部のページの読み取り状況（運営の確認用）
@@ -437,7 +442,10 @@ export default {
   email: async (message, env) => {
     const buf = new Uint8Array(await new Response(message.raw).arrayBuffer());
     let raw = ''; for (let i = 0; i < buf.length; i += 8192) raw += String.fromCharCode.apply(null, buf.subarray(i, i + 8192));
-    await receiveMail(env, raw);
+    const r = await receiveMail(env, raw);
+    // 火災の発表でないメール（市の配信サービスの登録確認など）は、運営のアドレスへ転送する
+    // MAIL_FORWARD は Email Routing の「転送先アドレス」で確認済みのアドレス（Cloudflare の変数に設定）
+    if (!r.items.length && env.MAIL_FORWARD) { try { await message.forward(env.MAIL_FORWARD); } catch (e) {} }
   },
   scheduled: async (event, env) => {
     await setup(env);
@@ -446,6 +454,7 @@ export default {
       await env.DB.prepare('DELETE FROM reports WHERE at < ?').bind(new Date(Date.now() - KEEP_REPORT_DAYS * 864e5).toISOString()).run();
       return;
     }
-    await pollSources(env);   // 5分ごと: 消防本部の出動情報
+    await pollSources(env);   // 毎分: 消防本部の出動情報
+    try { await pollX(env); } catch (e) {}   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
   },
 };
