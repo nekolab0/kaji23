@@ -29,5 +29,15 @@ ok('仙台: 時刻のない「出場中」ページは見つけた時刻で、�
 ok('種別: 自動火災報知設備は火災にしない', fireKind('自動火災報知設備鳴動のため出動') === null && fireKind('●車両火災出動') === '車両火災');
 ok('町名: 番地は捨てる', townPart('赤羽西2丁目3番地付近') === '赤羽西2丁目' && townPart('浮羽町三春付近の枯草火災') === '浮羽町三春');
 ok('robots.txt: 禁止なら読まない', robotsAllows('User-agent: *\nDisallow: /', 'http://x.jp/a.html') === false && robotsAllows('User-agent: *\nDisallow: /admin/', 'http://x.jp/saigai/a.html') === true && robotsAllows('', 'http://x.jp/') === true);
+
+// ktaiwork（名古屋市など、消防メールのブログ版）: 誤報は捨て、発生と鎮火は同じ火事に
+const ktai = { id: 't-nagoya', name: '名古屋市消防局', pref: '愛知県', type: 'sentence', wardCity: '名古屋市' };
+const kh = '<h2>火災誤報</h2><p>2026年11月02日16時28分頃、中川区本前田町　地内から火災との通報で消防車が出動しましたが、火災ではありませんでした。</p><h2>火災発生</h2><p>2026年11月02日16時30分頃、中川区本前田町　地内から火災の通報があり消防車が出動しています。</p><h2>火災鎮火</h2><p>2026年11月02日12時38分頃に発生した　天白区八事天道　地内の火災は　2026年11月02日13時14分　に鎮火しました。</p>';
+const kt = parseSource(kh, ktai, now);
+ok('ktaiwork: 誤報を捨て、区を名古屋市○○区に', kt.length === 2 && kt.some(x => x.city === '名古屋市中川区' && x.town === '本前田町' && x.status === '出動') && kt.some(x => x.city === '名古屋市天白区' && x.town === '八事天道' && x.status === '鎮火'), JSON.stringify(kt));
+// 1つの市だけのページ（市名が書かれない）
+const single = { id: 't-nagaoka', name: '長岡市消防本部', pref: '新潟県', type: 'sentence', city: '長岡市' };
+const sg = parseSource('<p>11月02日 16:17 今朝白一丁目付近で建物火災が発生し、消防車が出動しています。</p><p>11月02日 15:00 現在、出動中の災害はありません</p>', single, now);
+ok('単独市ページ: 市名がなくても町名を読む', sg.length === 1 && sg[0].city === '長岡市' && sg[0].town === '今朝白一丁目' && sg[0].kind === '建物火災', JSON.stringify(sg));
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));
 process.exit(results.some(r => !r.ok) ? 1 : 0);
