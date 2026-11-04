@@ -35,7 +35,9 @@ async function get(url) {
 }
 
 const targets = SOURCES.filter(s => /ktaiwork\.jp/.test(s.url) || (process.env.BACKFILL_URLS || '').split(',').includes(s.url));
-const fires = {}, report = [];
+const fires = {}, report = [], cancels = new Set();
+// 同じ火事を別の入口（同じサイトのトップと火災カテゴリーなど）から読んでも1件に: 場所と時刻（分）で見分ける
+const keyOf = (x, town) => 'o-b-' + crypto.createHash('sha1').update(`${x.pref}|${x.city}|${town}|${x.at.slice(0, 16)}`).digest('hex').slice(0, 10);
 await Promise.all(targets.map(async src => {
   const rep = { url: src.url, pages: 0, items: 0, oldest: null, stop: '' };
   const rb = await get(new URL('/robots.txt', src.url).href);
@@ -54,7 +56,8 @@ await Promise.all(targets.map(async src => {
       const t = +new Date(x.at); oldestOnPage = Math.min(oldestOnPage, t);
       if (t < cutoff) continue;
       const town = baseTown(x.town);
-      const key = 'o-b-' + crypto.createHash('sha1').update(`${src.id}|${x.city}|${town}|${x.at.slice(0, 13)}`).digest('hex').slice(0, 10);
+      const key = keyOf(x, town);
+      if (x.status === '誤報') { cancels.add(key); continue; }
       const day = new Date(t + 9 * 3600e3).toISOString().slice(0, 10);
       const cur = fires[key];
       if (!cur) { fires[key] = [x.pref, x.city, town, day, x.kind, x.at, src.name, src.url, x.status || '']; rep.items++; }
@@ -67,5 +70,7 @@ await Promise.all(targets.map(async src => {
   report.push(rep);
   console.log(`${src.name}: ${rep.pages}ページ・${rep.items}件（${rep.oldest || '-'}まで、${rep.stop}）`);
 }));
+for (const k of cancels) delete fires[k];   // 誤報だったもの
+console.log(`誤報で取り消し ${cancels.size}件`);
 fs.writeFileSync(OUT, JSON.stringify({ generatedAt: new Date().toISOString(), years: YEARS, total: Object.keys(fires).length, report, fires }));
 console.log(`計 ${Object.keys(fires).length}件`);

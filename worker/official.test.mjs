@@ -34,7 +34,7 @@ ok('robots.txt: 禁止なら読まない', robotsAllows('User-agent: *\nDisallow
 const ktai = { id: 't-nagoya', name: '名古屋市消防局', pref: '愛知県', type: 'sentence', wardCity: '名古屋市' };
 const kh = '<h2>火災誤報</h2><p>2026年11月02日16時28分頃、中川区本前田町　地内から火災との通報で消防車が出動しましたが、火災ではありませんでした。</p><h2>火災発生</h2><p>2026年11月02日16時30分頃、中川区本前田町　地内から火災の通報があり消防車が出動しています。</p><h2>火災鎮火</h2><p>2026年11月02日12時38分頃に発生した　天白区八事天道　地内の火災は　2026年11月02日13時14分　に鎮火しました。</p>';
 const kt = parseSource(kh, ktai, now);
-ok('ktaiwork: 誤報を捨て、区を名古屋市○○区に', kt.length === 2 && kt.some(x => x.city === '名古屋市中川区' && x.town === '本前田町' && x.status === '出動') && kt.some(x => x.city === '名古屋市天白区' && x.town === '八事天道' && x.status === '鎮火'), JSON.stringify(kt));
+ok('ktaiwork: 誤報は取り消しの印に、区を名古屋市○○区に', kt.length === 3 && kt.some(x => x.status === '誤報' && x.town === '本前田町' && x.at === '2026-11-02T07:28:00.000Z') && kt.some(x => x.city === '名古屋市中川区' && x.town === '本前田町' && x.status === '出動') && kt.some(x => x.city === '名古屋市天白区' && x.town === '八事天道' && x.status === '鎮火'), JSON.stringify(kt));
 // 1つの市だけのページ（市名が書かれない）
 const single = { id: 't-nagaoka', name: '長岡市消防本部', pref: '新潟県', type: 'sentence', city: '長岡市' };
 const sg = parseSource('<p>11月02日 16:17 今朝白一丁目付近で建物火災が発生し、消防車が出動しています。</p><p>11月02日 15:00 現在、出動中の災害はありません</p>', single, now);

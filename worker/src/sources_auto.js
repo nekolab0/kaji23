@@ -1,4 +1,4 @@
-// 自動生成（collector/build_sources.mjs）: 全国の消防の出動情報ページ。調査 2026-11-04・63ページ
+// 自動生成（collector/build_sources.mjs）: 全国の消防の出動情報ページ。調査 2026-11-04・62ページ
 // 手で直すときは official.js の SOURCES に書く（こちらは作り直すと上書きされる）
 export const AUTO_SOURCES = [
  {
@@ -285,14 +285,6 @@ export const AUTO_SOURCES = [
   "type": "sentence"
  },
  {
-  "id": "a-nagoya-fd-site2-ktaiwork-jp",
-  "name": "名古屋市の消防（出動情報）",
-  "url": "https://nagoya-fd.site2.ktaiwork.jp/",
-  "pref": "愛知県",
-  "wardCity": "名古屋市",
-  "type": "sentence"
- },
- {
   "id": "a-www-syobo-city-kasugai-aichi-jp-syobo-real-kasai-html",
   "name": "春日井市の消防（出動情報）",
   "url": "http://www.syobo.city.kasugai.aichi.jp/syobo/real/kasai.html",
@@ -401,13 +393,6 @@ export const AUTO_SOURCES = [
   "type": "sentence"
  },
  {
-  "id": "a-fukuyama-fd-site2-ktaiwork-jp",
-  "name": "福山市・神石高原町の消防（出動情報）",
-  "url": "https://fukuyama-fd.site2.ktaiwork.jp/",
-  "pref": "広島県",
-  "type": "sentence"
- },
- {
   "id": "a-www-center-chikugo119-jp-fire-saigai-yanagawapcsel-html",
   "name": "柳川市の消防（出動情報）",
   "url": "http://www.center-chikugo119.jp/fire/saigai/yanagawaPcSel.html",
@@ -454,6 +439,14 @@ export const AUTO_SOURCES = [
   "name": "鹿児島市消防局（安心ネットワーク119）",
   "pref": "鹿児島県",
   "city": "鹿児島市"
+ },
+ {
+  "id": "a-fukuyama-fd-site2-ktaiwork-jp",
+  "type": "sentence",
+  "url": "https://fukuyama-fd.site2.ktaiwork.jp/",
+  "name": "福山地区消防組合（火災情報メール）",
+  "pref": "広島県",
+  "city": "福山市"
  },
  {
   "id": "a-kohoku-fd-site-ktaiwork-jp",

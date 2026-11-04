@@ -14,7 +14,7 @@ ok('同じ名前の市がほかの県にもある（府中市）: 県名がな�
 const d = parseMail(mk('info@mail.example-bousai.jp', '救急', '11月4日 15時10分 長岡市今朝白付近で救急出動しています。'), now);
 ok('救急は捨てる', d.items.length === 0);
 const e = parseMail(mk('kasai@city.nagoya.lg.jp', '火災誤報', '2026年11月04日16時28分頃、中川区本前田町　地内から火災との通報で消防車が出動しましたが、火災ではありませんでした。'), now);
-ok('誤報は捨てる', e.items.length === 0, JSON.stringify(e));
+ok('誤報は取り消しの印として渡す', e.items.length === 1 && e.items[0].status === '誤報', JSON.stringify(e));
 const multi = `From: a@b.jp\r\nSubject: fire\r\nContent-Type: multipart/alternative; boundary="XX"\r\n\r\n--XX\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64('本文です')}\r\n--XX\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<p>html</p>\r\n--XX--`;
 ok('マルチパート: text/plain を使う', mailText(multi).text === '本文です', JSON.stringify(mailText(multi)));
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));

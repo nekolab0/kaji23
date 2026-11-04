@@ -277,7 +277,7 @@ export async function handle(request, env, now = new Date()) {
   // 消防本部の発表の記録（サイトの生成時に読み、火事のページ・町のページ・件数に使う）。場所は町名まで
   if (P === '/api/official' && request.method === 'GET') {
     const days = Math.min(60, Math.max(1, parseInt(url.searchParams.get('days') || '7', 10) || 7));
-    const { results } = await DB.prepare('SELECT source, pref, ward, town, base, kind, status, at, inc FROM official WHERE at > ? ORDER BY at').bind(ago(days * 864e5)).all();
+    const { results } = await DB.prepare('SELECT source, pref, ward, town, base, kind, status, at, inc FROM official WHERE at > ? AND COALESCE(status, \'\') <> \'誤報\' ORDER BY at').bind(ago(days * 864e5)).all();
     return json(env, { generatedAt: iso, days, items: results.map(r => ({ ...r, source_name: (SOURCES.find(s => s.id === r.source) || {}).name || (/^mail-/.test(r.source) ? '消防メール（' + r.source.slice(5) + '）' : r.source), source_url: (SOURCES.find(s => s.id === r.source) || {}).url || null })) }, 200, { 'Cache-Control': 'public, max-age=120' });
   }
 
@@ -346,6 +346,10 @@ export async function ingestOfficial(env, items, now = new Date()) {
   }
   for (const x of items) {
     const base = x.town ? baseTown(x.town) || null : null;
+    if (x.status === '誤報') {   // 取り消し: 同じ場所・同じ時刻の発表を「誤報」にし、取り込まない
+      await DB.prepare("UPDATE official SET status = '誤報' WHERE pref = ? AND ward = ? AND COALESCE(town, '') = ? AND at = ?").bind(x.pref, x.city, x.town || '', x.at).run();
+      continue;
+    }
     const id = x.key || `${x.source}|${x.ward || x.city}|${x.town || ''}|${x.at}`;   // 時刻のないページは「場所・種別・日付」で同じ発表とみなす
     if (known && known.has(id)) {   // すでにある発表は、状態（鎮火など）が変わったときだけ書き直す
       const k = known.get(id); if (x.status && x.status !== k) await DB.prepare('UPDATE official SET seen_last = ?, status = ? WHERE id = ?').bind(now.toISOString(), x.status, id).run();

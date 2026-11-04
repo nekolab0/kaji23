@@ -42,6 +42,7 @@ const manualUrls = new Set(MANUAL.map(s => s.url));
 const byUrl = new Map();
 const add = (url, x) => {
   if (manualUrls.has(url) || /119\.city\.sapporo\.jp/.test(url)) return;   // 札幌圏は手で書いた一覧（表の書式）
+  if (KTAIWORK.some(k => new URL(k.url).host === new URL(url).host)) return;   // 消防メールのブログ版は火災のカテゴリーのページ（下の一覧）を使う
   const cur = byUrl.get(url);
   if (cur) { cur.cities = [...new Set([...cur.cities, ...x.cities])]; return; }
   byUrl.set(url, x);

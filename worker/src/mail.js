@@ -66,7 +66,7 @@ export function parseMail(raw, now = new Date(), senders = MAIL_SENDERS) {
   const domain = ((from.match(/@([\w.-]+)/) || [])[1] || '').toLowerCase();
   const hint = Object.entries(senders).find(([d]) => domain === d || domain.endsWith('.' + d));
   const text = (subject + '\n' + m.text).replace(/\r/g, '');
-  if (!fireKind(text)) return { subject, from: domain, items: [] };
+  if (!fireKind(text) && !/誤報|火災では(?:あり|な)/.test(text)) return { subject, from: domain, items: [] };
   // 本文の市区町村名から都道府県を探す（長い名前から。政令市の区は「○○市○○区」で）
   const prefs = hint && hint[1] ? [hint[1].pref] : Object.keys(AREAS);
   let items = [];

@@ -122,7 +122,9 @@ function parseSentence(html, src, now) {
   for (const raw of htmlText(html)) {
     // 「午後3時48分」「午前0時30分」を24時間の書き方に
     const line = raw.replace(/(午前|午後)\s*(\d{1,2})時/g, (_, ap, h) => `${(+h % 12) + (ap === '午後' ? 12 : 0)}時`);
-    const kind = fireKind(line); if (!kind) continue;
+    // 「火災ではありませんでした」「誤報」は、先に出た「火災発生」を取り消す印として返す（status: '誤報'）
+    const cancel = /誤報|火災では(?:あり|な)|火災ではない/.test(line) && /火災/.test(line);
+    const kind = cancel ? '火災' : fireKind(line); if (!kind) continue;
     const dt = line.match(/(?:(20\d{2})[年/.-])?(\d{1,2})[月/](\d{1,2})日?(?:\s*[（(][日月火水木金土][）)])?\s*(\d{1,2})(?::(\d{2})|時(\d{1,2})分?)/);
     // 「いま出動中」だけを載せるページ（時刻なし）は、最初に見つけた時刻を出動時刻とみなす
     if (!dt && !src.current) continue;
@@ -134,7 +136,7 @@ function parseSentence(html, src, now) {
       if (t && t.length <= 15 && !/火災|火事|出動|出場|消防|救急|災害|発生|鎮火|現在|お知らせ/.test(t)) f = { city: src.city, rest: after };
     }
     if (!f) continue;
-    const status = /鎮火/.test(line) ? '鎮火' : /鎮圧/.test(line) ? '鎮圧' : /出動|出場/.test(line) ? '出動' : null;
+    const status = cancel ? '誤報' : /鎮火/.test(line) ? '鎮火' : /鎮圧/.test(line) ? '鎮圧' : /出動|出場/.test(line) ? '出動' : null;
     const town = townPart(f.rest);
     if (dt) out.push({ kind, city: f.city, town, at: dt[1] ? new Date(Date.UTC(+dt[1], +dt[2] - 1, +dt[3], +dt[4] - 9, +(dt[5] || dt[6]))).toISOString() : toISO(now, +dt[2], +dt[3], +dt[4], +(dt[5] || dt[6])), status });
     else out.push({ kind, city: f.city, town, at: now.toISOString(), status, key: `${src.id}|${f.city}|${town}|${kind}|${new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10)}` });
