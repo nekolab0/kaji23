@@ -763,15 +763,15 @@ def about_page(report):
     return page('about', f'データの出典と集め方｜{SITE_NAME}', f'{SITE_NAME}の火災件数・管轄区域・人口データの出典と、各消防署ページからの読み取り方法、自動チェックの結果。', body)
 
 # ---------- 運営者情報・プライバシーポリシー・利用規約 ----------
-OPERATOR = os.environ.get('SITE_OPERATOR') or '【運営者名を記入】'
-CONTACT = os.environ.get('SITE_CONTACT') or '【連絡先（メールアドレスまたはフォームのURL）を記入】'
+OPERATOR = os.environ.get('SITE_OPERATOR') or '火事速 運営事務局'
+CONTACT = os.environ.get('SITE_CONTACT') or 'contact@kajisoku.jp'
 def policy_page():
     body = f'''<div class="wrap">
 <nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ 運営者情報・プライバシーポリシー・利用規約</nav>
 <section class="hero"><span class="eyebrow">{esc(SITE_NAME)}について</span><h1>運営者情報・プライバシーポリシー・利用規約</h1>
 <p class="lead">{esc(SITE_NAME)}（以下「本サイト」）の運営者と、情報の扱い、ご利用のルールをまとめています。</p></section>
 <section class="section" id="operator" aria-labelledby="op"><h2 id="op">運営者情報</h2>
-<ul class="plain"><li>サイト名：{esc(SITE_NAME)}</li><li>運営者：{esc(OPERATOR)}</li><li>お問い合わせ：{esc(CONTACT)}（投稿の削除依頼は<a href="rules.html">投稿のルール</a>の欄からも送れます）</li>
+<ul class="plain"><li>サイト名：{esc(SITE_NAME)}</li><li>運営者：{esc(OPERATOR)}</li><li>お問い合わせ：{(f'<a href="mailto:{esc(CONTACT)}">{esc(CONTACT)}</a>' if '@' in CONTACT else esc(CONTACT))}（投稿の削除依頼は<a href="rules.html">投稿のルール</a>の欄からも送れます）</li>
 <li>本サイトは民間の非公式サイトです。消防機関・自治体・報道機関の公認や監修は受けていません。</li></ul></section>
 <section class="section" id="privacy" aria-labelledby="pv"><h2 id="pv">プライバシーポリシー</h2>
 <h3>1. 集める情報</h3>
