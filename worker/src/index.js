@@ -24,6 +24,7 @@ import { SOURCES, parseSource, robotsAllows, htmlText } from './official.js';
 import { parseMail, mailText, decodeHeader } from './mail.js';
 import { pollX, snsFor } from './xposts.js';
 import { phoneTick, onRecording, onCallStatus, phoneLog, phoneKey } from './phone.js';
+import { vapidKeys, subscribe, unsubscribe, myAreas, pushTick } from './push.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
@@ -225,6 +226,12 @@ export async function handle(request, env, now = new Date()) {
     if (changed) await DB.prepare('UPDATE comments SET flags = flags + 1, hidden = CASE WHEN flags + 1 >= ? THEN 1 ELSE hidden END WHERE id = ?').bind(HIDE_AT_FLAGS, id).run();
     return json(env, { ok: true });
   }
+
+  // ---- Web プッシュ通知（町・市区町村の火事を知らせる） ----
+  if (P === '/api/push/key' && request.method === 'GET') return json(env, { key: (await vapidKeys(DB)).pub });
+  if (P === '/api/push/subscribe' && request.method === 'POST') { const r = await subscribe(env, await body(), now); return json(env, r, r.status || 200); }
+  if (P === '/api/push/unsubscribe' && request.method === 'POST') { const r = await unsubscribe(env, await body()); return json(env, r, r.status || 200); }
+  if (P === '/api/push/areas' && request.method === 'POST') { const b = await body(); return json(env, { areas: b && b.endpoint ? await myAreas(env, b.endpoint) : [] }); }
 
   // ---- 削除依頼・問い合わせ（運営者だけが D1 のコンソールで読む） ----
   if (P === '/api/contact' && request.method === 'POST') {
@@ -488,6 +495,7 @@ export default {
     }
     await pollSources(env);   // 毎分: 消防本部の出動情報
     try { await pollX(env); } catch (e) {}
-    try { await phoneTick(env); } catch (e) {}   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
+    try { await phoneTick(env); } catch (e) {}
+    try { await pushTick(env); } catch (e) {}   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
   },
 };

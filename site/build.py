@@ -315,6 +315,9 @@ def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=N
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#c2341c">
 <meta name="kaji23-api" content="{esc(REPORTS_API)}">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="theme-color" content="#c2341b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Barlow+Condensed:wght@500;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
@@ -354,6 +357,14 @@ def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=N
 
 ALERT = f'''<div class="alert" role="note"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9e2914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
 <p><strong>火や煙が見えたらすぐ119番。</strong>出動中の火事を確かめたいときは、東京消防庁の災害情報案内 <strong class="num">{TEL["fire_info"]["tel"]}</strong> へ（119番は使わないでください）。</p></div>'''
+
+def push_box(p, c, t=''):
+    """町・市区町村の火事を Web プッシュ通知で受け取る欄（ボタンの動きは assets/site.js）"""
+    where = t or c
+    return (f'<div class="push-box" data-push data-pref="{esc(p)}" data-city="{esc(c)}" data-town="{esc(t)}">'
+            f'<button type="button" class="btn push-btn">{esc(where)}の火事を通知で受け取る</button>'
+            f'<p class="small muted push-note">消防の発表・報道・近所の人の報告2件以上で、スマホやパソコンに知らせます（無料・登録不要・いつでも解除できます）。</p></div>')
+
 
 def share_block(text, path):
     url = f'{SITE_URL}/{path}' if SITE_URL else ''
@@ -461,6 +472,7 @@ def ward_page(w):
   <h1>{esc(name)}で火事？</h1>
   <p class="lead">{esc(name)}の目撃報告・口コミ・報道を、町ごとにリアルタイムでまとめています。町名を選ぶと、その町のページが開きます。</p>
   {ALERT}
+  {push_box('東京都', name)}
 </section>
 <section class="section" aria-labelledby="now">
   <h2 id="now">いまの{esc(name)}</h2>
@@ -561,6 +573,7 @@ def machi_page(t):
   <h1>{esc(base)}（{esc(ward)}）で火事？</h1>
   <p class="lead">{esc(base)}付近の目撃報告と口コミを、リアルタイムで表示しています。サイレンや煙に気づいたら、報告ボタンで近所の人と共有できます。</p>
   {ALERT}
+  {push_box('東京都', ward, base)}
 </section>
 <section class="section" aria-labelledby="now">
   <h2 id="now">いまの{esc(base)}</h2>
@@ -592,6 +605,39 @@ def machi_page(t):
     title = f'{base}（{ward}）の火事情報｜いまの目撃情報・口コミ｜{SITE_NAME}'
     desc = f'{ward}{base}で火事？サイレンや煙の目撃情報、近所の人の口コミ、報道された火事を町ごとにリアルタイムでまとめています。管轄は{"・".join(s["name"] for s in sts) or "東京消防庁"}。'
     return page(t['file'][:-5], title, desc, body, og_image='og/live.png')
+
+# ---------- Web プッシュ通知 ----------
+SW_JS = """// 火事速のサービスワーカー: 通知を表示し、押されたら火事のページを開く（ページの保存・オフライン表示はしない）
+self.addEventListener('install', function () { self.skipWaiting(); });
+self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
+self.addEventListener('push', function (e) {
+  var d = {}; try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: '火事速', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || '火事速', { body: d.body || '', tag: d.tag || undefined, renotify: true, icon: '/icon-192.png', badge: '/icon-192.png', data: { url: d.url || '/' }, lang: 'ja' }));
+});
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  var url = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+    for (var i = 0; i < list.length; i++) { if (list[i].url === url && 'focus' in list[i]) return list[i].focus(); }
+    return self.clients.openWindow(url);
+  }));
+});
+"""
+
+def make_icons(dist):
+    """通知・ホーム画面用のアイコン（赤地に白い炎）。Pillow がなければ作らない"""
+    try:
+        from PIL import Image, ImageDraw
+    except Exception:
+        return
+    for n in (180, 192, 512):
+        im = Image.new('RGB', (n, n), (194, 52, 27)); d = ImageDraw.Draw(im)
+        u = n / 100
+        flame = [(50, 14), (64, 34), (72, 52), (70, 68), (62, 80), (50, 86), (38, 80), (30, 68), (28, 54), (34, 42), (40, 50), (42, 36)]
+        d.polygon([(x * u, y * u) for x, y in flame], fill=(255, 255, 255))
+        inner = [(50, 50), (58, 62), (58, 72), (50, 78), (42, 72), (43, 62)]
+        d.polygon([(x * u, y * u) for x, y in inner], fill=(194, 52, 27))
+        im.save(dist / f'icon-{n}.png')
 
 # ---------- 火事のページ ----------
 def fire_page(pre=None):
@@ -899,6 +945,12 @@ def build(report=None):
             + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in part) + '</urlset>\n', encoding='utf-8')
     (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         + ''.join(f'<sitemap><loc>{SITE_URL}/sitemap-{i}.xml</loc><lastmod>{today}</lastmod></sitemap>\n' for i in range(1, len(parts) + 1)) + '</sitemapindex>\n', encoding='utf-8')
+    # Web プッシュ通知: サービスワーカー（サイトの直下に置く）と、ホーム画面に追加するための manifest・アイコン
+    (DIST / 'sw.js').write_text(SW_JS, encoding='utf-8')
+    (DIST / 'manifest.webmanifest').write_text(json.dumps({'name': SITE_NAME + '｜近くの火事を町名で', 'short_name': SITE_NAME, 'start_url': '/', 'scope': '/', 'display': 'standalone',
+        'background_color': '#ffffff', 'theme_color': '#c2341b', 'lang': 'ja',
+        'icons': [{'src': '/icon-192.png', 'sizes': '192x192', 'type': 'image/png'}, {'src': '/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'}]}, ensure_ascii=False), encoding='utf-8')
+    make_icons(DIST)
     (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:
