@@ -18,11 +18,14 @@ jobs:
         if: ${{ contains(github.ref_name, 'backfill') }}
         run: node collector/backfill.mjs || true
       - name: 消防の出動情報ページ
-        if: ${{ !contains(github.ref_name, 'opendata') && !contains(github.ref_name, 'backfill') }}
+        if: ${{ !contains(github.ref_name, 'opendata') && !contains(github.ref_name, 'backfill') && !contains(github.ref_name, 'news') }}
         run: node collector/probe_sources.mjs || true
       - name: オープンデータ
-        if: ${{ !contains(github.ref_name, 'sources') && !contains(github.ref_name, 'backfill') }}
+        if: ${{ !contains(github.ref_name, 'sources') && !contains(github.ref_name, 'backfill') && !contains(github.ref_name, 'news') }}
         run: node collector/probe_opendata.mjs || true
+      - name: 報道の取り込み漏れ
+        if: ${{ contains(github.ref_name, 'news') }}
+        run: node collector/probe_news.mjs || true
       - name: 結果を保存
         run: |
           git config user.name kaji23-bot && git config user.email bot@users.noreply.github.com
