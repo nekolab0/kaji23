@@ -199,7 +199,8 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     const page = await wctx.newPage();
     page.on('console', m => { if (m.type() === 'error' && !/fonts\.g/.test(m.text()) && !/ERR_FAILED/.test(m.text())) consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${m.text()}`); });
     page.on('pageerror', e => consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${e.message}`));
-    page.on('requestfailed', r => { if (!/fonts\.g|x\.com|twitter|yahoo|google|workers\.dev/.test(r.url())) reqFail.push(`${r.url()} ${r.failure() && r.failure().errorText}`); });
+    page.on('requestfailed', r => { const ft = (r.failure() && r.failure().errorText) || ''; if (/\/api\//.test(r.url()) && /ERR_ABORTED/.test(ft)) return;   // 次のページへ移るときに打ち切られた受付サーバーへの問い合わせ（表示の不具合ではない）
+    if (!/fonts\.g|x\.com|twitter|yahoo|google|workers\.dev/.test(r.url())) reqFail.push(`${r.url()} ${r.failure() && r.failure().errorText}`); });
     for (const f of pages) {
       await page.goto('file://' + path.join(DIST, f.split('?')[0]) + (f.includes('?') ? '?' + f.split('?')[1].split('&').map(kv => kv.split('=').map(encodeURIComponent).join('=')).join('&') : ''), { waitUntil: 'load' });
       await page.waitForTimeout(/^(index|fire|town)\.html|^m-|^p-/.test(f) ? 200 : 0);
