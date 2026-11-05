@@ -21,7 +21,7 @@
 // IPアドレスは保存しない（日替わりの塩付きハッシュを連投防止にだけ使う）。
 import { AREAS } from './areas.js';
 import { SOURCES, parseSource, robotsAllows, htmlText } from './official.js';
-import { parseMail } from './mail.js';
+import { parseMail, mailText, decodeHeader } from './mail.js';
 import { pollX, snsFor } from './xposts.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
@@ -278,14 +278,17 @@ export async function handle(request, env, now = new Date()) {
     const { results } = await DB.prepare('SELECT * FROM sources').all();
     const st = Object.fromEntries(results.map(r => [r.id, r]));
     const dbg = url.searchParams.get('debug') === '1';
-    return json(env, { generatedAt: iso, sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items, ...(dbg ? { sample: st[s.id].sample } : {}) } : {}) })) });
+    const mails = results.filter(r => /^mail-/.test(r.id)).map(r => ({ id: r.id, name: '消防メール（' + r.id.slice(5) + '）', last_ok: r.last_ok, items: r.items, ...(dbg ? { sample: r.sample } : {}) }));
+    let samples = [];
+    if (dbg) { try { samples = (await DB.prepare('SELECT at, src, subject, text, added FROM mail_samples ORDER BY id DESC LIMIT 50').all()).results; } catch (e) {} }
+    return json(env, { generatedAt: iso, mails, ...(dbg ? { mailSamples: samples } : {}), sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items, ...(dbg ? { sample: st[s.id].sample } : {}) } : {}) })) });
   }
 
   // 消防本部の発表の記録（サイトの生成時に読み、火事のページ・町のページ・件数に使う）。場所は町名まで
   if (P === '/api/official' && request.method === 'GET') {
     const days = Math.min(60, Math.max(1, parseInt(url.searchParams.get('days') || '7', 10) || 7));
     const { results } = await DB.prepare('SELECT source, pref, ward, town, base, kind, status, at, inc FROM official WHERE at > ? AND COALESCE(status, \'\') <> \'誤報\' ORDER BY at').bind(ago(days * 864e5)).all();
-    return json(env, { generatedAt: iso, days, items: results.map(r => ({ ...r, source_name: (SOURCES.find(s => s.id === r.source) || {}).name || (/^mail-/.test(r.source) ? '消防メール（' + r.source.slice(5) + '）' : r.source), source_url: (SOURCES.find(s => s.id === r.source) || {}).url || null })) }, 200, { 'Cache-Control': 'public, max-age=120' });
+    return json(env, { generatedAt: iso, days, items: results.map(r => ({ ...r, source_name: (SOURCES.find(s => s.id === r.source) || {}).name || (/^mail-/.test(r.source) ? '自治体の火災情報メール（' + (r.ward || r.source.slice(5)) + '）' : r.source), source_url: (SOURCES.find(s => s.id === r.source) || {}).url || null })) }, 200, { 'Cache-Control': 'public, max-age=120' });
   }
 
   // 場所ごとの火事の件数（検索候補の「記録○件」用。直近365日）
@@ -430,10 +433,25 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
 }
 
 // 火災メールを受け取る（Cloudflare Email Routing で、このWorker宛に転送したメール）
+export function isLoop(message, fwd) {
+  const f = String(fwd || '').toLowerCase().trim(); if (!f) return false;
+  const h = k => String((message.headers && message.headers.get && message.headers.get(k)) || '').toLowerCase();
+  return String(message.from || '').toLowerCase() === f || h('x-forwarded-for').includes(f) || h('x-forwarded-to').includes(f);
+}
 export async function receiveMail(env, raw, now = new Date()) {
   await setup(env);
   const r = parseMail(raw, now);
   const added = r.items.length ? await ingestOfficial(env, r.items, now) : 0;
+  // 火災に関係しそうなメールは、読み取りの改善用に本文の頭を控える（URL・メールアドレスは消す。最新50通だけ）
+  try {
+    const body = mailText(raw).text;
+    if (/火災|火事|出火|鎮火|消防/.test(r.subject + body)) {
+      const clean = t => String(t).replace(/https?:\/\/\S+/g, '[URL]').replace(/[\w.+-]+@[\w.-]+/g, '[メール]');
+      await env.DB.prepare('CREATE TABLE IF NOT EXISTS mail_samples (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, src TEXT, subject TEXT, text TEXT, added INTEGER)').run();
+      await env.DB.prepare('INSERT INTO mail_samples (at, src, subject, text, added) VALUES (?, ?, ?, ?, ?)').bind(now.toISOString(), r.from || 'unknown', clean(r.subject).slice(0, 200), clean(body).slice(0, 1500), added).run();
+      await env.DB.prepare('DELETE FROM mail_samples WHERE id NOT IN (SELECT id FROM mail_samples ORDER BY id DESC LIMIT 50)').run();
+    }
+  } catch (e) {}
   await env.DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, sample) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = excluded.last_ok, status = excluded.status, items = sources.items + excluded.items, sample = excluded.sample')
     .bind('mail-' + (r.from || 'unknown'), now.toISOString(), now.toISOString(), 'メール', added, (r.subject || '').slice(0, 200)).run();
   return { ...r, added };
@@ -447,7 +465,8 @@ export default {
     const r = await receiveMail(env, raw);
     // 火災の発表でないメール（市の配信サービスの登録確認など）は、運営のアドレスへ転送する
     // MAIL_FORWARD は Email Routing の「転送先アドレス」で確認済みのアドレス（Cloudflare の変数に設定）
-    if (!r.items.length && env.MAIL_FORWARD) { try { await message.forward(env.MAIL_FORWARD); } catch (e) {} }
+    // ただし Gmail などから転送されてきたメール（送り主が転送先そのもの）は送り返さない（行ったり来たりを防ぐ）
+    if (!r.items.length && env.MAIL_FORWARD && !isLoop(message, env.MAIL_FORWARD)) { try { await message.forward(env.MAIL_FORWARD); } catch (e) {} }
   },
   scheduled: async (event, env) => {
     await setup(env);

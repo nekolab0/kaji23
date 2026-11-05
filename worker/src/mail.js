@@ -57,6 +57,21 @@ export function mailText(raw) {
   return { type, text, headers: h };
 }
 
+// 政令市の区名（「浦和区」など）→ その区を持つ政令市の一覧
+let WARDS = null;
+function uniqueWard(wc, text) {
+  if (!WARDS) {
+    WARDS = new Map();
+    for (const list of Object.values(AREAS)) for (const n of list) {
+      const m = n.match(/^(.+?市)(.+区)$/); if (!m) continue;
+      if (!WARDS.has(m[2])) WARDS.set(m[2], new Set()); WARDS.get(m[2]).add(m[1]);
+    }
+  }
+  // 本文に出てくる区名のうち、この市にあって、全国でこの市にしかないものがあれば決めてよい
+  for (const [w, cities] of WARDS) if (cities.size === 1 && cities.has(wc) && text.includes(w)) return true;
+  return false;
+}
+
 // ---------- 火災の発表を読む ----------
 // raw: メール全体（文字列。8bit のままのバイトは1文字1バイトで入っている）
 export function parseMail(raw, now = new Date(), senders = MAIL_SENDERS) {
@@ -68,20 +83,29 @@ export function parseMail(raw, now = new Date(), senders = MAIL_SENDERS) {
   const text = (subject + '\n' + m.text).replace(/\r/g, '');
   if (!fireKind(text) && !/誤報|火災では(?:あり|な)/.test(text)) return { subject, from: domain, items: [] };
   // 本文の市区町村名から都道府県を探す（長い名前から。政令市の区は「○○市○○区」で）
-  const prefs = hint && hint[1] ? [hint[1].pref] : Object.keys(AREAS);
+  // 本文に政令市の名前（「浜松市」「浜松」）が1つだけあれば、その市を先に試す（区名だけの配信のため）
+  const desig = hint && hint[1] ? [] : [...new Set(Object.entries(AREAS).flatMap(([p, l]) => l.filter(n => /^.+?市.+区$/.test(n)).map(n => p + '|' + n.match(/^(.+?市)/)[1])))]
+    .filter(k => text.includes(k.split('|')[1].replace(/市$/, '')));
+  const prefs = hint && hint[1] ? [hint[1].pref] : desig.length === 1 ? [desig[0].split('|')[0], ...Object.keys(AREAS).filter(p => p !== desig[0].split('|')[0])] : Object.keys(AREAS);
   let items = [];
   for (const pref of prefs) {
     const src = { id: 'mail-' + (domain || 'unknown'), name: '消防メール', pref, type: 'sentence', ...(hint && hint[1] ? hint[1] : {}) };
     // 政令市のメールは区だけを書くことが多い: その都道府県の政令市を順に試す
     const wardCities = src.wardCity ? [src.wardCity] : [...new Set((AREAS[pref] || []).filter(n => /^.+?市.+区$/.test(n)).map(n => n.match(/^(.+?市)/)[1]))];
-    for (const wc of [null, ...wardCities]) {
+    const named = desig.length === 1 && desig[0].startsWith(pref + '|') ? desig[0].split('|')[1] : null;
+    for (const wc of named ? [named, null, ...wardCities.filter(w => w !== named)] : [null, ...wardCities]) {
+      // 送り主の見当がないとき、区の名前だけで政令市を決めない（「中央区」は札幌・さいたま・浜松などにある）。
+      // 本文に市の名前がある、または全国でその区名を持つ政令市が1つだけのときに限る
+      if (wc && !(hint && hint[1]) && !text.includes(wc.replace(/市$/, '')) && !uniqueWard(wc, text)) continue;
       const s = wc ? { ...src, wardCity: wc } : src;
       // 本文は「日時」と「場所・種別」が別の行に分かれていることが多いので、つなげた1行でも読む
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       const joined = lines.join(' ');
       const found = parseSource(`<p>${joined.replace(/</g, '')}</p>` + lines.map(l => `<p>${l.replace(/</g, '')}</p>`).join(''), s, now);
       // 送り主の見当がないとき: 同じ名前の市区町村がほかの都道府県にもあるなら、本文に都道府県名があるときだけ採る
-      const okFound = found.filter(x => hint && hint[1] || text.includes(pref) || Object.keys(AREAS).filter(p => (AREAS[p] || []).includes(x.city)).length === 1);
+      const okFound = found.filter(x => hint && hint[1] || text.includes(pref) || Object.keys(AREAS).filter(p => (AREAS[p] || []).includes(x.city)).length === 1)
+        // 東京の「中央区・北区・港区」は政令市の区と同じ名前: 東京と書かれているときだけ
+        .filter(x => hint && hint[1] || !(x.pref === '東京都' && /^(中央区|北区|港区)$/.test(x.city)) || /東京|都内/.test(text));
       if (okFound.length) { items = okFound.map(x => ({ ...x, source: 'mail-' + (domain || 'unknown') })); break; }
     }
     if (items.length) break;

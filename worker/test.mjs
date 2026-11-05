@@ -1,7 +1,7 @@
 // D1 を Node の組み込み SQLite で代用して、受付サーバーの動作を確認する
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
-import { handle, cleanTown, baseTown, checkBody, pollSources } from './src/index.js';
+import { handle, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop } from './src/index.js';
 export function makeEnv() {
   const db = new DatabaseSync(':memory:');
   const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
@@ -135,6 +135,18 @@ if (isMain) {
     d.exec(`INSERT INTO incidents (id, ward, town, base, first_at, last_at, n, siren) VALUES ('old1','北区','赤羽','赤羽','2026-11-02T09:00:00Z','2026-11-02T09:59:00Z',1,1)`);
     const x = await (await handle(req('POST', '/api/report', { ward: '北区', town: '赤羽', kind: 'smoke' }, '12.1.1.1'), m.env, t0)).json();
     ok('旧データを東京都として引き継ぎ、同じ火事にまとめる', x.incident === 'old1' && d.prepare("SELECT pref FROM incidents WHERE id='old1'").get().pref === '東京都', JSON.stringify(x)); }
+  // 火災メールの受け取り
+  { const m = makeEnv(); const b64 = s => Buffer.from(s, 'utf8').toString('base64'); const mnow = new Date('2026-11-04T08:00:00Z');
+    const mk = (from, subj, body) => `From: ${from}\r\nSubject: =?UTF-8?B?${b64(subj)}?=\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64(body)}`;
+    const r1 = await receiveMail(m.env, mk('saitama.city-all@mpme.jp', 'さいたま市消防局　火災情報', '11月4日15時40分\n浦和区常盤6丁目付近で建物火災が発生しました。詳しくは https://example.jp/x?token=abc をご覧ください。問合せ info@example.jp'), mnow);
+    ok('メール: 火災を取り込む', r1.added === 1, JSON.stringify(r1));
+    await receiveMail(m.env, mk('x@mpme.jp', '登録完了', 'ご登録ありがとうございます。 https://example.jp/mypage?k=secret'), mnow);
+    const srcs = await (await handle(req('GET', '/api/sources?debug=1'), m.env, mnow)).json();
+    const smp = srcs.mailSamples || [];
+    ok('メール: 受け取り状況と、改善用の本文（火災関係だけ・URLとアドレスは消す）', srcs.mails.some(x => x.id === 'mail-mpme.jp' && x.items === 1) && smp.length === 1 && !/token|info@/.test(smp[0].text) && smp[0].text.includes('[URL]'), JSON.stringify(srcs.mails) + JSON.stringify(smp));
+    const H = o => ({ get: k => o[k.toLowerCase()] || null });
+    ok('メール: 転送先から来たメールは送り返さない', isLoop({ from: 'Me@gmail.com', headers: H({}) }, 'me@gmail.com') && isLoop({ from: 'bounce@x.jp', headers: H({ 'x-forwarded-for': 'me@gmail.com alerts@kajisoku.jp' }) }, 'me@gmail.com') && !isLoop({ from: 'kasai@city.jp', headers: H({}) }, 'me@gmail.com'));
+  }
   ok('表と塩を自動で用意（塩はランダム48桁）', salt && /^[0-9a-f]{48}$/.test(salt.v));
 
   results.forEach(x => console.log(`${x.ok ? 'PASS' : 'FAIL'}  ${x.name}${x.detail !== '' ? ' — ' + x.detail : ''}`));
