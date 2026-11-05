@@ -251,7 +251,9 @@ export async function handle(request, env, now = new Date()) {
   if (P === '/api/incident' && request.method === 'GET') {
     const id = String(url.searchParams.get('id') || '');
     const inc = /^n-/.test(id) ? null : await DB.prepare('SELECT * FROM incidents WHERE id = ?').bind(id).first();
-    if (!inc && !/^n-/.test(id)) return json(env, { error: 'この火事は見つかりませんでした' }, 404);
+    // 固定ページ（f-o-*.html）からの問い合わせ（soft=1）は、見つからなくても 200 で incident: null を返す
+    // （ブラウザのコンソールに 404 を出さない。ページは書き込み済みの中身のまま表示される）
+    if (!inc && !/^n-/.test(id)) return url.searchParams.get('soft') === '1' ? json(env, { generatedAt: iso, incident: null, comments: [], timeline: [], official: [], sns: [] }) : json(env, { error: 'この火事は見つかりませんでした' }, 404);
     const c = await DB.prepare('SELECT * FROM comments WHERE inc = ? AND hidden = 0 ORDER BY at ASC LIMIT 300').bind(id).all();
     const t = inc ? await DB.prepare("SELECT kind, strftime('%Y-%m-%dT%H:%M:00Z', at) AS m, COUNT(*) AS n FROM reports WHERE inc = ? GROUP BY kind, m ORDER BY m").bind(id).all() : { results: [] };
     const o = inc ? await DB.prepare('SELECT source, kind, status, at, town FROM official WHERE inc = ? ORDER BY at').bind(id).all() : { results: [] };
