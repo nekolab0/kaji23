@@ -450,6 +450,13 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
 }
 
 // 火災メールを受け取る（Cloudflare Email Routing で、このWorker宛に転送したメール）
+export async function kickBuild(env, fetcher = fetch) {
+  const repo = env.GH_REPO || 'nekolab0/kaji23';
+  const r = await fetcher(`https://api.github.com/repos/${repo}/actions/workflows/daily.yml/dispatches`, { method: 'POST',
+    headers: { Authorization: 'Bearer ' + env.GH_TOKEN, Accept: 'application/vnd.github+json', 'User-Agent': 'kaji23-reports', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ref: 'main', inputs: { quick: 'true' } }) });
+  return r.status;
+}
 export function isLoop(message, fwd) {
   const f = String(fwd || '').toLowerCase().trim(); if (!f) return false;
   const h = k => String((message.headers && message.headers.get && message.headers.get(k)) || '').toLowerCase();
@@ -496,6 +503,8 @@ export default {
     await pollSources(env);   // 毎分: 消防本部の出動情報
     try { await pollX(env); } catch (e) {}
     try { await phoneTick(env); } catch (e) {}
-    try { await pushTick(env); } catch (e) {}   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
+    try { await pushTick(env); } catch (e) {}
+    // GitHub の定期実行は混雑で数時間あくことがあるため、30分ごとにこちらからサイトの作り直し（報道の取り直し）を頼む（GH_TOKEN を設定したときだけ）
+    if (env.GH_TOKEN && [7, 37].includes(new Date().getUTCMinutes())) { try { await kickBuild(env); } catch (e) {} }   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
   },
 };

@@ -1,7 +1,7 @@
 // D1 を Node の組み込み SQLite で代用して、受付サーバーの動作を確認する
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
-import { handle, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop } from './src/index.js';
+import { handle, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild } from './src/index.js';
 export function makeEnv() {
   const db = new DatabaseSync(':memory:');
   const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
@@ -147,6 +147,8 @@ if (isMain) {
     const H = o => ({ get: k => o[k.toLowerCase()] || null });
     ok('メール: 転送先から来たメールは送り返さない', isLoop({ from: 'Me@gmail.com', headers: H({}) }, 'me@gmail.com') && isLoop({ from: 'bounce@x.jp', headers: H({ 'x-forwarded-for': 'me@gmail.com alerts@kajisoku.jp' }) }, 'me@gmail.com') && !isLoop({ from: 'kasai@city.jp', headers: H({}) }, 'me@gmail.com') && isLoop({ from: 'kajisoku.mail@gmail.com', headers: H({ 'x-forwarded-to': 'alerts@kajisoku.jp' }) }, 'me@gmail.com'));
   }
+  { let got = null; const st = await kickBuild({ GH_TOKEN: 'tok' }, async (u, o) => { got = { u, o }; return new Response(null, { status: 204 }); });
+    ok('サイトの作り直しを GitHub に頼む（報道だけ・main）', st === 204 && /workflows\/daily\.yml\/dispatches$/.test(got.u) && JSON.parse(got.o.body).inputs.quick === 'true' && got.o.headers.Authorization === 'Bearer tok'); }
   ok('表と塩を自動で用意（塩はランダム48桁）', salt && /^[0-9a-f]{48}$/.test(salt.v));
 
   results.forEach(x => console.log(`${x.ok ? 'PASS' : 'FAIL'}  ${x.name}${x.detail !== '' ? ' — ' + x.detail : ''}`));
