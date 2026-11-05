@@ -59,6 +59,10 @@ ok('WordPress: 「ただいま、○○町…地内の」', wa.some(x => x.city 
 
 const mz = parseSource('<p>火災情報（日向市消防本部） 11月02日13時45分頃、日向市大字富高付近で建物火災が発生しました。</p><p>彦根市消防本部から 11月02日 10:20 彦根市消防本部管内で火災が発生しました。</p>', { id: 't-mz', name: 'x', pref: '宮崎県', type: 'sentence' }, now);
 ok('見出しの「（○○市消防本部）」は町名にしない', mz.length === 1 && mz[0].city === '日向市' && mz[0].town === '大字富高', JSON.stringify(mz));
+const cg = parseSource('<p>11月02日13時21分頃、茅ヶ崎市 元町 付近で建物火災が発生し、消防車が出動しております。</p><p>11月02日12時50分頃、茅ヶ崎市 柳島海岸 付近で救急事案が発生し、消防車が出動しております。</p>', { id: 't-cg', name: 'x', pref: '神奈川県', type: 'sentence' }, now);
+ok('「茅ヶ崎市 元町 付近で」（市と町の間に空白）・救急は捨てる', cg.length === 1 && cg[0].city === '茅ヶ崎市' && cg[0].town === '元町', JSON.stringify(cg));
+const mu = parseSource('<p>11月2日13時40分ころ、南魚沼市蛭窪に建物火災のため出動しました。</p>', { id: 't-mu', name: 'x', pref: '新潟県', type: 'sentence' }, now);
+ok('「南魚沼市蛭窪に建物火災のため」の「に」は町名に含めない', mu.length === 1 && mu[0].town === '蛭窪', JSON.stringify(mu));
 const hk = parseSource('<p>彦根市消防本部から 11月02日 10:20 彦根市消防本部管内で火災が発生しました。</p>', { id: 't-hk', name: 'x', pref: '滋賀県', type: 'sentence' }, now);
 ok('町名が読めなければ市区町村までにする', hk.length === 1 && hk[0].city === '彦根市' && hk[0].town === '', JSON.stringify(hk));
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));

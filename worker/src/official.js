@@ -18,6 +18,8 @@ const MANUAL_SOURCES = [
     id: 'chikugo-' + k, name: '筑後地区消防指令センター（消防出動情報）', url: `http://www.center-chikugo119.jp/fire/saigai/${k}PcSel.html`, pref: '福岡県', type: 'sentence' })),
   { id: 'sendai', name: '仙台市（杜の都防災Web 火災等の発生情報）', url: 'http://sendaicity.bosai.info/sendaicity/fireinfo/index.html', pref: '宮城県', type: 'sentence', wardCity: '仙台市', current: true },
   { id: 'nagano', name: '長野市消防局（長野市防災情報ポータル）', url: 'https://www.nagano-bousai.jp/', pref: '長野県', type: 'sentence' },
+  { id: 'chigasaki', name: '茅ヶ崎市・寒川町の消防（災害情報）', url: 'http://www.chigasaki-samukawa119.info/chigasaki-saigai/', pref: '神奈川県', type: 'sentence', current: true },
+  { id: 'minamiuonuma', name: '南魚沼市消防本部（火災などの災害状況）', url: 'https://www.city.minamiuonuma.niigata.jp/shoubouhonbu/docs/disaster_info.html', pref: '新潟県', type: 'sentence' },
 ];
 // 手で書いた一覧（札幌の表など）が先、調査で見つけた全国のページ（sources_auto.js）があと
 export const SOURCES = [...MANUAL_SOURCES, ...AUTO_SOURCES.filter(a => !MANUAL_SOURCES.some(m => m.url === a.url))];
@@ -44,8 +46,8 @@ export function fireKind(s) {
 // 町名だけを取り出す（「北32条西7丁目」「太秦中筋町」など。目標物・距離・番地は捨てる）
 export function townPart(s) {
   let t = s.replace(/^[、,\s]+/, '');
-  t = t.split(/付近|地内|地先|方面|周辺|[、,（(\s]|で[、，]?|の(?:建物|車両|枯草|林野|その他|火災)|(?:中高層)?(?:建物|車両|林野|枯草|枯れ草|その他|船舶)?火災|火事/)[0];
-  t = t.replace(/([0-9]+|[一二三四五六七八九十]+)番(地)?.*$/, '').replace(/[0-9]+[-－][0-9].*$/, '');
+  t = t.split(/付近|地内|地先|方面|周辺|[、,（(\s]|で[、，]?|[のに](?:建物|車両|枯草|林野|その他|火災)|(?:中高層)?(?:建物|車両|林野|枯草|枯れ草|その他|船舶)?火災|火事/)[0];
+  t = t.replace(/に$/, '').replace(/([0-9]+|[一二三四五六七八九十]+)番(地)?.*$/, '').replace(/[0-9]+[-－][0-9].*$/, '');
   return t.slice(0, 20);
 }
 

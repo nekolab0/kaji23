@@ -470,6 +470,13 @@ def static_town_page(p, c, t):
     last = rs[0]['day'] if rs else None
     records = (f'<section class="section" aria-labelledby="rec"><h2 id="rec">{esc(t)}の火事の記録（{len(rs)}件）</h2>'
                f'{record_list(rs, show_city=False)}<p class="small muted">当サイトが報道・消防本部の発表・自治体のオープンデータから記録した火事です（{SITE_NAME}の収録分）。</p></section>')
+    # 同じ市区町村で火事の記録がある町（固定ページどうしを静的なリンクでつなぐ。検索エンジンが町のページをたどれるように）
+    cnt = collections.Counter(r['town'] for r in records_in(p, c) if r['town'] and r['town'] != t and (p, c, r['town']) in STATIC_TOWNS)
+    if cnt:
+        sib = ''.join(f'<a href="{esc(static_town_file(p, c, tt))}">{esc(tt)}<span class="cnt">{n}</span></a>' for tt, n in sorted(cnt.items(), key=lambda x: (-x[1], x[0]))[:30])
+        records += (f'<section class="section" aria-labelledby="sib"><h2 id="sib">{esc(c)}のほかの町の火事</h2><div class="town-grid">{sib}</div>'
+                    f'<p class="small"><a href="{esc(city_file(p, c))}">{esc(c)}の火事情報をすべて見る</a></p></section>')
+    records += dial_block(p, c)
     title = f'【速報】{t}（{c}）の火事どこ？今日のサイレン・火事情報｜{SITE_NAME}'
     desc = (f'{p}{c}{t}で火事？' + (f'最新は{jday(last)}の火事。' if last else '') + f'記録{len(rs)}件。サイレン・煙の目撃報告、近所の口コミ、報道された火事を町ごとにまとめています。')
     return town_page({'name': static_town_file(p, c, t)[:-5], 'title': title, 'desc': desc, 'c': code, 't': t,
