@@ -323,3 +323,12 @@ h1, .fire-card .place b { word-break: auto-phrase; }
 .push-box{margin-top:12px;display:grid;gap:6px;justify-items:start}
 .push-box .push-btn[aria-pressed="true"]{background:#e8f3ec;border-color:#2f7d4f;color:#1f5a37}
 .push-box .push-note{margin:0}
+
+/* ガイド記事・一覧表 */
+.article{max-width:760px}
+.article .section p,.article .section li{line-height:1.85}
+.tbl-wrap{overflow-x:auto}
+.tbl{border-collapse:collapse;width:100%;font-size:14px}
+.tbl th,.tbl td{border-bottom:1px solid #e6e2dc;padding:8px 10px;text-align:left;vertical-align:top}
+.tbl th{font-weight:700;background:#faf8f5}
+.tbl td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
