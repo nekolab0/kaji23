@@ -3,7 +3,7 @@
 // 仕組み（kaji.news と同じ「何かあった地域だけ、そのときにかける」方式＋むだ打ちを減らす工夫）
 //  1. きっかけ: ①報道の火事（3時間以内）②サイレン・煙の報告が2件以上 の地域のうち、
 //     消防の発表ページや火災メールで取れていない市区町村で、案内ダイヤルの番号がわかるところ
-//  2. 電話: Twilio で発信し、相手の自動音声を最大60秒録音（こちらは何も話さない）
+//  2. 電話: Twilio で発信し、相手の自動音声を最大50秒ほど録音（1分の課金単位に収める）（こちらは何も話さない）
 //  3. 文字起こし: Cloudflare Workers AI の Whisper（1日約200分まで無料）→ 消防の発表と同じ読み取りで「町名・種別・時刻」を取り出す
 //  4. むだ打ちの防止: 同じ番号へは45分あける／1日の上限 PHONE_DAILY_MAX 回（初期値20回・1回約12円）／
 //     2回続けて録音できなかった番号は7日休む／東京消防庁など人が出る番号はかけない
@@ -106,8 +106,8 @@ export async function placeCall(env, q, now = new Date(), fetcher = fetch) {
   const api = (env.API_URL || 'https://api.kajisoku.jp').replace(/\/$/, '');
   const form = new URLSearchParams({
     To: e164(q.tel), From: env.TWILIO_FROM,
-    Twiml: '<Response><Pause length="58"/><Hangup/></Response>',   // こちらは話さず、相手の案内を聞くだけ
-    Record: 'true', RecordingChannels: 'mono', TimeLimit: '62', Timeout: '25',
+    Twiml: '<Response><Pause length="50"/><Hangup/></Response>',   // こちらは話さず、相手の案内を聞くだけ（1分の課金単位に収める）
+    Record: 'true', RecordingChannels: 'mono', TimeLimit: '55', Timeout: '25',
     RecordingStatusCallback: `${api}/api/phone/rec?k=${key}`, RecordingStatusCallbackMethod: 'POST',
     StatusCallback: `${api}/api/phone/status?k=${key}`, StatusCallbackMethod: 'POST',
   });

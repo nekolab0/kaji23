@@ -40,7 +40,7 @@ ok('Twilio を設定するまでは何もしない', r0.skipped && calls.length 
 Object.assign(env, { TWILIO_SID: 'AC1', TWILIO_TOKEN: 'tok', TWILIO_FROM: '+15550001111', PHONE_DAILY_MAX: '2', API_URL: 'https://api.example' });
 const r1 = await phoneTick(env, now, fetcher);
 ok('報道の火事: 発表ページ・東京・古いものを除いて、五泉市だけに電話', calls.length === 1 && calls[0].To === '+81250423399' && r1.queued.length === 1 && /k=[0-9a-f]{36}/.test(calls[0].RecordingStatusCallback), JSON.stringify(r1) + JSON.stringify(calls[0]));
-ok('こちらは話さず録音だけ（60秒ほど）', calls[0].Record === 'true' && /<Pause length="58"\/>/.test(calls[0].Twiml) && calls[0].TimeLimit === '62');
+ok('こちらは話さず録音だけ（1分以内）', calls[0].Record === 'true' && /<Pause length="50"\/>/.test(calls[0].Twiml) && calls[0].TimeLimit === '55');
 await phoneTick(env, new Date(+now + 60e3), fetcher);
 ok('同じ地域へ続けてかけない', calls.length === 1);
 ok('同じ番号へは45分あける', await enqueue(env, { pref: '新潟県', city: '五泉市', reason: 'news' }, new Date(+now + 30 * 60e3)) === 'recent');
