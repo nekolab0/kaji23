@@ -107,7 +107,7 @@ if (isMain) {
       'https://www.119.city.sapporo.jp/saigai/sghp.html': [200, '<h2>現在の災害出動</h2>〇札幌市<BR>　　現在出動中の災害はありません<BR><h2>現在の救急出動</h2><h2>過去の災害出動</h2><TABLE><TR><TD>本日（03日）</TD><TD>昨日（02日）</TD></TR><TR><TD COLSPAN=2>〇札幌市</TD></TR><TR><TD>●救助出動<BR>・東区北43条東3丁目（03時51分）<BR></TD><TD>●火災出動<BR>・北区北32条西7丁目（22時46分）<BR>●車両火災出動<BR>・南区澄川6条4丁目（06時54分）<BR></TD></TR></TABLE>'],
       'https://disif.city.kyoto.lg.jp/robots.txt': [200, 'User-agent: *\nDisallow: /annai/'],
     };
-    const fetcher = async (u) => { const p = pages[u] || [404, '']; return new Response(p[1], { status: p[0], headers: { 'Content-Type': 'text/html; charset=utf-8' } }); };
+    const fetcher = async (u, opts = {}) => { new Headers(opts.headers || {}); /* 本番の fetch と同じく、見出しは英数字だけ（日本語が入ると読み取りが全部失敗する） */ const p = pages[u] || [404, '']; return new Response(p[1], { status: p[0], headers: { 'Content-Type': 'text/html; charset=utf-8' } }); };
     const rep = await pollSources(m.env, pnow, fetcher, 3);
     const sp = rep.find(r => r.id === 'sapporo'), ky = rep.find(r => r.id === 'kyoto');
     ok('出動情報: 札幌から火災2件（救助は捨てる）', sp && sp.status === 'ok' && sp.items === 2, JSON.stringify(rep));
@@ -124,6 +124,8 @@ if (isMain) {
     ok('出動情報: いまの火事の一覧に出る', live.incidents.filter(x => x.official).length === 2);
     const srcs = await (await handle(req('GET', '/api/sources'), m.env, pnow)).json();
     ok('出動情報: 読み取り状況を確認できる', srcs.sources.find(x => x.id === 'sapporo').status === 'ok');
+    const ex = await (await handle(req('GET', '/api/official?days=7'), m.env, pnow)).json();
+    ok('出動情報: サイト生成用に発表の記録を出す（町名まで・出典つき）', ex.items.length === 2 && ex.items.every(x => x.pref === '北海道' && x.source_name && x.kind) && ex.items.some(x => x.ward === '札幌市北区' && x.town === '北32条西7丁目'), JSON.stringify(ex.items));
   }
   // 23区だけの頃のデータ（都道府県なし）を東京都として引き継ぐ
   { const m = makeEnv(); const d = m.db;

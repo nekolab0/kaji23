@@ -34,8 +34,53 @@ for aid, x in NEWS_BY_ID.items():   # 保存前の最新分も
     if aid not in ARCHIVE:
         RECORDS.append({'aid': aid, 'fid': 'n-' + aid, 'pref': x.get('pref') or '東京都', 'city': x.get('city') or x['ward'],
                         'town': base_of(x['town']) if x.get('town') else '', 'day': x['first'][:10], 'x': x})
-RECORDS.sort(key=lambda r: (r['day'], (r['x'] or {}).get('first', '')), reverse=True)
+# 消防本部の発表（受付サーバーが集めたもの）。同じ日・同じ町の報道があれば、報道のページに発表を添える
+_op = RAW / 'official_archive.json'
+OFFICIAL = json.load(open(_op, encoding='utf-8'))['fires'] if _op.exists() else {}
+_news_key = {(r['pref'], r['city'], r['town'], r['day']): r for r in RECORDS}
+_news_city_day = {}
+for r in RECORDS: _news_city_day.setdefault((r['pref'], r['city'], r['day']), []).append(r)
 TOWN_NAMES = {code: {t[0] for t in ts} for code, ts in TOWNS_JP.items()}
+_TOWN_SORTED = {}
+def norm_town(pref, city, t):
+    """発表の町名を、全国の町名一覧にある町名に合わせる（「丸谷町○○工場」→「丸谷町」）。合わなければ空（市区町村まで）"""
+    if not t: return ''
+    code = CODE_OF.get((pref, city))
+    if not code: return ''
+    names = TOWN_NAMES.get(code, ())
+    if t in names: return t
+    if code not in _TOWN_SORTED: _TOWN_SORTED[code] = sorted(names, key=len, reverse=True)
+    t2 = t.replace('ヶ', 'ケ')
+    for n in _TOWN_SORTED[code]:
+        if t.startswith(n) or t2.startswith(n.replace('ヶ', 'ケ')): return n
+    return ''
+_off_seen = set()
+for oid, v in sorted(OFFICIAL.items(), key=lambda kv: (kv[0].startswith('o-b-'), kv[0])):   # 受付サーバーの分（火事のページがある）を先に
+    pref, city, town, day, kind, at, sname, surl, status = (list(v) + [''] * 9)[:9]
+    if status == '誤報': continue
+    town = norm_town(pref, city, town)
+    dk = (pref, city, town, day) if town else (pref, city, (at or day)[:16])
+    if dk in _off_seen: continue   # さかのぼって取り込んだ分と、受付サーバーの分の重なり
+    _off_seen.add(dk)
+    o = {'kind': kind, 'at': at, 'name': sname, 'url': surl, 'status': status}
+    hit = _news_key.get((pref, city, town, day))
+    if hit is None:   # 町名のない報道と同じ日・同じ市区町村
+        hit = next((r for r in _news_city_day.get((pref, city, day), []) if not r['town'] or not town), None)
+    if hit is not None:
+        hit.setdefault('official', o)
+        if not hit['town'] and town: hit['town'] = town
+        continue
+    if (pref, city) not in CODE_OF: continue
+    RECORDS.append({'aid': oid, 'fid': oid, 'pref': pref, 'city': city, 'town': town, 'day': day, 'x': None, 'official': o})
+RECORDS.sort(key=lambda r: (r['day'], (r['x'] or {}).get('first', '') or (r.get('official') or {}).get('at', '')), reverse=True)
+# 件数（報道の記録＋消防の発表）
+COUNTS = collections.Counter()
+for r in RECORDS:
+    pref, city, town = r['pref'], r['city'], r['town']
+    COUNTS[pref] += 1; COUNTS[f'{pref}|{city}'] += 1
+    if town: COUNTS[f'{pref}|{city}|{town}'] += 1
+    par = WARD_PARENT.get((pref, city))
+    if par: COUNTS[f'{pref}|{par}'] += 1
 def static_town_file(p, c, t): return f'm-{p}-{c}-{t}.html'
 STATIC_TOWNS = set()
 for r in RECORDS:
@@ -273,6 +318,8 @@ def city_page(p, c):
   <h2 id="news">{esc(c)}で報道された火事</h2>
   {news_list_jp(news_in(pref=p, city=c), empty=f'直近30日に、{c}の火事の報道は見つかっていません。', show_pref=False)}
 </section>
+{dial_block(p, c)}
+{city_records(p, c)}
 {main}
 <section class="section" aria-labelledby="sns">
   <h2 id="sns">SNS・ニュースで確かめる</h2>
@@ -345,15 +392,24 @@ def bc_ld(items):
     return {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": lst}
 def records_in(p, c=None, t=None):
     return [r for r in RECORDS if r['pref'] == p and (c is None or r['city'] == c or WARD_PARENT.get((p, r['city'])) == c) and (t is None or r['town'] == t)]
+def rec_kind(r):
+    x = r['x'] or {}; o = r.get('official') or {}
+    b = x.get('building')
+    if b and b != '建物不明': return b
+    k = o.get('kind') or r.get('kind') or ''
+    return '' if k in ('', '火災') else k
+def rec_src(r):
+    return '報道' if r['x'] else '消防の発表' if r.get('official') else '消防の記録'
+def has_page(r): return r['fid'].startswith(('n-', 'o-'))
 def record_list(rs, show_city=True):
     lis = []
     for r in rs:
-        x = r['x'] or {}
-        place = (r['city'] if show_city else '') + (r['town'] or ('' if show_city else '町名は報道で不明'))
-        b = x.get('building')
-        tag = f'<span class="tag">{esc(b)}</span>' if b and b != '建物不明' else ''
-        lis.append(f'<li class="news-item"><div class="row"><a class="place" href="{esc(fire_href(r["fid"]))}"><b>{esc(place)}</b></a>{tag}</div>'
-                   f'<span class="small muted">{jday(r["day"])}の報道</span></li>')
+        place = (r['city'] if show_city else '') + (r['town'] or ('' if show_city else '町名は不明'))
+        k = rec_kind(r)
+        tag = f'<span class="tag">{esc(k)}</span>' if k else ''
+        name = f'<a class="place" href="{esc(fire_href(r["fid"]))}"><b>{esc(place)}</b></a>' if has_page(r) else f'<b class="place">{esc(place)}</b>'
+        lis.append(f'<li class="news-item"><div class="row">{name}{tag}</div>'
+                   f'<span class="small muted">{jday(r["day"])}（{rec_src(r)}）</span></li>')
     return f'<ul class="news">{"".join(lis)}</ul>'
 def area_crumbs(p, c, t=None):
     par = WARD_PARENT.get((p, c))
@@ -364,32 +420,47 @@ def area_crumbs(p, c, t=None):
     return items
 
 def static_fire_page(r):
-    p, c, t, day, x = r['pref'], r['city'], r['town'], r['day'], r['x']
+    p, c, t, day, x, o = r['pref'], r['city'], r['town'], r['day'], r['x'], r.get('official')
     chome = (x or {}).get('chome')
     place = place_of(p, c, t + (f'{chome}丁目' if t and chome else ''))
-    b = (x or {}).get('building') or '建物不明'
+    k = rec_kind(r)
     hurt = ''
     if x and not x.get('sensitive'):
         hurt = '亡くなった方がいると報じられています。' if x.get('dead') else 'けが人がいると報じられています。' if x.get('injured') else ''
-    lead = (f'{jday(day)}、{place}で{"" if b == "建物不明" else b + "の"}火事が報道されました。{hurt}'
-            '詳しくは報道各社の記事をご覧ください。近くで見た・聞いたことがあれば、下から口コミで共有できます。')
+    off_line = ''
+    if o:
+        hm = jtime(o['at']).split(' ')[1] if o.get('at') else ''
+        org = re.sub(r'（.*$', '', o.get('name') or '消防本部')
+        off_line = f'{org}が{hm}ごろの{o.get("kind") or "火災"}の出動を発表しました' + ('（鎮火）' if o.get('status') == '鎮火' else '') + '。'
+    if x:
+        lead = f'{jday(day)}、{place}で{(k + "の") if k else ""}火事が報道されました。{hurt}{off_line}詳しくは報道各社の記事をご覧ください。'
+        kind_label = '報道された火事'
+    else:
+        lead = f'{jday(day)}、{place}付近で{k or "火災"}が発生しました。{off_line}最新の状況は出典の消防本部のページでご確認ください。'
+        kind_label = '消防の発表'
+    lead += '近くで見た・聞いたことがあれば、下から口コミで共有できます。'
     news_html = ''
     if x:
         news_html = '<ul class="plain">' + ''.join(
             f'<li><a href="{esc(s_["link"])}" target="_blank" rel="noopener nofollow">{esc(s_["name"])} の記事</a><span class="small muted">　{jtime(s_["pub"])}</span></li>'
             for s_ in x['sources']) + '</ul>'
+    off_html = ''
+    if o and o.get('url'):
+        off_html = (f'<section class="section" aria-labelledby="offs"><h2 id="offs">消防本部の発表（出典）</h2><ul class="plain"><li><b>{esc(jtime(o["at"]) if o.get("at") else jday(day))} {esc(o.get("kind") or "火災")}'
+                    + (f'（{esc(o["status"])}）' if o.get('status') else '') + f'</b>　<a href="{esc(o["url"])}" target="_blank" rel="noopener">{esc(o.get("name") or "出典")}</a></li></ul>'
+                    '<p class="small muted">各消防本部が公開している出動情報から、火災の出動だけを自動で取り出しています。</p></section>')
     cr = area_crumbs(p, c, t or None)
     crumb_html = ' ／ '.join((f'<a href="{esc(h)}">{esc(n)}</a>' if h else esc(n)) for n, h in cr) + ' ／ 火事のページ'
     rel = [q for q in records_in(p, c) if q['fid'] != r['fid']][:10]
-    after = (f'<section class="section" aria-labelledby="rel"><h2 id="rel">{esc(c)}のほかの火事</h2>{record_list(rel)}'
+    after = off_html + ((f'<section class="section" aria-labelledby="rel"><h2 id="rel">{esc(c)}のほかの火事</h2>{record_list(rel)}'
              f'<p class="small"><a href="{esc(city_file(p, c))}">{esc(c)}の火事情報を見る →</a>'
-             + (f'　<a href="{esc(town_href(p, c, t))}">{esc(t)}の火事情報を見る →</a>' if t else '') + '</p></section>') if rel or t else ''
-    title = f'{place}の火事（{jmd(day)}）{"・" + b if b != "建物不明" else ""}｜{SITE_NAME}'
-    desc = f'{jday(day)}に報道された{place}の火事。{"建物：" + b + "。" if b != "建物不明" else ""}{hurt}場所・報道元と、近所の人の目撃報告・口コミをまとめています。'
-    ld = [bc_ld(cr[:-1] + [(cr[-1][0], cr[-1][1])] + [(f'{jmd(day)}の火事', None)])]
-    return fire_page({'name': fire_href(r['fid'])[:-5], 'title': title, 'desc': desc, 'kind': '報道された火事', 'h1': f'{place}の火事（{jmd(day)}）',
+             + (f'　<a href="{esc(town_href(p, c, t))}">{esc(t)}の火事情報を見る →</a>' if t else '') + '</p></section>') if rel or t else '')
+    title = f'{place}の火事（{jmd(day)}）{"・" + k if k else ""}｜{SITE_NAME}'
+    desc = (f'{jday(day)}、{place}の火事。' + (f'種別：{k}。' if k else '') + hurt + ('報道元' if x else '消防本部の発表') + 'と、近所の人の目撃報告・口コミをまとめています。')
+    ld = [bc_ld(cr + [(f'{jmd(day)}の火事', None)])]
+    return fire_page({'name': fire_href(r['fid'])[:-5], 'title': title, 'desc': desc, 'kind': kind_label, 'h1': f'{place}の火事（{jmd(day)}）',
                       'lead': lead, 'news': news_html, 'crumb': crumb_html, 'after': after, 'ld': ld,
-                      'id': r['fid'], 'pref': p, 'city': c, 'town': t})
+                      'id': r['fid'] if x else ('' if r['fid'].startswith('o-b-') else r['fid'][2:]), 'pref': p, 'city': c, 'town': t})   # さかのぼった分は受付サーバーに火事がない
 
 def static_town_page(p, c, t):
     code = CODE_OF[(p, c)]
@@ -398,9 +469,9 @@ def static_town_page(p, c, t):
     crumbs_inner = '<a href="index.html">トップ</a> ／ ' + ' ／ '.join((f'<a href="{esc(h)}">{esc(n)}</a>' if h else esc(n)) for n, h in cr[:-1]) + f' ／ {esc(t)}'
     last = rs[0]['day'] if rs else None
     records = (f'<section class="section" aria-labelledby="rec"><h2 id="rec">{esc(t)}の火事の記録（{len(rs)}件）</h2>'
-               f'{record_list(rs, show_city=False)}<p class="small muted">当サイトが報道から記録した火事です（{SITE_NAME}の収録分）。</p></section>')
+               f'{record_list(rs, show_city=False)}<p class="small muted">当サイトが報道・消防本部の発表・自治体のオープンデータから記録した火事です（{SITE_NAME}の収録分）。</p></section>')
     title = f'【速報】{t}（{c}）の火事どこ？今日のサイレン・火事情報｜{SITE_NAME}'
-    desc = (f'{p}{c}{t}で火事？' + (f'最新は{jday(last)}の報道。' if last else '') + f'記録{len(rs)}件。サイレン・煙の目撃報告、近所の口コミ、報道された火事を町ごとにまとめています。')
+    desc = (f'{p}{c}{t}で火事？' + (f'最新は{jday(last)}の火事。' if last else '') + f'記録{len(rs)}件。サイレン・煙の目撃報告、近所の口コミ、報道された火事を町ごとにまとめています。')
     return town_page({'name': static_town_file(p, c, t)[:-5], 'title': title, 'desc': desc, 'c': code, 't': t,
                       'crumbs_inner': crumbs_inner, 'eyebrow': f'{p}{c}{t}の火事情報', 'h1': f'{t}（{c}）の火事はどこ？',
                       'lead': f'{place_of(p, c, t)}付近の目撃報告・口コミと、報道された火事をまとめています。サイレンや煙に気づいたら、ここから近所の人と共有できます。',
@@ -414,15 +485,47 @@ def area_desc(p, c=None):
     where = c or p
     if not rs:
         return head + f'{p}{c or ""}で火事？サイレンや煙の目撃報告・口コミ・報道を、町ごとにリアルタイムでまとめています。'
-    r = rs[0]; x = r['x'] or {}
-    b = x.get('building'); kind = (b + 'の火事') if b and b != '建物不明' else '火事'
-    recent = sum(1 for q in rs if q['x'])
-    return (head + f'{where}の最新は{jmd(r["day"])} {(r["city"] if c is None or r["city"] != c else "") + r["town"]}の{kind}の報道。'
-            + (f'直近30日の報道{recent}件。' if recent else '') + 'サイレン・煙の目撃報告と口コミも町ごとにリアルタイムで。')
+    r = rs[0]; k = rec_kind(r)
+    since = (now - datetime.timedelta(days=30)).date().isoformat()
+    recent = sum(1 for q in rs if q['day'] >= since)
+    return (head + f'{where}の最新は{jmd(r["day"])} {(r["city"] if c is None or r["city"] != c else "") + r["town"]}の{k if k.endswith("火災") else (k + "の火事") if k else "火事"}。'
+            + (f'直近30日の火事{recent}件。' if recent else '') + (f'記録{len(rs)}件。' if len(rs) > recent else '') + 'サイレン・煙の目撃報告と口コミも町ごとにリアルタイムで。')
+
+_dp = RAW / 'dial_numbers.json'
+DIAL = json.load(open(_dp, encoding='utf-8'))['dial'] if _dp.exists() else {}
+def dial_block(p, c):
+    """市区町村ページ: 火災・災害の案内ダイヤル（サイレンが聞こえたときの確認先）と出動情報ページ"""
+    par = WARD_PARENT.get((p, c))
+    d = DIAL.get(f'{p}|{c}') or (DIAL.get(f'{p}|{par}') if par else None)
+    if not d: return ''
+    tels = ''.join(f'<li><a class="num" href="tel:{esc(t.replace("-", ""))}">{esc(t)}</a></li>' for t in d.get('tel', []))
+    webs = ''.join(f'<li><a href="{esc(u)}" target="_blank" rel="noopener">{esc(c if not par else par)}の消防の出動情報（公式）↗</a></li>' for u in d.get('web', []))
+    return (f'<section class="section" aria-labelledby="dial"><h2 id="dial">{esc(c)}の火災・災害を電話で確かめる</h2>'
+            f'<p class="small">サイレンが聞こえたら、消防本部の案内ダイヤルで、いま出動している火災・災害を確かめられます。<strong>確認のための119番はやめてください</strong>（緊急の通報がつながりにくくなります）。</p>'
+            + (f'<ul class="plain">{tels}</ul>' if tels else '') + (f'<ul class="plain">{webs}</ul>' if webs else '')
+            + '<p class="small muted">番号・ページは各消防本部の公表によるものです。変わることがあるため、つながらないときは公式サイトでご確認ください。</p></section>')
+
+def city_records(p, c):
+    """市区町村ページ: これまでの火事の記録（新しい順）と、年・種別・町ごとの件数"""
+    rs = records_in(p, c)
+    if not rs: return ''
+    years = collections.Counter(r['day'][:4] for r in rs)
+    kinds = collections.Counter(rec_kind(r) for r in rs if rec_kind(r))
+    towns = collections.Counter((r['city'], r['town']) for r in rs if r['town'])
+    yrs = '・'.join(f'{y}年 {n}件' for y, n in sorted(years.items(), reverse=True)[:6])
+    kd = '・'.join(f'{k} {n}件' for k, n in kinds.most_common(6))
+    tw = ''.join(f'<a href="{esc(town_href(p, cc2, t))}">{esc((cc2[len(c):] if cc2 != c else "") + t)}<span class="cnt">{n}</span></a>'
+                 for (cc2, t), n in towns.most_common(40))
+    return (f'<section class="section" aria-labelledby="rec"><h2 id="rec">{esc(c)}の火事の記録（{len(rs)}件）</h2>'
+            f'<p class="small">{yrs}</p>' + (f'<p class="small">{kd}</p>' if kd else '')
+            + (f'<h3 style="font-size:15px">火事の記録が多い町</h3><div class="town-grid">{tw}</div>' if tw else '')
+            + f'<h3 style="font-size:15px">最近の火事</h3>{record_list(rs[:20])}'
+            f'<p class="small muted">当サイトが報道・消防本部の発表・自治体のオープンデータから記録した火事です（{SITE_NAME}の収録分。すべての火事ではありません）。</p></section>')
 
 def static_pages():
     pages = {}
-    for r in RECORDS: pages[fire_href(r['fid'])] = static_fire_page(r)
+    for r in RECORDS:
+        if has_page(r): pages[fire_href(r['fid'])] = static_fire_page(r)
     for p, c, t in sorted(STATIC_TOWNS): pages[static_town_file(p, c, t)] = static_town_page(p, c, t)
     return pages
 

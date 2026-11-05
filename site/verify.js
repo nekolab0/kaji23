@@ -425,7 +425,10 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   add('R2 読み込み失敗', !reqFail.length, reqFail.slice(0, 8).join(' / ') || 'CSS・JS・画像すべて読み込み成功（Webフォント・外部サイトは作業環境の制限で除外）');
   add('R3 横はみ出し（375px・1280px）', !overflow.length, overflow.slice(0, 8).join(' / ') || 'はみ出しなし');
   add('R4 サイト内リンク・ページ内リンク', !links.length, links.slice(0, 20).join(' / ') || `${allPages.length}ページすべてのリンク先とアンカーが存在`);
-  const sm = fs.existsSync(path.join(DIST, 'sitemap.xml')) ? fs.readFileSync(path.join(DIST, 'sitemap.xml'), 'utf8') : '';
+  // サイトマップは索引（sitemap.xml）＋分割ファイル（sitemap-N.xml）
+  const sm = fs.readdirSync(DIST).filter(f => /^sitemap-\d+\.xml$/.test(f)).map(f => fs.readFileSync(path.join(DIST, f), 'utf8')).join('\n');
+  const smIdx = fs.existsSync(path.join(DIST, 'sitemap.xml')) ? fs.readFileSync(path.join(DIST, 'sitemap.xml'), 'utf8') : '';
+  if (!/<sitemapindex/.test(smIdx)) meta.push('サイトマップの索引がない');
   const smN = (sm.match(/<loc>/g) || []).length;
   if (smN < allPages.length - 5 || /<loc>[^<]*[^\x21-\x7e][^<]*<\/loc>/.test(sm)) meta.push(`サイトマップ ${smN}件`);
   if (!fs.existsSync(path.join(DIST, 'robots.txt'))) meta.push('robots.txtがない');

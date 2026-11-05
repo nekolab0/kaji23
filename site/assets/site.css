@@ -105,6 +105,8 @@ main { display: block; }
 .stat .v { font-family: var(--f-num); font-size: 40px; line-height: 1.05; font-weight: 600; font-variant-numeric: tabular-nums; }
 .stat .v small { font-family: var(--f-body); font-size: 14px; font-weight: 700; margin-left: 2px; }
 .stat .d { font-size: 13px; color: var(--muted); }
+.stat .k, .stat .v, .stat .d { overflow-wrap: anywhere; min-width: 0; }
+.hero, .hero > * { min-width: 0; overflow-wrap: anywhere; }
 .stat.hot .v { color: var(--fire); }
 
 /* 増減チップ */

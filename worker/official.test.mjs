@@ -29,5 +29,37 @@ ok('仙台: 時刻のない「出場中」ページは見つけた時刻で、�
 ok('種別: 自動火災報知設備は火災にしない', fireKind('自動火災報知設備鳴動のため出動') === null && fireKind('●車両火災出動') === '車両火災');
 ok('町名: 番地は捨てる', townPart('赤羽西2丁目3番地付近') === '赤羽西2丁目' && townPart('浮羽町三春付近の枯草火災') === '浮羽町三春');
 ok('robots.txt: 禁止なら読まない', robotsAllows('User-agent: *\nDisallow: /', 'http://x.jp/a.html') === false && robotsAllows('User-agent: *\nDisallow: /admin/', 'http://x.jp/saigai/a.html') === true && robotsAllows('', 'http://x.jp/') === true);
+
+// ktaiwork（名古屋市など、消防メールのブログ版）: 誤報は捨て、発生と鎮火は同じ火事に
+const ktai = { id: 't-nagoya', name: '名古屋市消防局', pref: '愛知県', type: 'sentence', wardCity: '名古屋市' };
+const kh = '<h2>火災誤報</h2><p>2026年11月02日16時28分頃、中川区本前田町　地内から火災との通報で消防車が出動しましたが、火災ではありませんでした。</p><h2>火災発生</h2><p>2026年11月02日16時30分頃、中川区本前田町　地内から火災の通報があり消防車が出動しています。</p><h2>火災鎮火</h2><p>2026年11月02日12時38分頃に発生した　天白区八事天道　地内の火災は　2026年11月02日13時14分　に鎮火しました。</p>';
+const kt = parseSource(kh, ktai, now);
+ok('ktaiwork: 誤報は取り消しの印に、区を名古屋市○○区に', kt.length === 3 && kt.some(x => x.status === '誤報' && x.town === '本前田町' && x.at === '2026-11-02T07:28:00.000Z') && kt.some(x => x.city === '名古屋市中川区' && x.town === '本前田町' && x.status === '出動') && kt.some(x => x.city === '名古屋市天白区' && x.town === '八事天道' && x.status === '鎮火'), JSON.stringify(kt));
+// 1つの市だけのページ（市名が書かれない）
+const single = { id: 't-nagaoka', name: '長岡市消防本部', pref: '新潟県', type: 'sentence', city: '長岡市' };
+const sg = parseSource('<p>11月02日 16:17 今朝白一丁目付近で建物火災が発生し、消防車が出動しています。</p><p>11月02日 15:00 現在、出動中の災害はありません</p>', single, now);
+ok('単独市ページ: 市名がなくても町名を読む', sg.length === 1 && sg[0].city === '長岡市' && sg[0].town === '今朝白一丁目' && sg[0].kind === '建物火災', JSON.stringify(sg));
+
+const nemuro = { id: 't-nemuro', name: '根室市消防本部', pref: '北海道', type: 'sentence', city: '根室市' };
+const nm = parseSource('<p>11月02日午後03時48分昭和町4丁目建物火災のため消防車が出動しました。</p><p>11月02日午前00時30分珸瑤瑁1丁目林野火災のため消防車が出動しました。</p><p>住宅用火災警報器を設置しましょう</p>', nemuro, now);
+ok('午前・午後の時刻、町名の直後に「建物火災」', nm.length === 2 && nm.some(x => x.town === '昭和町4丁目' && x.kind === '建物火災' && x.at === '2026-11-02T06:48:00.000Z') && nm.some(x => x.town === '珸瑤瑁1丁目' && x.kind === '林野火災' && x.at === '2026-11-01T15:30:00.000Z'), JSON.stringify(nm));
+const ichikawa = { id: 't-ichikawa', name: '市川市消防局', pref: '千葉県', type: 'sentence', city: '市川市' };
+const ic = parseSource('<p>11月2日午後8時6分頃市川市南大野2丁目4番付近で発生した、中高層建物火災は、鎮火いたしました。</p>', ichikawa, now);
+ok('市名つき・番地は捨てる・中高層建物火災', ic.length === 1 && ic[0].town === '南大野2丁目' && ic[0].kind === '建物火災' && ic[0].status === '鎮火', JSON.stringify(ic));
+ok('お知らせ・警報器・件数は火災にしない', fireKind('住宅用火災警報器を設置しましょう') === null && fireKind('火災件数（速報値）11月01日現在') === null && fireKind('現在、火災等の災害は発生していません。') === null);
+
+// WordPress（本文に日付がない）: 投稿日＋本文の覚知時刻
+const wp1 = { id: 't-joetsu', name: '上越市', pref: '新潟県', type: 'wp', city: '上越市' };
+const wh = `<article id="post-1"><h2>火災誤報連絡</h2><time datetime="2026-11-02T06:10:00+09:00">2026年11月2日 06:10</time><p>上越南消防署</p><p>覚知 05時58分</p><p>上越市寺町3丁目6-37付近の福祉建物火災は、火災ではありませんでした。</p></article>
+<article id="post-2"><h2>火災発生連絡</h2><time datetime="2026-11-02T05:58:00+09:00">2026年11月2日 05:58</time><p>上越南消防署</p><p>覚知 05時58分</p><p>上越市寺町3丁目6-37付近で福祉建物火災が発生しました。</p></article>
+<article id="post-3"><h2>災害情報</h2><time datetime="2026-11-02T15:12:00+09:00">2026年11月2日 15:12</time><p>ただいま、会津美里町吉田字村中乙地内の、その他火災のため消防車が出動しています。</p></article>`;
+const wj = parseSource(wh.split('<article id="post-3">')[0], wp1, now), wa = parseSource(wh, { id: 't-aizu', name: '会津', pref: '福島県', type: 'wp' }, now);
+ok('WordPress: 投稿日＋覚知時刻、誤報は取り消しの印', wj.length === 2 && wj.some(x => x.town === '寺町3丁目' && x.kind === '建物火災' && x.at === '2026-11-01T20:58:00.000Z' && x.status !== '誤報') && wj.some(x => x.status === '誤報' && x.at === '2026-11-01T20:58:00.000Z'), JSON.stringify(wj));
+ok('WordPress: 「ただいま、○○町…地内の」', wa.some(x => x.city === '会津美里町' && x.town === '吉田字村中乙' && x.kind === 'その他火災' && x.at === '2026-11-02T06:12:00.000Z'), JSON.stringify(wa));
+
+const mz = parseSource('<p>火災情報（日向市消防本部） 11月02日13時45分頃、日向市大字富高付近で建物火災が発生しました。</p><p>彦根市消防本部から 11月02日 10:20 彦根市消防本部管内で火災が発生しました。</p>', { id: 't-mz', name: 'x', pref: '宮崎県', type: 'sentence' }, now);
+ok('見出しの「（○○市消防本部）」は町名にしない', mz.length === 1 && mz[0].city === '日向市' && mz[0].town === '大字富高', JSON.stringify(mz));
+const hk = parseSource('<p>彦根市消防本部から 11月02日 10:20 彦根市消防本部管内で火災が発生しました。</p>', { id: 't-hk', name: 'x', pref: '滋賀県', type: 'sentence' }, now);
+ok('町名が読めなければ市区町村までにする', hk.length === 1 && hk[0].city === '彦根市' && hk[0].town === '', JSON.stringify(hk));
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));
 process.exit(results.some(r => !r.ok) ? 1 : 0);

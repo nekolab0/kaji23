@@ -169,7 +169,7 @@ def jtime(iso):
 def news_fire_id(x): return 'n-' + x['id']
 def fire_href(fid):
     """報道された火事は、検索エンジンにも載る固定ページ（f-<ID>.html）。目撃報告の火事は fire.html?id= のまま"""
-    return f'f-{fid}.html' if fid.startswith('n-') else f'fire.html?id={quote(fid)}'
+    return f'f-{fid}.html' if fid.startswith(('n-', 'o-')) else f'fire.html?id={quote(fid)}'
 def town_link(ward, town):
     """町名から町ページへのリンク先（なければ区ページ）"""
     if town:
@@ -597,7 +597,7 @@ def machi_page(t):
 def fire_page(pre=None):
     """pre を渡すと、報道された火事の固定ページ（中身をHTMLに書き込み済み。JSが報告・口コミを足す）"""
     pre = pre or {}
-    attrs = ''.join(f' data-{k}="{esc(pre[k])}"' for k in ('id', 'pref', 'city', 'town') if pre.get(k) is not None)
+    attrs = ''.join(f' data-{k}="{esc(pre[k])}"' for k in ('id', 'pref', 'city', 'town') if pre.get(k))
     body = f'''<div class="wrap">
 <nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <span class="f-crumb">{pre.get('crumb', '火事のページ')}</span></nav>
 <div data-fire{attrs}>
@@ -791,7 +791,8 @@ def about_page(report):
 <p><strong>火災件数のページがない署</strong>：{esc(unpub) or "なし"}</p>
 <p class="muted small">これらの署がある区では、区の合計は「掲載署の合計」となり、人口あたりの比較から外しています。</p></section>
 <section class="section" aria-labelledby="off"><h2 id="off">消防本部の出動情報（全国）</h2>
-<p>次の消防本部が公開している出動情報のページを、受付サーバーが5分ごとに読み、<strong>火災の出動だけ</strong>を取り出して「火事のページ」に表示しています（救急・救助・警戒などは使いません）。場所は町名（丁目）までにとどめ、目標物や番地は保存しません。各サイトの robots.txt で読み取りが禁止されている場合は読みません。</p>
+<p>次の{len(OFFICIAL_SOURCES)}ページ（消防本部・市町村が公開している出動情報・火災情報メールの公開ページ）を、受付サーバーがおよそ10分ごとに読み、<strong>火災の出動だけ</strong>を取り出して「火事のページ」と町・市区町村ページの記録に使っています（救急・救助・警戒・誤報は使いません）。場所は町名までにとどめ、目標物や番地、文章そのものは保存しません。各サイトの robots.txt で読み取りが禁止されている場合は読みません。</p>
+<p>火災情報メールの公開ページ（WordPress）に残っている過去の発表は、日時・市区町村・町名・種別だけを取り出して記録に加えています。また、市町村ごとの案内ダイヤルと出動情報ページの所在は、各市町村の公表内容をまとめた民間サイト（shobo.info）を手がかりに探し、番号・ページは各消防本部の公開ページの内容として掲載しています。</p>
 <ul class="plain">{''.join(f'<li><a href="{esc(u)}" target="_blank" rel="noopener">{esc(n)}</a></li>' for n, u in OFFICIAL_SOURCES)}</ul>
 <p class="small muted">読み取りの状況：受付サーバーの <code>/api/sources</code> で確認できます。掲載の停止を希望される消防本部の方は、<a href="rules.html">お問い合わせ欄</a>からご連絡ください。</p></section>
 {rep}
@@ -845,6 +846,11 @@ def policy_page():
 # 受付サーバーが読む消防本部の出動情報ページ（worker/src/official.js の一覧から）
 _off = (ROOT / 'worker' / 'src' / 'official.js').read_text(encoding='utf-8')
 OFFICIAL_SOURCES = list(dict.fromkeys((m.group(1), m.group(2).replace('${k}', 'kurume')) for m in re.finditer(r"name: '([^']+)', url: [`']([^`']+)[`']", _off)))
+# 調査で見つけた全国のページ（worker/src/sources_auto.js）
+_auto = ROOT / 'worker' / 'src' / 'sources_auto.js'
+if _auto.exists():
+    _aj = json.loads(_auto.read_text(encoding='utf-8').split('export const AUTO_SOURCES = ', 1)[1].rstrip().rstrip(';'))
+    OFFICIAL_SOURCES = list(dict.fromkeys(OFFICIAL_SOURCES + [(x['name'], x['url']) for x in _aj]))
 exec((SITE / 'nation.py').read_text(encoding='utf-8'))   # 全国版（都道府県・市区町村・町のページ、検索索引）
 
 def build(report=None):
@@ -884,8 +890,14 @@ def build(report=None):
     skip = {'fire.html', 'town.html'}   # 中身が URL のパラメータで変わるページは載せない
     urls = [(f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}') for fn in sorted(pages) if fn not in skip]
     prio = lambda u: '1.0' if u.endswith('/') else '0.8' if '/p-' in u else '0.6'
-    (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in urls) + '</urlset>\n', encoding='utf-8')
+    # 1ファイル5万件までの決まりがあるので、4万件ずつに分けて索引（sitemap.xml）から指す
+    CH = 40000
+    parts = [urls[i:i + CH] for i in range(0, len(urls), CH)] or [[]]
+    for i, part in enumerate(parts, 1):
+        (DIST / f'sitemap-{i}.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in part) + '</urlset>\n', encoding='utf-8')
+    (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + ''.join(f'<sitemap><loc>{SITE_URL}/sitemap-{i}.xml</loc><lastmod>{today}</lastmod></sitemap>\n' for i in range(1, len(parts) + 1)) + '</sitemapindex>\n', encoding='utf-8')
     (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:
