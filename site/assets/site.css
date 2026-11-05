@@ -312,3 +312,9 @@ h1, .fire-card .place b { word-break: auto-phrase; }
 .ad{margin:28px 0;padding:10px 0 14px;border-top:1px solid var(--line,#e5e0d8);border-bottom:1px solid var(--line,#e5e0d8);min-height:120px}
 .ad-label{font-size:11px;color:var(--muted,#7a7468);letter-spacing:.08em;margin-bottom:6px}
 .ad ins.adsbygoogle[data-ad-status="unfilled"]{display:none!important}
+
+/* X の投稿（口コミ・未確認） */
+.sns-posts { margin-top: 14px; display: grid; gap: 8px; min-width: 0; }
+.sns-posts .sns-h { font-size: 15px; margin: 0; }
+.sns-posts .twitter-tweet { margin: 0 !important; max-width: 100%; }
+.sns-posts blockquote.twitter-tweet { border-left: 3px solid var(--line); padding: 6px 10px; }

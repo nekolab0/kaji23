@@ -335,6 +335,31 @@
   }
   $$('[data-comments]').forEach(initComments);
 
+  // ---------------- X の投稿（口コミ・未確認）: 受付サーバーが町名で見つけた投稿を、X の公式の埋め込みで表示 ----------------
+  var xLoaded = false;
+  function showSNS(anchor, posts) {
+    if (!posts || !posts.length || !anchor) return;
+    var old = anchor.parentNode.querySelector('.sns-posts');
+    if (old && old.getAttribute('data-ids') === posts.map(function (p) { return p.id; }).join()) return;   // 変わっていなければ描き直さない
+    if (old) old.remove();
+    var box = el('div', { class: 'sns-posts', 'data-ids': posts.map(function (p) { return p.id; }).join() });
+    box.appendChild(el('h3', { class: 'sns-h' }, 'Xの投稿（' + posts.length + '件・口コミ・未確認）'));
+    box.appendChild(el('p', { class: 'small muted' }, '町名と「火事・煙・サイレン」などの言葉で自動で見つけた投稿です。内容は確かめていません。別の場所や過去の話のこともあります。'));
+    posts.slice(0, 6).forEach(function (p) {
+      var bq = el('blockquote', { class: 'twitter-tweet', 'data-dnt': 'true', 'data-conversation': 'none', 'data-lang': 'ja' });
+      bq.appendChild(el('a', { href: 'https://x.com/i/status/' + encodeURIComponent(p.id), target: '_blank', rel: 'noopener' }, 'X の投稿を開く（' + hm(p.at) + '）'));
+      box.appendChild(bq);
+    });
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
+    if (!xLoaded) { xLoaded = true; var sc = document.createElement('script'); sc.async = true; sc.src = 'https://platform.twitter.com/widgets.js'; sc.charset = 'utf-8'; document.body.appendChild(sc); }
+    else if (window.twttr && twttr.widgets) twttr.widgets.load(box);
+  }
+  function loadTownSNS(anchor, pref, city, town, since) {
+    if (!API || !town) return;
+    getJSON('/api/town?pref=' + encodeURIComponent(pref) + '&city=' + encodeURIComponent(city) + '&town=' + encodeURIComponent(town) + (since ? '&since=' + encodeURIComponent(since) : ''))
+      .then(function (j) { showSNS(anchor, j.sns); }, function () {});
+  }
+
   // ---------------- 全国の検索（都道府県・市区町村・町名を1つの欄で。kaji.news と同じ使い方） ----------------
   function kn(s) { return String(s || '').replace(/ヶ|ｹ/g, 'ケ').replace(/\s|　/g, ''); }
   function hira(s) { return String(s || '').replace(/[ァ-ン]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0x60); }); }
@@ -488,6 +513,7 @@
       var q = tname + ' 火事', sns = $('.t-sns', tp);
       [['Xで「' + q + '」を見る', 'https://x.com/search?q=' + encodeURIComponent(q) + '&f=live'], ['Yahoo!リアルタイム検索', 'https://search.yahoo.co.jp/realtime/search?p=' + encodeURIComponent(q)],
        ['ニュースを探す', 'https://news.google.com/search?q=' + encodeURIComponent(city + ' ' + q) + '&hl=ja&gl=JP&ceid=JP:ja']].forEach(function (l) { sns.appendChild(el('a', { class: 'btn', href: l[1], target: '_blank', rel: 'noopener' }, l[0])); });
+      loadTownSNS(sns, pref, city, tname);
       loadNews().then(function (N) {
         var box = $('.t-news', tp), ul = el('ul', { class: 'news' }), n = 0;
         Object.keys(N).forEach(function (id) {
@@ -580,6 +606,12 @@
       }
       // SNS
       var q = (town ? baseTown(town) : ward) + ' 火事', sns = $('.f-sns', fire);
+      if (fire.hasAttribute('data-pref') && !/^[0-9a-z]{6,}$/i.test(id || '') && town) {   // 報道・過去の火事の固定ページ: その日の町の投稿
+        var dd = (document.querySelector('h1.f-title') || {}).textContent || '', mm = dd.match(/（(\d+)月(\d+)日）/);
+        var sinceDay = mm ? new Date(new Date().getFullYear(), +mm[1] - 1, +mm[2] - 1) : null;
+        if (sinceDay && sinceDay > Date.now()) sinceDay.setFullYear(sinceDay.getFullYear() - 1);
+        if (sinceDay && Date.now() - sinceDay < 7 * 864e5) setTimeout(function () { loadTownSNS(sns, pref, ward, baseTown(town), sinceDay.toISOString()); }, 0);
+      }
       [['Xで「' + q + '」を見る', 'https://x.com/search?q=' + encodeURIComponent(q) + '&f=live'],
        ['Yahoo!リアルタイム検索', 'https://search.yahoo.co.jp/realtime/search?p=' + encodeURIComponent(q)],
        ['ニュースを探す', 'https://news.google.com/search?q=' + encodeURIComponent(q) + '&hl=ja&gl=JP&ceid=JP:ja']].forEach(function (l) {
@@ -588,6 +620,7 @@
       sns.className += ' btn-row';
     };
     var renderUGC = function (j) {
+      setTimeout(function () { showSNS($('.f-sns', fire), j.sns); }, 0);
       var x = j.incident, place = placeOf(x), calm = Date.now() - Date.parse(x.last) > 90 * 60000;
       var off = j.official || [], o0 = off[0];
       setText('.f-kind', (x.official ? '消防の発表あり' : '火事の目撃情報') + (calm ? '（落ち着いている可能性）' : ''));
