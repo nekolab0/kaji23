@@ -37,6 +37,8 @@ jobs:
       - name: 生成・検査
         env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}' }
         run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh
+      - name: 新しいページを検索エンジンに知らせる（IndexNow）
+        run: node collector/indexnow.mjs || true
       - name: データを保存
         # 作り直しの途中で main が進んでいる（PR のマージなど）と push が断られる。取り込み直して最大3回試し、
         # それでもだめならデータの保存だけ見送って公開は続ける（次の回で保存される）

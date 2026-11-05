@@ -345,7 +345,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=N
   <div><h3>さがす</h3><ul>
     <li><a href="index.html">いまの火事</a></li><li><a href="index.html#regions">地域から探す</a></li><li><a href="p-東京都.html#t23">東京23区</a></li><li><a href="ranking.html">23区の火災件数</a></li></ul></div>
   <div><h3>確かめる</h3><ul>
-    <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="policy.html">運営者情報・プライバシーポリシー・利用規約</a></li><li><a href="about.html">データの出典と集め方</a></li>
+    <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="guide.html">火事の調べ方・備え</a></li><li><a href="dial-list.html">案内ダイヤル一覧（全国）</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="policy.html">運営者情報・プライバシーポリシー・利用規約</a></li><li><a href="about.html">データの出典と集め方</a></li>
     <li><a href="{TFD}/" rel="noopener" target="_blank">東京消防庁 ↗</a></li><li><a href="https://disaportal.gsi.go.jp/" rel="noopener" target="_blank">ハザードマップポータル ↗</a></li></ul></div>
 </div><div class="wrap small muted" style="padding-block:0 20px">市区町村：総務省 全国地方公共団体コード／町名と位置：Geolonia 住所データ（CC BY 4.0）／23区の火災件数：東京消防庁 各消防署ページ（{FETCHED_LABEL}取得）　© {THIS_YEAR} {SITE_NAME}</div></footer>
 <script src="assets/areas.js" defer></script>
@@ -899,6 +899,7 @@ if _auto.exists():
     _aj = json.loads(_auto.read_text(encoding='utf-8').split('export const AUTO_SOURCES = ', 1)[1].rstrip().rstrip(';'))
     OFFICIAL_SOURCES = list(dict.fromkeys(OFFICIAL_SOURCES + [(x['name'], x['url']) for x in _aj]))
 exec((SITE / 'nation.py').read_text(encoding='utf-8'))   # 全国版（都道府県・市区町村・町のページ、検索索引）
+exec((SITE / 'guides.py').read_text(encoding='utf-8'))   # 読み物（ガイド記事）と案内ダイヤルの一覧
 
 def build(report=None):
     # og/（OGP画像）は og.js が作るので残す
@@ -918,6 +919,7 @@ def build(report=None):
     for w in wards: pages[w['slug'] + '.html'] = ward_page(w)
     for t in TOWN_LIST: pages[t['file']] = machi_page(t)
     pages.update(national_pages())
+    pages.update(guide_pages())
     for fn, h in pages.items(): (DIST / fn).write_text(h, encoding='utf-8')
     # 公開データ（誰でも検証できるように）
     public = {'fetchedAt': tfd['fetchedAt'], 'source': tfd_file, 'population_source': pop['url'], 'daily': daily,
@@ -951,6 +953,9 @@ def build(report=None):
         'background_color': '#ffffff', 'theme_color': '#c2341b', 'lang': 'ja',
         'icons': [{'src': '/icon-192.png', 'sizes': '192x192', 'type': 'image/png'}, {'src': '/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'}]}, ensure_ascii=False), encoding='utf-8')
     make_icons(DIST)
+    # IndexNow（Bing など）の確認用の鍵ファイル
+    _ik = (SITE / 'indexnow_key.txt').read_text().strip()
+    (DIST / f'{_ik}.txt').write_text(_ik, encoding='utf-8')
     (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:

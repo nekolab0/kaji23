@@ -226,6 +226,11 @@ def index_page(full=True):
   <p>東京23区は、58の消防署が公表している火災件数と、926町ごとのページがあります。</p>
   <div class="btn-row"><a class="btn" href="{pref_file("東京都")}#t23">東京23区の区から探す</a><a class="btn" href="ranking.html">区・消防署の火災件数</a><a class="btn" href="towns.html">23区の町名一覧</a></div>
 </section>
+<section class="section" aria-labelledby="gd">
+  <h2 id="gd">火事の調べ方・備え</h2>
+  <ul class="plain"><li><a href="g-kajidoko.html">近くで火事？今どこで火事か調べる方法5つ</a></li><li><a href="g-siren.html">消防車のサイレン「ウーウーカンカン」の意味</a></li>
+  <li><a href="g-119.html">火事を見つけたら：119番通報の伝え方</a></li><li><a href="g-cause.html">火事の原因ランキング（消防白書）</a></li><li><a href="dial-list.html">都道府県別 火災の案内ダイヤル一覧</a></li></ul>
+</section>
 </div>'''
     title = f'{SITE_NAME}｜今どこで火事？全国の火事の目撃情報・速報を町名でリアルタイムに'
     desc = '今どこで火事？サイレンや煙に気づいたら地名で検索。全国の火事の目撃報告・口コミ・報道を、都道府県・市区町村・町ごとにリアルタイムでまとめています。'
@@ -454,7 +459,8 @@ def static_fire_page(r):
     cr = area_crumbs(p, c, t or None)
     crumb_html = ' ／ '.join((f'<a href="{esc(h)}">{esc(n)}</a>' if h else esc(n)) for n, h in cr) + ' ／ 火事のページ'
     rel = [q for q in records_in(p, c) if q['fid'] != r['fid']][:10]
-    after = off_html + ((f'<section class="section" aria-labelledby="rel"><h2 id="rel">{esc(c)}のほかの火事</h2>{record_list(rel)}'
+    push_sec = (f'<section class="section" aria-labelledby="psh"><h2 id="psh">{esc(c)}の次の火事を知らせる</h2>{push_box(p, c)}</section>') if (p, c) in CODE_OF else ''
+    after = off_html + push_sec + ((f'<section class="section" aria-labelledby="rel"><h2 id="rel">{esc(c)}のほかの火事</h2>{record_list(rel)}'
              f'<p class="small"><a href="{esc(city_file(p, c))}">{esc(c)}の火事情報を見る →</a>'
              + (f'　<a href="{esc(town_href(p, c, t))}">{esc(t)}の火事情報を見る →</a>' if t else '') + '</p></section>') if rel or t else '')
     title = f'{place}の火事（{jmd(day)}）{"・" + k if k else ""}｜{SITE_NAME}'
@@ -512,7 +518,8 @@ def dial_block(p, c):
     return (f'<section class="section" aria-labelledby="dial"><h2 id="dial">{esc(c)}の火災・災害を電話で確かめる</h2>'
             f'<p class="small">サイレンが聞こえたら、消防本部の案内ダイヤルで、いま出動している火災・災害を確かめられます。<strong>確認のための119番はやめてください</strong>（緊急の通報がつながりにくくなります）。</p>'
             + (f'<ul class="plain">{tels}</ul>' if tels else '') + (f'<ul class="plain">{webs}</ul>' if webs else '')
-            + '<p class="small muted">番号・ページは各消防本部の公表によるものです。変わることがあるため、つながらないときは公式サイトでご確認ください。</p></section>')
+            + '<p class="small muted">番号・ページは各消防本部の公表によるものです。変わることがあるため、つながらないときは公式サイトでご確認ください。</p>'
+            + f'<p class="small"><a href="dial-{esc(p)}.html">{esc(p)}の案内ダイヤル一覧 →</a>　<a href="g-kajidoko.html">今どこで火事か調べる方法 →</a></p></section>')
 
 def city_records(p, c):
     """市区町村ページ: これまでの火事の記録（新しい順）と、年・種別・町ごとの件数"""
