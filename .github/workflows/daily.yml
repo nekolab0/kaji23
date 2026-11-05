@@ -38,10 +38,13 @@ jobs:
         env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}' }
         run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh
       - name: データを保存
+        # 作り直しの途中で main が進んでいる（PR のマージなど）と push が断られる。取り込み直して最大3回試し、
+        # それでもだめならデータの保存だけ見送って公開は続ける（次の回で保存される）
         run: |
           git config user.name kaji23-bot && git config user.email bot@users.noreply.github.com
           git add data/raw verify && git commit -m "data: $(date -u +%FT%H:%M)" || true
-          git push
+          for i in 1 2 3; do git push && exit 0; git pull --rebase -X theirs -q || git rebase --abort; sleep 5; done
+          echo "::warning::データの保存を見送りました（main が更新され続けたため）"; exit 0
       - uses: actions/upload-pages-artifact@v3
         with: { path: dist }
   deploy:
