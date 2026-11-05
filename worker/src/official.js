@@ -19,6 +19,11 @@ const MANUAL_SOURCES = [
   { id: 'sendai', name: '仙台市（杜の都防災Web 火災等の発生情報）', url: 'http://sendaicity.bosai.info/sendaicity/fireinfo/index.html', pref: '宮城県', type: 'sentence', wardCity: '仙台市', current: true },
   { id: 'nagano', name: '長野市消防局（長野市防災情報ポータル）', url: 'https://www.nagano-bousai.jp/', pref: '長野県', type: 'sentence' },
   { id: 'chigasaki', name: '茅ヶ崎市・寒川町の消防（災害情報）', url: 'http://www.chigasaki-samukawa119.info/chigasaki-saigai/', pref: '神奈川県', type: 'sentence', current: true },
+  // 市町村のメール配信サービス（ktaiwork）の公開ページ。配信と同じ文面を投稿の形で載せている
+  { id: 'k-maebashi', name: '前橋市メール配信サービス（公開ページ）', url: 'http://maebashi-city.site.ktaiwork.jp/', pref: '群馬県', city: '前橋市', type: 'wp' },
+  { id: 'k-ota', name: '太田市消防本部の災害情報（メール配信の公開ページ）', url: 'http://ota-city.site.ktaiwork.jp/', pref: '群馬県', city: '太田市', type: 'wp' },
+  { id: 'k-uwajima', name: '宇和島市メール配信サービス（公開ページ・火災）', url: 'http://uwajima-city.site.ktaiwork.jp/?cat=5', pref: '愛媛県', city: '宇和島市', type: 'wp' },
+  { id: 'k-aridagawa', name: '有田川町メール配信サービス（公開ページ）', url: 'https://aridagawa-town.site.ktaiwork.jp/', pref: '和歌山県', city: '有田川町', type: 'wp' },
   { id: 'minamiuonuma', name: '南魚沼市消防本部（火災などの災害状況）', url: 'https://www.city.minamiuonuma.niigata.jp/shoubouhonbu/docs/disaster_info.html', pref: '新潟県', type: 'sentence' },
 ];
 // 手で書いた一覧（札幌の表など）が先、調査で見つけた全国のページ（sources_auto.js）があと

@@ -446,7 +446,8 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
 export function isLoop(message, fwd) {
   const f = String(fwd || '').toLowerCase().trim(); if (!f) return false;
   const h = k => String((message.headers && message.headers.get && message.headers.get(k)) || '').toLowerCase();
-  return String(message.from || '').toLowerCase() === f || h('x-forwarded-for').includes(f) || h('x-forwarded-to').includes(f);
+  // Gmail などで自動転送されてきたメール（X-Forwarded-To / X-Forwarded-For つき）は、火事速用のアドレスから回したものなので送り返さない
+  return String(message.from || '').toLowerCase() === f || h('x-forwarded-for').includes(f) || h('x-forwarded-to').includes(f) || /@kajisoku\.jp/.test(h('x-forwarded-to') + ' ' + h('x-forwarded-for'));
 }
 export async function receiveMail(env, raw, now = new Date()) {
   await setup(env);
