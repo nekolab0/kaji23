@@ -7,7 +7,8 @@ const UA = 'kaji23-bot/1.0 (+https://kajisoku.jp/about.html; fire dispatch info 
 const urls = JSON.parse(fs.readFileSync(new URL('../verify/probe_pages_in.json', import.meta.url), 'utf8'));
 const out = [];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-for (const u of urls) {
+for (const it of urls) {
+  const u = typeof it === 'string' ? it : it.url;
   const o = { url: u };
   try {
     const origin = new URL(u).origin;
@@ -19,6 +20,11 @@ for (const u of urls) {
     o.size = html.length;
     const lines = htmlText(html);
     o.lines = lines.filter(l => /火災|火事|出動|鎮火|\d{1,2}[月/]\d{1,2}|\d{1,2}[時:]\d{2}/.test(l)).slice(0, 60).map(l => l.slice(0, 160));
+    const fi = lines.findIndex(l => /火災/.test(l) && /\d{1,2}時|\d{1,2}:\d{2}|月\d{1,2}日/.test(l));
+    o.around = lines.slice(Math.max(0, fi - 6), fi + 12).map(l => l.slice(0, 160));
+    if (typeof it === 'object') for (const type of ['sentence', 'wp']) {
+      try { const r = parseSource(html, { id: 'p', name: 'p', url: u, pref: it.pref, type, ...(it.city ? { city: it.city } : {}) }, new Date(), { hours: 24 * 31 }); o['parsed_' + type] = r.length; o['sample_' + type] = r.slice(0, 3).map(x => `${x.at.slice(0, 16)} ${x.city}${x.town} ${x.kind} ${x.status || ''}`); } catch (e) { o['parsed_' + type] = 'err ' + e.message; }
+    }
     o.links = [...html.matchAll(/<a\s[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi)].map(m => [m[1], m[2].replace(/<[^>]+>/g, '').trim().slice(0, 50)])
       .filter(([h, t]) => /火災|出動|災害|速報|info|saigai|kasai|fire|list/i.test(h + t)).slice(0, 40);
     o.tables = (html.match(/<table[\s\S]*?<\/table>/gi) || []).slice(0, 2).map(t => t.replace(/\s+/g, ' ').slice(0, 1500));
