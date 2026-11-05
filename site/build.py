@@ -167,6 +167,9 @@ def jtime(iso):
     return f'{t.month}月{t.day}日 {t.hour}:{t.minute:02d}'
 
 def news_fire_id(x): return 'n-' + x['id']
+def fire_href(fid):
+    """報道された火事は、検索エンジンにも載る固定ページ（f-<ID>.html）。目撃報告の火事は fire.html?id= のまま"""
+    return f'f-{fid}.html' if fid.startswith('n-') else f'fire.html?id={quote(fid)}'
 def town_link(ward, town):
     """町名から町ページへのリンク先（なければ区ページ）"""
     if town:
@@ -186,7 +189,7 @@ def news_list(items, show_ward=True, empty='直近30日に、この区の火事�
             if x['dead']: tags.append('<span class="tag dark">亡くなった方あり</span>')
             elif x['injured']: tags.append('<span class="tag warn">けが人あり</span>')
         srcs = '・'.join(f'<a href="{esc(s["link"])}" target="_blank" rel="noopener nofollow">{esc(s["name"])}</a>' for s in x['sources'])
-        lis.append(f'<li class="news-item" data-ward="{esc(x["ward"])}"><div class="row"><a class="place" href="fire.html?id={esc(quote(news_fire_id(x)))}"><b>{place}</b></a>{"".join(tags)}</div>'
+        lis.append(f'<li class="news-item" data-ward="{esc(x["ward"])}"><div class="row"><a class="place" href="{esc(fire_href(news_fire_id(x)))}"><b>{place}</b></a>{"".join(tags)}</div>'
                    f'<span class="small muted">最初の報道 {jtime(x["first"])}　報道：{srcs}</span></li>')
     return f'<ul class="news">{"".join(lis)}</ul>'
 
@@ -283,7 +286,7 @@ def ad_unit():
 def insert_ads(name, body):
     if not (ADS_CLIENT and ADS_SLOT) or name in NO_AD_PAGES:
         return body
-    keys = AD_AFTER_FIRE if name == 'fire' else AD_AFTER
+    keys = AD_AFTER_FIRE if name == 'fire' or name.startswith('f-') else AD_AFTER
     n = 0
     def rep(m):
         nonlocal n
@@ -293,7 +296,7 @@ def insert_ads(name, body):
     pat = re.compile(r'<section class="section[^"]*"[^>]*? aria-labelledby="(?:' + '|'.join(keys) + r')"[^>]*>.*?</section>', re.S)
     return pat.sub(rep, body)
 
-def page(name, title, desc, body, og_image='og/index.png', full=True):
+def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=None):
     body = insert_ads(name, body)
     nav = ''.join(f'<a href="{k.split("#")[0]}.html{("#" + k.split("#")[1]) if "#" in k else ""}"{" aria-current=\"page\"" if k == name else ""}>{esc(v)}</a>' for k, v in NAV)
     canon = f'{SITE_URL}/{quote(name)}.html' if name != 'index' else f'{SITE_URL}/'
@@ -321,6 +324,8 @@ def page(name, title, desc, body, og_image='og/index.png', full=True):
     ld = {"@context": "https://schema.org", "@type": "WebPage", "name": title, "description": desc, "inLanguage": "ja",
           "isPartOf": {"@type": "WebSite", "name": SITE_NAME}}
     head += f'\n<script type="application/ld+json">{json.dumps(ld, ensure_ascii=False)}</script>'
+    for x in (ld_extra or []):
+        head += f'\n<script type="application/ld+json">{json.dumps(x, ensure_ascii=False)}</script>'
     header = f'''<header class="site-head"><div class="wrap">
   <div class="head-row">
     <a class="logo" href="index.html">{FIRE_ICON}<span>火事<b>速</b></span></a>
@@ -589,14 +594,17 @@ def machi_page(t):
     return page(t['file'][:-5], title, desc, body, og_image='og/live.png')
 
 # ---------- 火事のページ ----------
-def fire_page():
+def fire_page(pre=None):
+    """pre を渡すと、報道された火事の固定ページ（中身をHTMLに書き込み済み。JSが報告・口コミを足す）"""
+    pre = pre or {}
+    attrs = ''.join(f' data-{k}="{esc(pre[k])}"' for k in ('id', 'pref', 'city', 'town') if pre.get(k) is not None)
     body = f'''<div class="wrap">
-<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <span class="f-crumb">火事のページ</span></nav>
-<div data-fire>
+<nav class="crumbs" aria-label="パンくず"><a href="index.html">トップ</a> ／ <span class="f-crumb">{pre.get('crumb', '火事のページ')}</span></nav>
+<div data-fire{attrs}>
 <section class="hero">
-  <span class="eyebrow f-kind">火事の目撃情報</span>
-  <h1 class="f-title">火事のページ</h1>
-  <p class="lead f-lead">読み込んでいます…</p>
+  <span class="eyebrow f-kind">{esc(pre.get('kind', '火事の目撃情報'))}</span>
+  <h1 class="f-title">{esc(pre.get('h1', '火事のページ'))}</h1>
+  <p class="lead f-lead">{esc(pre.get('lead', '読み込んでいます…'))}</p>
   <div class="f-stats stats"></div>
   {ALERT}
 </section>
@@ -618,17 +626,20 @@ def fire_page():
   <ul class="plain f-off"></ul>
   <p class="small muted">各消防本部が公開している出動情報から、火災の出動だけを自動で取り出して表示しています。最新の状況は出典のページでご確認ください。</p>
 </section>
-<section class="section f-news-sec" aria-labelledby="src" hidden>
+<section class="section f-news-sec" aria-labelledby="src"{'' if pre.get('news') else ' hidden'}>
   <h2 id="src">報道</h2>
-  <div class="f-news"></div>
+  <div class="f-news">{pre.get('news', '')}</div>
 </section>
 <section class="section" aria-labelledby="sns">
   <h2 id="sns">SNS・ニュースで確かめる</h2>
   <div class="f-sns"></div>
 </section>
 </div>
+{pre.get('after', '')}
 </div>
 '''
+    if pre:
+        return page(pre['name'], pre['title'], pre['desc'], body, og_image='og/live.png', ld_extra=pre.get('ld'))
     title = f'火事の目撃情報｜{SITE_NAME}'
     desc = '近所の人から寄せられたサイレン・煙・火の目撃報告と、現場の口コミ。全国の火事を町名ごとにリアルタイムで。'
     return page('fire', title, desc, body, og_image='og/live.png')
