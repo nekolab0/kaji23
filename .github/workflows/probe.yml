@@ -18,10 +18,10 @@ jobs:
         if: ${{ contains(github.ref_name, 'backfill') }}
         run: node collector/backfill.mjs || true
       - name: 消防の出動情報ページ
-        if: ${{ !contains(github.ref_name, 'opendata') && !contains(github.ref_name, 'backfill') && !contains(github.ref_name, 'news') && !contains(github.ref_name, 'pages') }}
+        if: ${{ !contains(github.ref_name, 'opendata') && !contains(github.ref_name, 'backfill') && !contains(github.ref_name, 'news') && !contains(github.ref_name, 'pages') && !contains(github.ref_name, 'mailsrc') }}
         run: node collector/probe_sources.mjs || true
       - name: オープンデータ
-        if: ${{ !contains(github.ref_name, 'sources') && !contains(github.ref_name, 'backfill') && !contains(github.ref_name, 'news') && !contains(github.ref_name, 'pages') }}
+        if: ${{ !contains(github.ref_name, 'sources') && !contains(github.ref_name, 'backfill') && !contains(github.ref_name, 'news') && !contains(github.ref_name, 'pages') && !contains(github.ref_name, 'mailsrc') }}
         run: node collector/probe_opendata.mjs || true
       - name: 報道の取り込み漏れ
         if: ${{ contains(github.ref_name, 'news') }}
@@ -29,6 +29,9 @@ jobs:
       - name: 指定したページの下調べ
         if: ${{ contains(github.ref_name, 'pages') }}
         run: node collector/probe_pages.mjs || true
+      - name: 火災メールと公開バックナンバー
+        if: ${{ contains(github.ref_name, 'mailsrc') }}
+        run: node collector/probe_mailsrc.mjs || true
       - name: 結果を保存
         run: |
           git config user.name kaji23-bot && git config user.email bot@users.noreply.github.com

@@ -9,6 +9,10 @@ binding = "DB"
 database_name = "kaji23"
 database_id = "4974a4be-68b3-4de6-bb89-786bd46cff1a"
 
+# Workers AI（案内ダイヤルの録音の文字起こしに使う。Free プランでも1日約200分まで無料）
+[ai]
+binding = "AI"
+
 [vars]
 ALLOW_ORIGIN = "*"   # 独自ドメインを決めたら "https://（ドメイン）" に
 

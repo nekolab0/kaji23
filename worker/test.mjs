@@ -145,7 +145,7 @@ if (isMain) {
     const smp = srcs.mailSamples || [];
     ok('メール: 受け取り状況と、改善用の本文（火災関係だけ・URLとアドレスは消す）', srcs.mails.some(x => x.id === 'mail-mpme.jp' && x.items === 1) && smp.length === 1 && !/token|info@/.test(smp[0].text) && smp[0].text.includes('[URL]'), JSON.stringify(srcs.mails) + JSON.stringify(smp));
     const H = o => ({ get: k => o[k.toLowerCase()] || null });
-    ok('メール: 転送先から来たメールは送り返さない', isLoop({ from: 'Me@gmail.com', headers: H({}) }, 'me@gmail.com') && isLoop({ from: 'bounce@x.jp', headers: H({ 'x-forwarded-for': 'me@gmail.com alerts@kajisoku.jp' }) }, 'me@gmail.com') && !isLoop({ from: 'kasai@city.jp', headers: H({}) }, 'me@gmail.com'));
+    ok('メール: 転送先から来たメールは送り返さない', isLoop({ from: 'Me@gmail.com', headers: H({}) }, 'me@gmail.com') && isLoop({ from: 'bounce@x.jp', headers: H({ 'x-forwarded-for': 'me@gmail.com alerts@kajisoku.jp' }) }, 'me@gmail.com') && !isLoop({ from: 'kasai@city.jp', headers: H({}) }, 'me@gmail.com') && isLoop({ from: 'kajisoku.mail@gmail.com', headers: H({ 'x-forwarded-to': 'alerts@kajisoku.jp' }) }, 'me@gmail.com'));
   }
   ok('表と塩を自動で用意（塩はランダム48桁）', salt && /^[0-9a-f]{48}$/.test(salt.v));
 

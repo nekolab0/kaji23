@@ -309,6 +309,7 @@ def city_page(p, c):
   <h1>{esc(c)}の火事はどこ？いまの目撃情報・火事速報</h1>
   <p class="lead">{esc(p)}{esc(c)}の目撃報告・口コミと、報道された火事をまとめています。サイレンや煙に気づいたら、ここから近所の人と共有できます。</p>
   {ALERT_JP}
+  {push_box(p, c) if code else ''}
 </section>
 <section class="section" aria-labelledby="now">
   <h2 id="now">いまの{esc(c)}</h2>
@@ -342,6 +343,7 @@ def town_page(pre=None):
   <h1 class="t-title">{esc(pre.get('h1', '町の火事情報'))}</h1>
   <p class="lead t-lead">{esc(pre.get('lead', '読み込んでいます…'))}</p>
   {ALERT_JP}
+  <div class="t-push"></div>
 </section>
 <section class="section t-sec" aria-labelledby="now" hidden>
   <h2 id="now" class="t-now">いまの報告</h2>

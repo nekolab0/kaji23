@@ -318,3 +318,8 @@ h1, .fire-card .place b { word-break: auto-phrase; }
 .sns-posts .sns-h { font-size: 15px; margin: 0; }
 .sns-posts .twitter-tweet { margin: 0 !important; max-width: 100%; }
 .sns-posts blockquote.twitter-tweet { border-left: 3px solid var(--line); padding: 6px 10px; }
+
+/* Web プッシュ通知の欄 */
+.push-box{margin-top:12px;display:grid;gap:6px;justify-items:start}
+.push-box .push-btn[aria-pressed="true"]{background:#e8f3ec;border-color:#2f7d4f;color:#1f5a37}
+.push-box .push-note{margin:0}

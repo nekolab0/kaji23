@@ -482,6 +482,56 @@
       '<p class="small muted">見えたこと・聞こえたことを200文字まで。番地や人の名前、原因や被害者についての憶測は書かないでください。<a href="rules.html">投稿のルール</a></p>' +
       '<button class="btn primary" type="submit">口コミを投稿する</button></form><p class="post-status small" aria-live="polite"></p>';
   }
+  // ---------- Web プッシュ通知（町・市区町村の火事を知らせる） ----------
+  var PUSH_OK = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  function b64uToBytes(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; var b = atob(s), a = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
+  function pushReg() { return navigator.serviceWorker.register('/sw.js').then(function () { return navigator.serviceWorker.ready; }); }
+  function initPush(box) {
+    var pref = box.getAttribute('data-pref'), city = box.getAttribute('data-city'), town = box.getAttribute('data-town') || '';
+    var btn = $('.push-btn', box), note = $('.push-note', box), where = town || city;
+    if (!btn) return;
+    if (!PUSH_OK) {
+      var ios = /iPhone|iPad/.test(navigator.userAgent);
+      btn.disabled = true;
+      note.textContent = ios ? 'iPhone では、共有ボタンから「ホーム画面に追加」した火事速を開くと通知を受け取れます。' : 'このブラウザは通知に対応していません。';
+      return;
+    }
+    var on = false;
+    function show(v) { on = v; btn.setAttribute('aria-pressed', v ? 'true' : 'false'); btn.textContent = v ? where + 'の火事を通知中（押すと解除）' : where + 'の火事を通知で受け取る'; }
+    show(false);
+    // すでに登録しているか
+    if (Notification.permission === 'granted') {
+      navigator.serviceWorker.getRegistration('/').then(function (r) { return r && r.pushManager.getSubscription(); }).then(function (sub) {
+        if (!sub) return;
+        return postJSON('/api/push/areas', { endpoint: sub.endpoint }).then(function (j) {
+          show((j.areas || []).some(function (a) { return a.pref === pref && a.city === city && (a.town || '') === town; }));
+        });
+      }).catch(function () {});
+    }
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      var area = { pref: pref, city: city, town: town };
+      (on ? navigator.serviceWorker.getRegistration('/').then(function (r) { return r && r.pushManager.getSubscription(); }).then(function (sub) {
+        if (!sub) { show(false); return; }
+        return postJSON('/api/push/unsubscribe', { endpoint: sub.endpoint, area: area }).then(function (j) {
+          if (!(j.areas || []).length) sub.unsubscribe();
+          show(false); note.textContent = where + 'の通知を解除しました。';
+        });
+      }) : Notification.requestPermission().then(function (perm) {
+        if (perm !== 'granted') throw new Error('通知が許可されませんでした。ブラウザの設定で火事速の通知を許可してください。');
+        return Promise.all([pushReg(), getJSON('/api/push/key')]);
+      }).then(function (x) {
+        var reg = x[0], key = x[1].key;
+        return reg.pushManager.getSubscription().then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64uToBytes(key) }); });
+      }).then(function (sub) {
+        return postJSON('/api/push/subscribe', { subscription: sub.toJSON(), area: area });
+      }).then(function (j) {
+        show(true); note.textContent = where + 'で火事の発表・報道・報告があったら通知します（1日10件まで）。ほかの町も同じように追加できます（10か所まで）。';
+      })).catch(function (e) { note.textContent = msg(e); }).then(function () { btn.disabled = false; });
+    });
+  }
+  $$('[data-push]').forEach(initPush);
+
   var tp = $('[data-town-page]');
   if (tp) {
     var prm = new URLSearchParams(location.search), code = prm.get('c') || tp.getAttribute('data-c') || '', tname = baseTown(prm.get('t') || tp.getAttribute('data-t') || '');
@@ -502,6 +552,12 @@
         .concat([[WARD_PARENT_OF(pref, city) ? city.slice(WARD_PARENT_OF(pref, city).length) : city, cityHref(pref, city)]]).forEach(function (x) { cr.appendChild(el('a', { href: x[1] }, x[0])); cr.appendChild(document.createTextNode(' ／ ')); });
       cr.appendChild(document.createTextNode(tname));
       $$('.t-sec', tp).forEach(function (s) { s.hidden = false; });
+      var tpush = $('.t-push', tp);
+      if (tpush && !tpush.hasAttribute('data-push')) {
+        tpush.className = 'push-box'; tpush.setAttribute('data-push', ''); tpush.setAttribute('data-pref', pref); tpush.setAttribute('data-city', city); tpush.setAttribute('data-town', tname);
+        tpush.innerHTML = '<button type="button" class="btn push-btn"></button><p class="small muted push-note">消防の発表・報道・近所の人の報告2件以上で、スマホやパソコンに知らせます（無料・登録不要・いつでも解除できます）。</p>';
+        initPush(tpush);
+      }
       var lv = el('div', { class: 'live', 'data-live': '', 'data-pref': pref, 'data-city': city, 'data-town': tname, 'data-empty': 'いま、' + tname + 'で上がっている報告はありません。' });
       $('.t-live', tp).appendChild(lv); loadLive();
       var pn = el('div', { class: 'panel post', 'data-post': '', 'data-pref': pref, 'data-city': city, 'data-town': tname });

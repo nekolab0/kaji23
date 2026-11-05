@@ -23,6 +23,8 @@ import { AREAS } from './areas.js';
 import { SOURCES, parseSource, robotsAllows, htmlText } from './official.js';
 import { parseMail, mailText, decodeHeader } from './mail.js';
 import { pollX, snsFor } from './xposts.js';
+import { phoneTick, onRecording, onCallStatus, phoneLog, phoneKey } from './phone.js';
+import { vapidKeys, subscribe, unsubscribe, myAreas, pushTick } from './push.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
@@ -225,6 +227,12 @@ export async function handle(request, env, now = new Date()) {
     return json(env, { ok: true });
   }
 
+  // ---- Web プッシュ通知（町・市区町村の火事を知らせる） ----
+  if (P === '/api/push/key' && request.method === 'GET') return json(env, { key: (await vapidKeys(DB)).pub });
+  if (P === '/api/push/subscribe' && request.method === 'POST') { const r = await subscribe(env, await body(), now); return json(env, r, r.status || 200); }
+  if (P === '/api/push/unsubscribe' && request.method === 'POST') { const r = await unsubscribe(env, await body()); return json(env, r, r.status || 200); }
+  if (P === '/api/push/areas' && request.method === 'POST') { const b = await body(); return json(env, { areas: b && b.endpoint ? await myAreas(env, b.endpoint) : [] }); }
+
   // ---- 削除依頼・問い合わせ（運営者だけが D1 のコンソールで読む） ----
   if (P === '/api/contact' && request.method === 'POST') {
     const b = await body(); const text = String((b && b.body) || '').trim().slice(0, 1000);
@@ -274,6 +282,15 @@ export async function handle(request, env, now = new Date()) {
   }
 
   // 消防本部のページの読み取り状況（運営の確認用）
+  // 案内ダイヤルへの自動電話: Twilio からの知らせ（鍵つき）と、確認用の記録
+  if ((P === '/api/phone/rec' || P === '/api/phone/status') && request.method === 'POST') {
+    if (!env.TWILIO_SID || url.searchParams.get('k') !== await phoneKey(DB)) return json(env, { error: 'forbidden' }, 403);
+    const form = await request.formData();
+    return json(env, P === '/api/phone/rec' ? await onRecording(env, form, ingestOfficial, now, env.__fetch || fetch) : await onCallStatus(env, form));
+  }
+  if (P === '/api/phone' && request.method === 'GET') {
+    return json(env, { generatedAt: iso, enabled: !!env.TWILIO_SID, calls: await phoneLog(env) });
+  }
   if (P === '/api/sources' && request.method === 'GET') {
     const { results } = await DB.prepare('SELECT * FROM sources').all();
     const st = Object.fromEntries(results.map(r => [r.id, r]));
@@ -288,7 +305,7 @@ export async function handle(request, env, now = new Date()) {
   if (P === '/api/official' && request.method === 'GET') {
     const days = Math.min(60, Math.max(1, parseInt(url.searchParams.get('days') || '7', 10) || 7));
     const { results } = await DB.prepare('SELECT source, pref, ward, town, base, kind, status, at, inc FROM official WHERE at > ? AND COALESCE(status, \'\') <> \'誤報\' ORDER BY at').bind(ago(days * 864e5)).all();
-    return json(env, { generatedAt: iso, days, items: results.map(r => ({ ...r, source_name: (SOURCES.find(s => s.id === r.source) || {}).name || (/^mail-/.test(r.source) ? '自治体の火災情報メール（' + (r.ward || r.source.slice(5)) + '）' : r.source), source_url: (SOURCES.find(s => s.id === r.source) || {}).url || null })) }, 200, { 'Cache-Control': 'public, max-age=120' });
+    return json(env, { generatedAt: iso, days, items: results.map(r => ({ ...r, source_name: (SOURCES.find(s => s.id === r.source) || {}).name || (/^mail-/.test(r.source) ? '自治体の火災情報メール（' + (r.ward || r.source.slice(5)) + '）' : /^tel-/.test(r.source) ? (r.ward || '') + 'の消防の案内ダイヤル（自動音声を文字起こし）' : r.source), source_url: (SOURCES.find(s => s.id === r.source) || {}).url || null })) }, 200, { 'Cache-Control': 'public, max-age=120' });
   }
 
   // 場所ごとの火事の件数（検索候補の「記録○件」用。直近365日）
@@ -436,7 +453,8 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
 export function isLoop(message, fwd) {
   const f = String(fwd || '').toLowerCase().trim(); if (!f) return false;
   const h = k => String((message.headers && message.headers.get && message.headers.get(k)) || '').toLowerCase();
-  return String(message.from || '').toLowerCase() === f || h('x-forwarded-for').includes(f) || h('x-forwarded-to').includes(f);
+  // Gmail などで自動転送されてきたメール（X-Forwarded-To / X-Forwarded-For つき）は、火事速用のアドレスから回したものなので送り返さない
+  return String(message.from || '').toLowerCase() === f || h('x-forwarded-for').includes(f) || h('x-forwarded-to').includes(f) || /@kajisoku\.jp/.test(h('x-forwarded-to') + ' ' + h('x-forwarded-for'));
 }
 export async function receiveMail(env, raw, now = new Date()) {
   await setup(env);
@@ -476,6 +494,8 @@ export default {
       return;
     }
     await pollSources(env);   // 毎分: 消防本部の出動情報
-    try { await pollX(env); } catch (e) {}   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
+    try { await pollX(env); } catch (e) {}
+    try { await phoneTick(env); } catch (e) {}
+    try { await pushTick(env); } catch (e) {}   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
   },
 };
