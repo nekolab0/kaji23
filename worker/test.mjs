@@ -124,6 +124,8 @@ if (isMain) {
     ok('出動情報: いまの火事の一覧に出る', live.incidents.filter(x => x.official).length === 2);
     const srcs = await (await handle(req('GET', '/api/sources'), m.env, pnow)).json();
     ok('出動情報: 読み取り状況を確認できる', srcs.sources.find(x => x.id === 'sapporo').status === 'ok');
+    const nf = await handle(req('GET', '/api/incident?id=nothere&soft=1'), m.env, pnow); const nfj = await nf.json();
+    ok('固定ページからの問い合わせは、見つからなくても200で incident: null', nf.status === 200 && nfj.incident === null && (await handle(req('GET', '/api/incident?id=nothere'), m.env, pnow)).status === 404);
     const ex = await (await handle(req('GET', '/api/official?days=7'), m.env, pnow)).json();
     ok('出動情報: サイト生成用に発表の記録を出す（町名まで・出典つき）', ex.items.length === 2 && ex.items.every(x => x.pref === '北海道' && x.source_name && x.kind) && ex.items.some(x => x.ward === '札幌市北区' && x.town === '北32条西7丁目'), JSON.stringify(ex.items));
   }

@@ -325,7 +325,7 @@
       });
     }
     function load() {
-      var p = inc ? getJSON('/api/incident?id=' + encodeURIComponent(inc)).then(function (j) { return j.comments.slice().reverse(); })
+      var p = inc ? getJSON('/api/incident?id=' + encodeURIComponent(inc) + '&soft=1').then(function (j) { return (j.comments || []).slice().reverse(); })
                   : getJSON('/api/town?pref=' + encodeURIComponent(pref) + '&city=' + encodeURIComponent(city) + '&town=' + encodeURIComponent(town || '')).then(function (j) { return j.comments; });
       return p.then(render, function () { list.innerHTML = ''; list.appendChild(el('li', { class: 'muted small' }, '口コミを読み込めませんでした。')); });
     }
@@ -687,7 +687,7 @@
     else if (!API) notFound('目撃報告の受付を準備中です。');
     else {
       var refresh = function () {
-        return getJSON('/api/incident?id=' + encodeURIComponent(id)).then(function (j) {
+        return getJSON('/api/incident?id=' + encodeURIComponent(id) + (fire.hasAttribute('data-pref') ? '&soft=1' : '')).then(function (j) {
           if (!j.incident) return notFound();
           renderUGC(j);
           var cb = $('[data-comments]', fire); if (cb && cb._reload && refresh.n++) cb._reload();
