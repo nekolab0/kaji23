@@ -21,6 +21,8 @@ const hm = parseMail(mk('info@sg-p.jp', '【浜松市】火災情報', '11月4�
 ok('「中央区」は本文の市名（浜松）で決める', hm.items.length === 1 && hm.items[0].city === '浜松市中央区', JSON.stringify(hm));
 const amb = parseMail(mk('info@sg-p.jp', '火災情報', '11月4日15時40分頃、中央区本町付近で建物火災が発生しました。'), now);
 ok('市名がなく「中央区」だけなら採らない', amb.items.length === 0, JSON.stringify(amb));
+const tk = parseMail(mk('bousai@city.takasaki.gunma.jp', '火災情報', '11月4日15時40分頃、上並榎町地内で建物火災が発生しました。'), now);
+ok('送信元のドメインで市を決める（本文に市名がない：高崎市）', tk.items.length === 1 && tk.items[0].city === '高崎市' && tk.items[0].town.startsWith('上並榎町'), JSON.stringify(tk));
 const multi =`From: a@b.jp\r\nSubject: fire\r\nContent-Type: multipart/alternative; boundary="XX"\r\n\r\n--XX\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${b64('本文です')}\r\n--XX\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<p>html</p>\r\n--XX--`;
 ok('マルチパート: text/plain を使う', mailText(multi).text === '本文です', JSON.stringify(mailText(multi)));
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));
