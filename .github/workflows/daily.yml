@@ -8,7 +8,7 @@ on:
     - cron: '7,37 * * * *'     # 30分ごと（報道のみ）。GitHub の混雑で数時間あくことがある
   push:
     branches: [main]           # PR をマージしたらすぐ作り直して公開（受付サーバーと同じタイミングで反映）
-    paths-ignore: ['data/**', 'verify/**', '**.md']
+    paths-ignore: ['data/**', 'verify/**', 'seo/**', '**.md']
   workflow_dispatch:
     inputs:
       quick: { description: '報道だけ取り直す（受付サーバーから30分ごとに呼ばれる）', required: false, default: 'false' }

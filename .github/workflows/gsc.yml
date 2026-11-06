@@ -1,0 +1,30 @@
+# Search Console のデータを毎日取って seo/gsc/api/ に保存する（SEO担当が読む）
+# 必要：リポジトリの Secrets に GSC_KEY（サービスアカウントの鍵 JSON）
+name: gsc
+on:
+  schedule:
+    - cron: '41 22 * * *'      # UTC 22:41 = 日本時間 7:41
+  workflow_dispatch:
+concurrency: { group: gsc, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install google-auth requests
+      - name: Search Console から取得
+        env:
+          GSC_KEY: ${{ secrets.GSC_KEY }}
+          GSC_SITE: ${{ vars.GSC_SITE }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: python3 seo/fetch_gsc.py
+      - name: 保存
+        # 30分ごとのデータ保存と重なると push が断られるので、取り込み直して最大5回試す
+        run: |
+          git config user.name kaji23-bot && git config user.email bot@users.noreply.github.com
+          git add seo/gsc/api && git commit -m "gsc: $(date -u +%F)" || exit 0
+          for i in 1 2 3 4 5; do git push && exit 0; git pull --rebase -q || git rebase --abort; sleep 10; done
+          echo "::warning::Search Console データの保存に失敗しました"; exit 1

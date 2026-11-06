@@ -46,5 +46,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit, WebSearch, WebFetch
 決定した事項は `seo/decisions.md` に日付つきで1行ずつ追記する。Search Console データを分析したら、結果を `seo/reports/YYYY-MM-DD.md` に残す。
 
 ## Search Console データの扱い
-- `seo/gsc/` に CSV（検索キーワード・ページ・日付）を置いてもらう。ファイル名に期間を入れる（例：`queries_2026-10-07_2026-11-05.csv`）
+- `seo/gsc/api/` に毎朝自動で入る（中身は `seo/gsc/README.md`）。作業前に `git pull` して最新にし、`meta.json` の取得日時を確かめる。2日以上古ければ、取得が止まっている可能性を先に報告する
+- インデックスの状況は `inspection_summary.csv` と `inspection.csv` で見る。「検出 - インデックス未登録」「クロール済み - インデックス未登録」が多いページの型を特定するのが、データの少ない初期の最優先
+- 日付ごとのフォルダ（例 `seo/gsc/2026-11-06/`）は手動で書き出したもの
 - 分析の基本：表示回数が多いのにクリック率が低いページ（タイトル・説明文の改善候補）、順位8〜20位のキーワード（伸ばしやすい候補）、想定外のキーワードで出ているページ（新しい受け皿の候補）
