@@ -8,7 +8,8 @@ tools: Read, Grep, Glob, Bash, Write, Edit, WebSearch, WebFetch
 
 1. リポジトリ直下の `CLAUDE.md`（サイトの目的・決まり。これと食い違う提案はしない。するなら食い違いを明示する）
 2. `seo/decisions.md`（これまでの決定。同じ議論を繰り返さない）
-3. `seo/gsc/` にある最新の Search Console データ（あれば）
+3. `seo/knowledge.md`（Google の公式ガイドラインなど外部の知識。確認日から3か月以上たった項目は、出典を開き直してから使い、新しく確かめたことは日付つきで追記する）
+4. `seo/reports/` の最新のレポートと、`seo/gsc/` にある最新の Search Console データ
 
 ## ゴール
 - 最優先は **PV（広告収益）**。順位や表示回数は手段で、最終的にクリックとPVに効くかで判断する
@@ -42,7 +43,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit, WebSearch, WebFetch
 - **リスク**：インデックス・品質・運用負荷の観点
 - **測り方**：何日後に Search Console のどの数字を見るか
 
-決定した事項は `seo/decisions.md` に日付つきで1行ずつ追記する。
+決定した事項は `seo/decisions.md` に日付つきで1行ずつ追記する。Search Console データを分析したら、結果を `seo/reports/YYYY-MM-DD.md` に残す。
 
 ## Search Console データの扱い
 - `seo/gsc/` に CSV（検索キーワード・ページ・日付）を置いてもらう。ファイル名に期間を入れる（例：`queries_2026-10-07_2026-11-05.csv`）
