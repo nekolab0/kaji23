@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-07 04:12（日本時間）",
+ "ran_at": "2026-11-07 04:39（日本時間）",
  "data_fetched_at": "2026-11-06T14:49:21.555Z",
  "checks": [
   {
@@ -150,13 +150,13 @@
    "name": "M2 消防本部の読み取り（5分ごと）",
    "ok": true,
    "level": "warn",
-   "detail": "読めている 78/79ページ、取り込み 28件"
+   "detail": "読めている 77/79ページ、取り込み 29件"
   },
   {
    "name": "M3 読み取れていない消防本部",
    "ok": false,
    "level": "warn",
-   "detail": "kyoto(HTTP 522)"
+   "detail": "kyoto(HTTP 522)、a-www-okunoto-fd-jp-saigai-noto-annai-php(HTTP 522)"
   },
   {
    "name": "M4 報道の収集の鮮度",
