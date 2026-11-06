@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-06 18:04（日本時間）",
+ "ran_at": "2026-11-06 18:33（日本時間）",
  "data_fetched_at": "2026-11-06T04:31:38.768Z",
  "checks": [
   {
@@ -84,7 +84,7 @@
    "name": "R1 コンソールエラー・スクリプトエラー",
    "ok": true,
    "level": "error",
-   "detail": "4848ページ×2画面幅でエラーなし（町ページは2498町から見本）"
+   "detail": "4850ページ×2画面幅でエラーなし（町ページは2499町から見本）"
   },
   {
    "name": "R2 読み込み失敗",
@@ -102,13 +102,13 @@
    "name": "R4 サイト内リンク・ページ内リンク",
    "ok": true,
    "level": "error",
-   "detail": "9106ページすべてのリンク先とアンカーが存在"
+   "detail": "9109ページすべてのリンク先とアンカーが存在"
   },
   {
    "name": "R5 タイトル・見出し・説明文・OGP画像・正規URL・サイトマップ",
    "ok": true,
    "level": "error",
-   "detail": "9106ページすべてにあり、サイトマップ9104件"
+   "detail": "9109ページすべてにあり、サイトマップ9107件"
   },
   {
    "name": "R6 表示されている数字＝データ",
@@ -150,13 +150,13 @@
    "name": "M2 消防本部の読み取り（5分ごと）",
    "ok": true,
    "level": "warn",
-   "detail": "読めている 78/79ページ、取り込み 29件"
+   "detail": "読めている 76/79ページ、取り込み 29件"
   },
   {
    "name": "M3 読み取れていない消防本部",
    "ok": false,
    "level": "warn",
-   "detail": "kyoto(HTTP 522)"
+   "detail": "kyoto(HTTP 522)、a-km-fire-jp-category-saigai(HTTP 522)、a-www-shobo-koriyama-fukushima-jp-saigai-index-html(HTTP 522)"
   },
   {
    "name": "M4 報道の収集の鮮度",
