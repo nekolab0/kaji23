@@ -5,6 +5,7 @@
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
   var meta = $('meta[name="kaji23-api"]');
   var API = meta && meta.content ? meta.content.replace(/\/$/, '') : '';
+  var FLAGGED = {};   // このページで通報した口コミ（id → true）
   var KIND = { siren: 'サイレン', smoke: '煙・におい', fire: '火' };
   var AREAS = window.KAJI_AREAS || { prefs: {}, codes: {} };   // 全国の都道府県・市区町村（assets/areas.js）
   var TOKYO23 = (AREAS.prefs['東京都'] || []).slice(0, 23);
@@ -314,10 +315,12 @@
         var head = el('div', { class: 'com-head small muted' });
         head.appendChild(el('span', null, hm(c.at) + '（' + ago(c.at) + '）' + (!inc && c.town && c.town !== town ? '　' + c.town : '')));
         if (!inc && c.inc && !/^n-/.test(c.inc)) head.appendChild(el('a', { href: 'fire.html?id=' + encodeURIComponent(c.inc) }, 'この火事のページ'));
-        var flag = el('button', { type: 'button', class: 'flag' }, '通報');
+        // 通報済みの口コミは、一覧を読み直しても「通報しました」のままにする（読み直しでボタンが作り直されるため）
+        var flag = el('button', { type: 'button', class: 'flag', 'data-cid': String(c.id) }, FLAGGED[c.id] ? '通報しました' : '通報');
+        if (FLAGGED[c.id]) flag.disabled = true;
         flag.addEventListener('click', function () {
-          flag.disabled = true;
-          postJSON('/api/flag', { id: c.id }).then(function () { flag.textContent = '通報しました'; }, function () { flag.disabled = false; flag.textContent = '通報できませんでした'; });
+          flag.disabled = true; FLAGGED[c.id] = 'sending';
+          postJSON('/api/flag', { id: c.id }).then(function () { FLAGGED[c.id] = true; var b = $$('.flag').filter(function (x) { return x.getAttribute('data-cid') === String(c.id); }); (b.length ? b : [flag]).forEach(function (x) { x.textContent = '通報しました'; x.disabled = true; }); }, function () { delete FLAGGED[c.id]; flag.disabled = false; flag.textContent = '通報できませんでした'; });
         });
         head.appendChild(flag);
         li.appendChild(head); li.appendChild(el('p', null, c.body));
