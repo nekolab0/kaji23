@@ -36,12 +36,20 @@ function liveHTML() {
 <div class="foot"><span>全国・町名ごとにリアルタイム</span><span>kajisoku.jp</span></div>`;
 }
 
+function guideHTML(g) {
+  return `<style>${css}.g{display:flex;gap:36px;align-items:center;flex:1}.g h1{font-size:60px;flex:1}.g .art{width:470px;flex:none}.g .art svg{width:100%;height:auto;border-radius:16px}</style>
+<div class="brand">${icon}<span>火事<b>速</b></span><span style="font-size:24px;color:#535b68;font-weight:700;margin-left:10px">火事の調べ方・備え</span></div>
+<div class="g"><h1>${esc(g.h1)}</h1><div class="art">${g.hero}</div></div>
+<div class="foot"><span>図解でわかる・出典つき</span><span>kajisoku.jp</span></div>`;
+}
+const guides = fs.existsSync(path.join(DIST, 'data', '_guides.json')) ? JSON.parse(fs.readFileSync(path.join(DIST, 'data', '_guides.json'), 'utf8')) : [];
+
 (async () => {
   const out = path.join(DIST, 'og');
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-  const jobs = [['index', indexHTML()], ['live', liveHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)]));
+  const jobs = [['index', indexHTML()], ['live', liveHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)])).concat(guides.map(g => ['g-' + g.slug, guideHTML(g)]));
   for (const [name, html] of jobs) {
     await page.setContent(html, { waitUntil: 'load' });
     await page.screenshot({ path: path.join(out, name + '.png'), type: 'png' });

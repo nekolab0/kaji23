@@ -4,15 +4,19 @@ import datetime as _dt
 import re as _re
 exec((SITE / 'guide_art.py').read_text(encoding='utf-8'))   # 図・イラスト（オリジナルの SVG）
 
-GUIDE_UPDATED = '2026-11-05'
+GUIDE_UPDATED = '2026-11-05'   # 一覧ページ用
+# 記事ごとの公開日・更新日（記事を足しても、ほかの記事の更新日は変わらないように）
+GUIDE_DATES = {'kajidoko': ('2026-11-05', '2026-11-08'), 'siren': ('2026-11-05', '2026-11-08'), '119': ('2026-11-05', '2026-11-08'), 'cause': ('2026-11-05', '2026-11-08')}
+GUIDE_OG = []   # og.js で記事ごとの OG 画像を作るための情報
 
 def _src(items):
     return ('<section class="section" aria-labelledby="src"><h2 id="src">出典・参考</h2><ul class="plain">'
             + ''.join(f'<li><a href="{esc(u)}" target="_blank" rel="noopener">{esc(n)} ↗</a></li>' for n, u in items) + '</ul></section>')
 
 def _article_ld(slug, title, desc):
+    pub, mod = GUIDE_DATES.get(slug, (GUIDE_UPDATED, GUIDE_UPDATED))
     return {"@context": "https://schema.org", "@type": "Article", "headline": title, "description": desc,
-            "datePublished": GUIDE_UPDATED, "dateModified": GUIDE_UPDATED, "inLanguage": "ja",
+            "datePublished": pub, "dateModified": mod, "inLanguage": "ja", "image": [f'{SITE_URL}/og/g-{slug}.png'],
             "author": {"@type": "Organization", "name": SITE_NAME, "url": SITE_URL + '/'},
             "publisher": {"@type": "Organization", "name": SITE_NAME}, "mainEntityOfPage": f'{SITE_URL}/g-{slug}.html'}
 
@@ -61,7 +65,7 @@ def guide_article(slug, title, h1, desc, lead, body, sources, related, art=None)
   <p class="crumb"><a href="index.html">トップ</a> ／ <a href="guide.html">火事の調べ方・備え</a></p>
   <h1>{esc(h1)}</h1>
   <p class="lead">{lead}</p>
-  <p class="small muted">{SITE_NAME}編集部　更新：{GUIDE_UPDATED.replace("-", "/")}　約{mins}分で読めます</p>
+  <p class="small muted">{SITE_NAME}編集部　更新：{GUIDE_DATES.get(slug, (0, GUIDE_UPDATED))[1].replace("-", "/")}　約{mins}分で読めます</p>
 </div></section>
 <div class="wrap article">
 {hero}
@@ -72,7 +76,8 @@ def guide_article(slug, title, h1, desc, lead, body, sources, related, art=None)
 {_src(sources)}
 <section class="section" aria-labelledby="more"><h2 id="more">あわせて読みたい</h2><ul class="plain">{rel}<li><a href="guide.html">火事の調べ方・備えの記事一覧</a></li></ul></section>
 </div>'''
-    return page(f'g-{slug}', f'{title}｜{SITE_NAME}', desc, html, ld_extra=[bc_ld([('火事の調べ方・備え', 'guide.html'), (h1, None)]), _article_ld(slug, title, desc)])
+    GUIDE_OG.append({'slug': slug, 'h1': h1, 'hero': art.get('hero', '')})
+    return page(f'g-{slug}', f'{title}｜{SITE_NAME}', desc, html, og_image=f'og/g-{slug}.png', ld_extra=[bc_ld([('火事の調べ方・備え', 'guide.html'), (h1, None)]), _article_ld(slug, title, desc)])
 
 def guide_pages():
     pages = {}
@@ -132,10 +137,10 @@ def guide_pages():
        [('東京消防庁「119番通報」', 'https://www.tfd.metro.tokyo.lg.jp/lfe/119/119.html'), ('千葉県「119番のかけ方」', 'https://www.pref.chiba.lg.jp/bousaik/jibun/koudou/119kakekata.html')],
        [('kajidoko', '今どこで火事か調べる方法'), ('cause', '火事の原因ランキング')]),
       ('cause', '火事の原因ランキング：1位はたばこ（令和6年・消防白書）と、身近な火事の傾向', '火事の原因ランキング（消防白書）',
-       '令和6年に全国で起きた火事は37,141件、1日あたり約101件。原因の1位はたばこ、2位たき火、3位こんろ（令和7年版消防白書）。火事速の記録から見た直近の火事の種類も紹介します。',
+       '令和6年に全国で起きた火事は37,141件、1日当たり約102件。原因の1位はたばこ、2位たき火、3位こんろ（令和7年版消防白書）。火事速の記録から見た直近の火事の種類も紹介します。',
        '全国では、1日に100件ほどの火事が起きています。どんな原因が多いのかを知ると、家でできる備えが見えてきます。',
        f'''<section class="section"><h2>全国の火事は1年で37,141件</h2>
-<p>令和7年版消防白書によると、令和6年（2024年）中に全国で起きた火事は<strong>37,141件</strong>でした。1日あたり約101件、およそ14分に1件の割合です。</p></section>
+<p>令和7年版消防白書によると、令和6年（2024年）中に全国で起きた火事は<strong>37,141件</strong>でした。1日当たり約102件、およそ14分に1件の割合です。</p></section>
 <section class="section"><h2>原因の上位3つ</h2>
 <details class="g-data"><summary>数字で見る</summary><table class="tbl"><thead><tr><th>順位</th><th>原因</th><th>件数（令和6年）</th></tr></thead><tbody>
 <tr><td>1</td><td>たばこ</td><td class="num">3,058件</td></tr><tr><td>2</td><td>たき火</td><td class="num">2,781件</td></tr><tr><td>3</td><td>こんろ</td><td class="num">2,718件</td></tr></tbody></table></details></section>
@@ -162,7 +167,7 @@ def guide_pages():
         'points': ['最初に「<strong>火事です</strong>」', '次に<strong>住所</strong>（市区町村から）と、<strong>何が燃えているか</strong>', '住所がわからなければ<strong>交差点・目立つ建物・電柱の番号</strong>'],
         'figs': {'聞かれる順番': fig(art_119_steps(), '119番で聞かれる順番と、答え方の例')}, 'tip': ['住所がわからないとき']},
       'cause': {'hero': art_cause_hero(),
-        'points': ['全国の火事は1年で<strong>37,141件</strong>（1日に約101件）', '原因の1位は<strong>たばこ</strong>、2位たき火、3位こんろ', '火事速の記録では、直近30日は<strong>建物火災</strong>がいちばん多い'],
+        'points': ['全国の火事は1年で<strong>37,141件</strong>（1日に約102件）', '原因の1位は<strong>たばこ</strong>、2位たき火、3位こんろ', '火事速の記録では、直近30日は<strong>建物火災</strong>がいちばん多い'],
         'figs': {'原因の上位3つ': fig(art_bars([('たばこ', 3058), ('たき火', 2781), ('こんろ', 2718)], '火事の原因 上位3つ（令和6年・全国）'), '出典：総務省消防庁「令和7年版 消防白書」'),
                  '火事速の記録から': fig(art_bars(stats, f'火事速の記録 直近30日の種類（{n30}件）', color='#2f6fb3'), '火事速が報道・消防本部の発表から記録したもの（毎日自動で更新）')},
         'tip': ['家でできる備え']},

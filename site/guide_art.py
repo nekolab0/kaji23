@@ -7,7 +7,7 @@ def fig(svg, cap, cls=''):
     return f'<figure class="g-fig {cls}">{svg}<figcaption>{cap}<span class="g-credit">図：{esc(SITE_NAME)}作成</span></figcaption></figure>'
 
 def _svg(w, h, body, label):
-    return f'<svg viewBox="0 0 {w} {h}" role="img" aria-label="{esc(label)}" xmlns="http://www.w3.org/2000/svg" font-family="BIZ UDPGothic, Hiragino Sans, Noto Sans JP, sans-serif">{body}</svg>'
+    return f'<svg viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img" aria-label="{esc(label)}" xmlns="http://www.w3.org/2000/svg" font-family="BIZ UDPGothic, Hiragino Sans, Noto Sans JP, sans-serif">{body}</svg>'
 
 def _flame(x, y, s=1.0):
     """炎（外側オレンジ・内側の赤）"""
