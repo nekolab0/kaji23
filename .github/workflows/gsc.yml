@@ -5,6 +5,8 @@ on:
   schedule:
     - cron: '41 22 * * *'      # UTC 22:41 = 日本時間 7:41
   workflow_dispatch:
+    inputs:
+      inspect: { description: 'URL検査の件数（空なら300）', required: false, default: '' }
 concurrency: { group: gsc, cancel-in-progress: false }
 permissions: { contents: write }
 jobs:
@@ -20,6 +22,7 @@ jobs:
           GSC_KEY: ${{ secrets.GSC_KEY }}
           GSC_SITE: ${{ vars.GSC_SITE }}
           SITE_URL: ${{ vars.SITE_URL }}
+          INSPECT_PER_DAY: ${{ inputs.inspect }}
         run: python3 seo/fetch_gsc.py
       - name: 保存
         # 30分ごとのデータ保存と重なると push が断られるので、取り込み直して最大5回試す

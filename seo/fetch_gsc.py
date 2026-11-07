@@ -16,7 +16,7 @@ from google.auth.transport.requests import AuthorizedSession
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gsc', 'api')
 SITE_URL = (os.environ.get('SITE_URL') or 'https://kajisoku.jp').rstrip('/')
-INSPECT_PER_DAY = int(os.environ.get('INSPECT_PER_DAY') or 300)   # Google の上限は1日2,000件・1分600件
+INSPECT_PER_DAY = int(os.environ.get('INSPECT_PER_DAY') or 300)   # 手動実行で 0 を渡すとURL検査を飛ばす（ただし空は300）   # Google の上限は1日2,000件・1分600件
 API = 'https://searchconsole.googleapis.com'
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
 JST = dt.timezone(dt.timedelta(hours=9))
@@ -68,6 +68,18 @@ def write_rows(name, dims, rows):
     print(f'{name}: {len(rows)}行')
 
 
+def sitemaps_status(s, site):
+    """Search Console に登録されたサイトマップの読み込み状況"""
+    r = s.get(f'{API}/webmasters/v3/sites/{urllib.parse.quote(site, safe="")}/sitemaps'); r.raise_for_status()
+    out = []
+    for x in r.json().get('sitemap', []):
+        sub = sum(int(c.get('submitted', 0)) for c in x.get('contents', []))
+        out.append({'path': x.get('path'), 'lastSubmitted': x.get('lastSubmitted'), 'lastDownloaded': x.get('lastDownloaded'),
+                    'isPending': x.get('isPending'), 'errors': x.get('errors'), 'warnings': x.get('warnings'), 'submittedUrls': sub})
+    print(f'登録サイトマップ：{len(out)}件')
+    return out
+
+
 def sitemap_urls():
     """サイトマップ索引 → 子サイトマップ → URL"""
     urls, todo, seen = [], [f'{SITE_URL}/sitemap.xml'], set()
@@ -98,7 +110,7 @@ def inspect(s, site, today):
     # まだ調べていないURLを先に、そのあと古い順。トップは毎回調べる
     order = sorted(urls, key=lambda u: (u.rstrip('/') != SITE_URL, u in known, known.get(u, {}).get('checkedAt', '')))
     done = 0
-    for u in order[:INSPECT_PER_DAY]:
+    for u in order[:max(INSPECT_PER_DAY, 0)]:
         r = s.post(f'{API}/v1/urlInspection/index:inspect', json={'inspectionUrl': u, 'siteUrl': site, 'languageCode': 'ja'})
         if r.status_code == 429:
             print('URL検査の上限に達したので終了'); break
@@ -140,12 +152,13 @@ def main():
     write_rows('queries_28d.csv', ['query'], query(s, site, start28, end, ['query']))
     write_rows('pages_28d.csv', ['page'], query(s, site, start28, end, ['page']))
     write_rows('query_page_28d.csv', ['query', 'page'], query(s, site, start28, end, ['query', 'page']))
+    sm = sitemaps_status(s, site)
     total, checked, counts = inspect(s, site, today.isoformat())
 
     with open(os.path.join(OUT, 'meta.json'), 'w', encoding='utf-8') as f:
         json.dump({'fetchedAt': dt.datetime.now(JST).isoformat(timespec='minutes'), 'property': site,
                    'range28d': [start28, end], 'sitemapUrls': total, 'inspectedUrls': checked,
-                   'coverage': counts}, f, ensure_ascii=False, indent=1)
+                   'coverage': counts, 'submittedSitemaps': sm}, f, ensure_ascii=False, indent=1)
 
 
 if __name__ == '__main__':
