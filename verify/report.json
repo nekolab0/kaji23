@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-08 06:38（日本時間）",
+ "ran_at": "2026-11-08 06:55（日本時間）",
  "data_fetched_at": "2026-11-07T05:23:07.256Z",
  "checks": [
   {
@@ -150,19 +150,19 @@
    "name": "M2 消防本部の読み取り（5分ごと）",
    "ok": true,
    "level": "warn",
-   "detail": "読めている 77/79ページ、取り込み 41件"
+   "detail": "読めている 78/79ページ、取り込み 41件"
   },
   {
    "name": "M3 読み取れていない消防本部",
    "ok": false,
    "level": "warn",
-   "detail": "kyoto(HTTP 522)、a-www-city-hanamaki-iwate-jp-syoubou-1018501-1020136-1018789-h(HTTP 530)"
+   "detail": "kyoto(HTTP 522)"
   },
   {
    "name": "M4 報道の収集の鮮度",
    "ok": true,
    "level": "error",
-   "detail": "最終収集 0.4時間前（30分ごとに収集）"
+   "detail": "最終収集 0.2時間前（30分ごとに収集）"
   },
   {
    "name": "L1 公式ページとの再照合",
