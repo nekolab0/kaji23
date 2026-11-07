@@ -13,7 +13,7 @@ on:
     inputs:
       quick: { description: '報道だけ取り直す（受付サーバーから30分ごとに呼ばれる）', required: false, default: 'false' }
 concurrency: { group: build, cancel-in-progress: false }
-permissions: { contents: write, pages: write, id-token: write }
+permissions: { contents: write, pages: write, id-token: write, actions: read }
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -54,11 +54,26 @@ jobs:
     runs-on: ubuntu-latest
     environment: { name: github-pages }
     steps:
-      # GitHub Pages 側の混雑で「Deployment failed, try again later.」になることがあるため、1分おいてもう1回だけ試す
+      # GitHub Pages 側の混雑で公開が「順番待ち」のまま止まることがある（11/6・11/7 の 18:07 UTC の回）。
+      # 5分で打ち切って1分おいてもう1回。それでもだめなら、直近3時間に公開できていればエラーにしない（30分後の回で公開される）
       - id: d1
         uses: actions/deploy-pages@v4
         continue-on-error: true
+        with: { timeout: 300000 }
       - if: steps.d1.outcome == 'failure'
         run: sleep 60
-      - if: steps.d1.outcome == 'failure'
+      - id: d2
+        if: steps.d1.outcome == 'failure'
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+        with: { timeout: 300000 }
+      - if: steps.d1.outcome == 'failure' && steps.d2.outcome == 'failure'
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          last=$(gh run list -R "$GITHUB_REPOSITORY" --workflow daily.yml --status success --limit 1 --json updatedAt -q '.[0].updatedAt')
+          echo "最後に成功した回: $last"
+          if [ -n "$last" ] && [ $(( $(date +%s) - $(date -d "$last" +%s) )) -lt 10800 ]; then
+            echo "::warning::GitHub Pages の公開が2回とも失敗しました（GitHub 側の一時的な不調）。直近3時間以内に公開できているので、次の回に任せます"
+          else
+            echo "::error::GitHub Pages の公開が3時間以上できていません"; exit 1
+          fi
