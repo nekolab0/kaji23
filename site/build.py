@@ -561,7 +561,7 @@ def machi_page(t):
     sts = [stations[s] for s in t['stations'] if s in stations]
     st_html = ''.join(
         f'<li><a href="{w["slug"]}.html#st-{s["slug"]}">{esc(s["name"])}</a>'
-        + (f'<span class="small muted">　今年の火災 {s["ytd"]}件（{jdate(s["when"])}時点、署の管轄全体）</span>' if s['status'] == 'ok' else '')
+        + (f'<span class="small muted">　今年の火災 {s["ytd"]}件（{jdate(s["when"]) + "時点、" if s["when"] else ""}署の管轄全体）</span>' if s['status'] == 'ok' else '')
         + '</li>' for s in sts)
     neighbors = [x for x in TOWN_LIST if x is not t and x['ward'] == ward and set(x['stations']) & set(t['stations'])][:40]
     nb_html = ''.join(f'<a href="{x["file"]}">{esc(x["base"])}</a>' for x in neighbors)
@@ -901,6 +901,24 @@ if _auto.exists():
 exec((SITE / 'nation.py').read_text(encoding='utf-8'))   # 全国版（都道府県・市区町村・町のページ、検索索引）
 exec((SITE / 'guides.py').read_text(encoding='utf-8'))   # 読み物（ガイド記事）と案内ダイヤルの一覧
 
+# サイトマップの lastmod：ページの中身が実際に変わった日を記録する（data/raw/sitemap_lastmod.json）
+# Google は lastmod が実際の更新日と一致しているサイトだけ信用するので、生成のたびに今日にはしない。
+# 生成のたびに変わるだけの文字（説明文の「【11/7 10:58時点】」、「最終収集 0.4時間前」）は比べる前に取り除く
+_VOLATILE = re.compile(r'【\d{1,2}/\d{1,2} \d{1,2}:\d{2}時点】|[\d.]+時間前')
+
+def page_lastmod(pages):
+    import hashlib
+    path = RAW / 'sitemap_lastmod.json'
+    old = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+    today = datetime.datetime.now(JST).date().isoformat()
+    new = {}
+    for fn, h in pages.items():
+        sig = hashlib.sha1(_VOLATILE.sub('', h).encode('utf-8')).hexdigest()[:12]
+        prev = old.get(fn)
+        new[fn] = prev if prev and prev[0] == sig else [sig, today]
+    path.write_text(json.dumps(new, ensure_ascii=False, separators=(',', ':'), sort_keys=True), encoding='utf-8')
+    return {fn: v[1] for fn, v in new.items()}
+
 def build(report=None):
     # og/（OGP画像）は og.js が作るので残す
     if DIST.exists():
@@ -935,18 +953,19 @@ def build(report=None):
                                                             'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news,
                                                             'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
     # 検索エンジン向け: サイトマップと robots.txt（独自ドメインに移すと robots.txt がドメインの直下に置かれて有効になる）
-    today = datetime.date.today().isoformat()
     skip = {'fire.html', 'town.html'}   # 中身が URL のパラメータで変わるページは載せない
-    urls = [(f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}') for fn in sorted(pages) if fn not in skip]
-    prio = lambda u: '1.0' if u.endswith('/') else '0.8' if '/p-' in u else '0.6'
+    lastmod = page_lastmod({fn: h for fn, h in pages.items() if fn not in skip})
+    urls = [((f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip]
     # 1ファイル5万件までの決まりがあるので、4万件ずつに分けて索引（sitemap.xml）から指す
+    # priority・changefreq は Google が使わないので書かない。lastmod は「中身が実際に変わった日」（page_lastmod）
     CH = 40000
     parts = [urls[i:i + CH] for i in range(0, len(urls), CH)] or [[]]
     for i, part in enumerate(parts, 1):
         (DIST / f'sitemap-{i}.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-            + ''.join(f'<url><loc>{u}</loc><lastmod>{today}</lastmod><priority>{prio(u)}</priority></url>\n' for u in part) + '</urlset>\n', encoding='utf-8')
+            + ''.join(f'<url><loc>{u}</loc><lastmod>{d}</lastmod></url>\n' for u, d in part) + '</urlset>\n', encoding='utf-8')
     (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + ''.join(f'<sitemap><loc>{SITE_URL}/sitemap-{i}.xml</loc><lastmod>{today}</lastmod></sitemap>\n' for i in range(1, len(parts) + 1)) + '</sitemapindex>\n', encoding='utf-8')
+        + ''.join(f'<sitemap><loc>{SITE_URL}/sitemap-{i}.xml</loc><lastmod>{max((d for _, d in part), default=datetime.datetime.now(JST).date().isoformat())}</lastmod></sitemap>\n'
+                  for i, part in enumerate(parts, 1)) + '</sitemapindex>\n', encoding='utf-8')
     # Web プッシュ通知: サービスワーカー（サイトの直下に置く）と、ホーム画面に追加するための manifest・アイコン
     (DIST / 'sw.js').write_text(SW_JS, encoding='utf-8')
     (DIST / 'manifest.webmanifest').write_text(json.dumps({'name': SITE_NAME + '｜近くの火事を町名で', 'short_name': SITE_NAME, 'start_url': '/', 'scope': '/', 'display': 'standalone',
