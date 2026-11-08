@@ -336,6 +336,13 @@ h1, .fire-card .place b { word-break: auto-phrase; }
 /* 読み物の見せ方：アイキャッチ・要点・目次・図・注意/ヒント・行動のうながし */
 .g-hero{margin:8px 0 20px}
 .g-hero svg,.g-fig svg{width:100%;height:auto;display:block}
+.g-hero{position:relative}
+.g-hero img{width:100%;height:auto;display:block;border-radius:12px;aspect-ratio:16/9;object-fit:cover;background:#fff}
+.g-hero img[src$=".png"]{object-fit:contain}
+.g-credit{position:absolute;right:8px;bottom:6px;font-size:11px;color:#6b6560;background:rgba(255,255,255,.85);padding:1px 6px;border-radius:4px}
+.g-thumb{position:relative;display:block}
+.g-thumb img{width:100%;height:auto;display:block;border-radius:8px;aspect-ratio:16/9;object-fit:cover;background:#fff}
+.g-thumb img[src$=".png"]{object-fit:contain}
 .g-points{background:#faf5f2;border-left:4px solid #c2341b;border-radius:8px;padding:14px 18px;margin:0 0 20px}
 .g-points-h,.g-toc-h,.g-cta-h{font-weight:700;margin:0 0 6px}
 .g-points ul{margin:0;padding-left:1.2em;display:grid;gap:4px}

@@ -930,6 +930,8 @@ def build(report=None):
     (DIST / 'data').mkdir(exist_ok=True)
     for f in ('site.css', 'site.js'):
         shutil.copy(SITE / 'assets' / f, DIST / 'assets' / f)
+    if (SITE / 'assets' / 'img').is_dir():   # 読み物の写真・イラスト（写真AC・イラストAC）
+        shutil.copytree(SITE / 'assets' / 'img', DIST / 'assets' / 'img', dirs_exist_ok=True)
     sizes = build_search_index(DIST)
     (DIST / 'assets' / 'areas.js').write_text(areas_js(sizes), encoding='utf-8')
     town_files(DIST)

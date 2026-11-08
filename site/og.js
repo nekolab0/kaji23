@@ -36,10 +36,19 @@ function liveHTML() {
 <div class="foot"><span>全国・町名ごとにリアルタイム</span><span>kajisoku.jp</span></div>`;
 }
 
+// 写真は setContent では相対パスで読めないので、data URI に埋め込む
+function inlineImg(h) {
+  return String(h || '').replace(/src="(assets\/img\/[^"]+)"/g, (m, p) => {
+    const f = path.join(DIST, p);
+    if (!fs.existsSync(f)) return m;
+    const type = /\.png$/.test(p) ? 'image/png' : /\.webp$/.test(p) ? 'image/webp' : 'image/jpeg';
+    return `src="data:${type};base64,${fs.readFileSync(f).toString('base64')}"`;
+  });
+}
 function guideHTML(g) {
-  return `<style>${css}.g{display:flex;gap:36px;align-items:center;flex:1}.g h1{font-size:60px;flex:1}.g .art{width:470px;flex:none}.g .art svg{width:100%;height:auto;border-radius:16px}</style>
+  return `<style>${css}.g{display:flex;gap:36px;align-items:center;flex:1}.g h1{font-size:60px;flex:1}.g .art{width:470px;flex:none}.g .art svg,.g .art img{width:100%;height:auto;border-radius:16px;display:block}.g .art .g-credit{display:none}</style>
 <div class="brand">${icon}<span>火事<b>速</b></span><span style="font-size:24px;color:#535b68;font-weight:700;margin-left:10px">火事の調べ方・備え</span></div>
-<div class="g"><h1>${esc(g.h1)}</h1><div class="art">${g.hero}</div></div>
+<div class="g"><h1>${esc(g.h1)}</h1><div class="art">${inlineImg(g.hero)}</div></div>
 <div class="foot"><span>図解でわかる・出典つき</span><span>kajisoku.jp</span></div>`;
 }
 const guides = fs.existsSync(path.join(DIST, 'data', '_guides.json')) ? JSON.parse(fs.readFileSync(path.join(DIST, 'data', '_guides.json'), 'utf8')) : [];
