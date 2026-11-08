@@ -1,16 +1,37 @@
 # 読み物（ガイド記事）と、都道府県ごとの「火災の案内ダイヤル」一覧のページ
 # build.py の名前空間で exec される（page・esc・SITE_NAME・SITE_URL・DIAL・RECORDS・bc_ld・push_box などを使う）
 import datetime as _dt
+import re as _re
+exec((SITE / 'guide_art.py').read_text(encoding='utf-8'))   # 図・イラスト（オリジナルの SVG）
 
-GUIDE_UPDATED = '2026-11-05'
+GUIDE_UPDATED = '2026-11-05'   # 一覧ページ用
+# 記事ごとの公開日・更新日（記事を足しても、ほかの記事の更新日は変わらないように）
+GUIDE_DATES = {'kajidoko': ('2026-11-05', '2026-11-08'), 'siren': ('2026-11-05', '2026-11-08'), '119': ('2026-11-05', '2026-11-08'), 'cause': ('2026-11-05', '2026-11-08')}
+GUIDE_OG = []   # og.js で記事ごとの OG 画像を作るための情報
+
+# 外部のフリー素材（写真AC・イラストAC）。1200×675 に整えて site/assets/img/ に置き、dist/assets/img/ へコピーする
+PHOTOS = {
+    'kajidoko': ('g-kajidoko.png', '炎と煙が上がる家のイラスト', 'イラストAC'),
+    'siren': ('g-siren.png', '赤い消防ポンプ自動車のイラスト', 'イラストAC'),
+    '119': ('g-119.jpg', 'スマートフォンの画面に表示された「119」', '写真AC'),
+    'cause': ('g-cause.png', 'こんろの鍋から火が上がるイラスト', 'イラストAC'),
+}
+
+def photo(slug):
+    """記事のアイキャッチ。画像ファイルがまだなければ None（オリジナルの SVG を使う）"""
+    f, alt, src = PHOTOS.get(slug, (None, '', ''))
+    if not f or not (SITE / 'assets' / 'img' / f).exists():
+        return None
+    return f'<img src="assets/img/{f}" width="1200" height="675" alt="{esc(alt)}" decoding="async"><span class="g-credit">{esc(src)}</span>'
 
 def _src(items):
     return ('<section class="section" aria-labelledby="src"><h2 id="src">出典・参考</h2><ul class="plain">'
             + ''.join(f'<li><a href="{esc(u)}" target="_blank" rel="noopener">{esc(n)} ↗</a></li>' for n, u in items) + '</ul></section>')
 
 def _article_ld(slug, title, desc):
+    pub, mod = GUIDE_DATES.get(slug, (GUIDE_UPDATED, GUIDE_UPDATED))
     return {"@context": "https://schema.org", "@type": "Article", "headline": title, "description": desc,
-            "datePublished": GUIDE_UPDATED, "dateModified": GUIDE_UPDATED, "inLanguage": "ja",
+            "datePublished": pub, "dateModified": mod, "inLanguage": "ja", "image": [f'{SITE_URL}/og/g-{slug}.png'],
             "author": {"@type": "Organization", "name": SITE_NAME, "url": SITE_URL + '/'},
             "publisher": {"@type": "Organization", "name": SITE_NAME}, "mainEntityOfPage": f'{SITE_URL}/g-{slug}.html'}
 
@@ -30,20 +51,48 @@ def _kind_stats(days=30):
     c = collections.Counter(n for n in (norm(rec_kind(r)) for r in rs) if n)
     return c.most_common(8), sum(c.values())
 
-def guide_article(slug, title, h1, desc, lead, body, sources, related):
+def _plain_len(html):
+    return len(_re.sub(r'<[^>]+>|\s', '', html))
+
+def guide_article(slug, title, h1, desc, lead, body, sources, related, art=None):
+    """読み物のページ。art: {'hero': SVG, 'points': [要点], 'figs': {見出しの一部: 図のHTML}, 'warn': [見出しの一部], 'tip': [見出しの一部]}"""
+    art = art or {}
+    # 見出しに番号の id を振り、目次を作る。図は対応する見出しの直後に差し込む
+    toc, n = [], [0]
+    def h2(m):
+        n[0] += 1; t = m.group(1); hid = f'h{n[0]}'; toc.append((hid, _re.sub('<[^>]+>', '', t)))
+        extra = ''.join(f for k, f in (art.get('figs') or {}).items() if k in t)
+        return f'<h2 id="{hid}">{t}</h2>{extra}'
+    body2 = _re.sub(r'<h2>(.*?)</h2>', h2, body)
+    for k in art.get('warn', []): body2 = _re.sub(r'<section class="section">(<h2 id="h\d+">[^<]*' + _re.escape(k) + ')', r'<section class="section g-warn">\1', body2)
+    for k in art.get('tip', []): body2 = _re.sub(r'<section class="section">(<h2 id="h\d+">[^<]*' + _re.escape(k) + ')', r'<section class="section g-tip">\1', body2)
+    mins = max(1, round(_plain_len(body) / 500))
+    pts = ''.join(f'<li>{p_}</li>' for p_ in art.get('points', []))
+    points = f'<aside class="g-points" aria-label="この記事でわかること"><p class="g-points-h">この記事でわかること</p><ul>{pts}</ul></aside>' if pts else ''
+    tocs = ''.join(f'<li><a href="#{hid}">{esc(t)}</a></li>' for hid, t in toc)
+    toc_html = f'<nav class="g-toc" aria-label="目次"><p class="g-toc-h">目次</p><ol>{tocs}</ol></nav>' if len(toc) >= 3 else ''
+    hero = f'<figure class="g-hero">{art["hero"]}</figure>' if art.get('hero') else ''
     rel = ''.join(f'<li><a href="g-{esc(s_)}.html">{esc(t_)}</a></li>' for s_, t_ in related)
+    cta = f'''<aside class="g-cta"><p class="g-cta-h">あなたの町の「いまの火事」を見る</p>
+<p>都道府県・市区町村・町名で検索すると、その町の報道・消防の発表・近所の人の報告をまとめて見られます。町のページの「火事を通知で受け取る」で、次に火事があったときにスマホへ知らせることもできます。</p>
+<p><a class="btn" href="index.html">町名で検索する</a></p></aside>'''
     html = f'''<section class="hero"><div class="wrap">
   <p class="crumb"><a href="index.html">トップ</a> ／ <a href="guide.html">火事の調べ方・備え</a></p>
   <h1>{esc(h1)}</h1>
   <p class="lead">{lead}</p>
-  <p class="small muted">{SITE_NAME}編集部　更新：{GUIDE_UPDATED.replace("-", "/")}</p>
+  <p class="small muted">{SITE_NAME}編集部　更新：{GUIDE_DATES.get(slug, (0, GUIDE_UPDATED))[1].replace("-", "/")}　約{mins}分で読めます</p>
 </div></section>
 <div class="wrap article">
-{body}
+{hero}
+{points}
+{toc_html}
+{body2}
+{cta}
 {_src(sources)}
 <section class="section" aria-labelledby="more"><h2 id="more">あわせて読みたい</h2><ul class="plain">{rel}<li><a href="guide.html">火事の調べ方・備えの記事一覧</a></li></ul></section>
 </div>'''
-    return page(f'g-{slug}', f'{title}｜{SITE_NAME}', desc, html, ld_extra=[bc_ld([('火事の調べ方・備え', 'guide.html'), (h1, None)]), _article_ld(slug, title, desc)])
+    GUIDE_OG.append({'slug': slug, 'h1': h1, 'hero': art.get('hero', '')})
+    return page(f'g-{slug}', f'{title}｜{SITE_NAME}', desc, html, og_image=f'og/g-{slug}.png', ld_extra=[bc_ld([('火事の調べ方・備え', 'guide.html'), (h1, None)]), _article_ld(slug, title, desc)])
 
 def guide_pages():
     pages = {}
@@ -103,14 +152,13 @@ def guide_pages():
        [('東京消防庁「119番通報」', 'https://www.tfd.metro.tokyo.lg.jp/lfe/119/119.html'), ('千葉県「119番のかけ方」', 'https://www.pref.chiba.lg.jp/bousaik/jibun/koudou/119kakekata.html')],
        [('kajidoko', '今どこで火事か調べる方法'), ('cause', '火事の原因ランキング')]),
       ('cause', '火事の原因ランキング：1位はたばこ（令和6年・消防白書）と、身近な火事の傾向', '火事の原因ランキング（消防白書）',
-       '令和6年に全国で起きた火事は37,141件、1日あたり約101件。原因の1位はたばこ、2位たき火、3位こんろ（令和7年版消防白書）。火事速の記録から見た直近の火事の種類も紹介します。',
+       '令和6年に全国で起きた火事は37,141件、1日当たり約102件。原因の1位はたばこ、2位たき火、3位こんろ（令和7年版消防白書）。火事速の記録から見た直近の火事の種類も紹介します。',
        '全国では、1日に100件ほどの火事が起きています。どんな原因が多いのかを知ると、家でできる備えが見えてきます。',
        f'''<section class="section"><h2>全国の火事は1年で37,141件</h2>
-<p>令和7年版消防白書によると、令和6年（2024年）中に全国で起きた火事は<strong>37,141件</strong>でした。1日あたり約101件、およそ14分に1件の割合です。</p></section>
+<p>令和7年版消防白書によると、令和6年（2024年）中に全国で起きた火事は<strong>37,141件</strong>でした。1日当たり約102件、およそ14分に1件の割合です。</p></section>
 <section class="section"><h2>原因の上位3つ</h2>
-<table class="tbl"><thead><tr><th>順位</th><th>原因</th><th>件数（令和6年）</th></tr></thead><tbody>
-<tr><td>1</td><td>たばこ</td><td class="num">3,058件</td></tr><tr><td>2</td><td>たき火</td><td class="num">2,781件</td></tr><tr><td>3</td><td>こんろ</td><td class="num">2,718件</td></tr></tbody></table>
-<p class="small muted">出典：総務省消防庁「令和7年版 消防白書」</p></section>
+<details class="g-data"><summary>数字で見る</summary><table class="tbl"><thead><tr><th>順位</th><th>原因</th><th>件数（令和6年）</th></tr></thead><tbody>
+<tr><td>1</td><td>たばこ</td><td class="num">3,058件</td></tr><tr><td>2</td><td>たき火</td><td class="num">2,781件</td></tr><tr><td>3</td><td>こんろ</td><td class="num">2,718件</td></tr></tbody></table></details></section>
 <section class="section"><h2>家でできる備え</h2>
 <ul class="plain"><li><strong>たばこ</strong>：寝たばこをしない。灰皿に水を入れ、吸い殻をためない</li>
 <li><strong>たき火</strong>：風の強い日・乾燥した日はしない。その場を離れない。消火用の水を用意する</li>
@@ -118,18 +166,35 @@ def guide_pages():
 <li><strong>住宅用火災警報器</strong>：設置から10年たったものは交換の目安です</li></ul></section>
 <section class="section"><h2>火事速の記録から（直近30日・種類がわかった{n30}件）</h2>
 <p>{SITE_NAME}が報道・消防本部の発表から記録した、直近30日の火事の種類です（収録分のみで、すべての火事ではありません）。</p>
-<table class="tbl"><thead><tr><th>種類</th><th>件数</th></tr></thead><tbody>{stat_rows}</tbody></table>
+<details class="g-data"><summary>数字で見る</summary><table class="tbl"><thead><tr><th>種類</th><th>件数</th></tr></thead><tbody>{stat_rows}</tbody></table></details>
 <p class="small muted">毎日自動で更新しています。</p></section>''',
        [('総務省消防庁「令和7年版 消防白書」火災の現状', 'https://www.fdma.go.jp/publication/hakusho/r7/chapter1/section1/para1/69229.html')],
        [('kajidoko', '今どこで火事か調べる方法'), ('119', '119番通報の伝え方'), ('siren', 'サイレンの見分け方')]),
     ]
+    ART = {
+      'kajidoko': {'hero': photo('kajidoko') or art_kajidoko_hero(),
+        'points': ['火や煙が目の前に見えたら、調べる前に<strong>119番</strong>', '場所を知りたいだけなら、<strong>案内ダイヤル・火災メール・火事速</strong>で確かめる', 'X の投稿は未確認の情報。<strong>確かめるための119番や現場見物はしない</strong>'],
+        'figs': {'まず：': fig(art_kajidoko_flow(), '見えているか・知りたいだけかで、やることが変わります')}, 'warn': ['やってはいけないこと']},
+      'siren': {'hero': photo('siren') or art_siren_hero(),
+        'points': ['消防車は火災出動のとき「<strong>ウーウー＋カンカン</strong>」が多い', '救急車は「<strong>ピーポー</strong>」、パトカーは「<strong>ウー</strong>」', '使い分けは消防本部ごとに違う。場所は<strong>案内ダイヤルや火事速</strong>で確かめる'],
+        'figs': {'消防車：': fig(art_siren_waves(), '3つのサイレンの音の動きのイメージ')}, 'tip': ['確かめるには']},
+      '119': {'hero': photo('119') or art_119_hero(),
+        'points': ['最初に「<strong>火事です</strong>」', '次に<strong>住所</strong>（市区町村から）と、<strong>何が燃えているか</strong>', '住所がわからなければ<strong>交差点・目立つ建物・電柱の番号</strong>'],
+        'figs': {'聞かれる順番': fig(art_119_steps(), '119番で聞かれる順番と、答え方の例')}, 'tip': ['住所がわからないとき']},
+      'cause': {'hero': photo('cause') or art_cause_hero(),
+        'points': ['全国の火事は1年で<strong>37,141件</strong>（1日に約102件）', '原因の1位は<strong>たばこ</strong>、2位たき火、3位こんろ', '火事速の記録では、直近30日は<strong>建物火災</strong>がいちばん多い'],
+        'figs': {'原因の上位3つ': fig(art_bars([('たばこ', 3058), ('たき火', 2781), ('こんろ', 2718)], '火事の原因 上位3つ（令和6年・全国）'), '出典：総務省消防庁「令和7年版 消防白書」'),
+                 '火事速の記録から': fig(art_bars(stats, f'火事速の記録 直近30日の種類（{n30}件）', color='#2f6fb3'), '火事速が報道・消防本部の発表から記録したもの（毎日自動で更新）')},
+        'tip': ['家でできる備え']},
+    }
     for slug, title, h1, desc, lead, body, sources, related in G:
-        pages[f'g-{slug}.html'] = guide_article(slug, title, h1, desc, lead, body, sources, related)
-    items = ''.join(f'<li><a href="g-{esc(s_)}.html"><b>{esc(h1)}</b></a><br><span class="small muted">{esc(d_)}</span></li>' for s_, _t, h1, d_, *_ in G)
+        pages[f'g-{slug}.html'] = guide_article(slug, title, h1, desc, lead, body, sources, related, ART.get(slug))
+    items = ''.join(f'<li><a class="g-card" href="g-{esc(s_)}.html"><span class="g-thumb">{ART[s_]["hero"]}</span><b>{esc(h1)}</b><span class="small muted">{esc(d_[:70])}…</span></a></li>' for s_, _t, h1, d_, *_ in G)
     pages['guide.html'] = page('guide', f'火事の調べ方・備え（ガイド）｜{SITE_NAME}', '近くで火事かどうかの調べ方、サイレンの見分け方、119番通報の伝え方、火事の原因と備えなど、火事にまつわる知識をまとめています。',
         f'''<section class="hero"><div class="wrap"><p class="crumb"><a href="index.html">トップ</a> ／ 火事の調べ方・備え</p><h1>火事の調べ方・備え</h1>
 <p class="lead">サイレンや煙に気づいたときの調べ方と、火事に備えるための知識をまとめています。</p></div></section>
-<div class="wrap"><section class="section"><ul class="plain">{items}<li><a href="dial-list.html"><b>都道府県別 火災・災害の案内ダイヤル一覧</b></a><br><span class="small muted">出動中の火災を自動音声で案内する消防本部の電話番号</span></li></ul></section></div>''',
+<div class="wrap"><section class="section"><ul class="g-cards">{items}</ul>
+<p><a href="dial-list.html"><b>都道府県別 火災・災害の案内ダイヤル一覧</b></a><br><span class="small muted">出動中の火災を自動音声で案内する消防本部の電話番号</span></p></section></div>''',
         ld_extra=[bc_ld([('火事の調べ方・備え', None)])])
     pages.update(dial_pages())
     return pages

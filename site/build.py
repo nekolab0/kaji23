@@ -313,6 +313,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=N
 <link rel="canonical" href="{esc(canon)}">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="max-image-preview:large">
 <meta name="theme-color" content="#c2341c">
 <meta name="kaji23-api" content="{esc(REPORTS_API)}">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -929,6 +930,8 @@ def build(report=None):
     (DIST / 'data').mkdir(exist_ok=True)
     for f in ('site.css', 'site.js'):
         shutil.copy(SITE / 'assets' / f, DIST / 'assets' / f)
+    if (SITE / 'assets' / 'img').is_dir():   # 読み物の写真・イラスト（写真AC・イラストAC）
+        shutil.copytree(SITE / 'assets' / 'img', DIST / 'assets' / 'img', dirs_exist_ok=True)
     sizes = build_search_index(DIST)
     (DIST / 'assets' / 'areas.js').write_text(areas_js(sizes), encoding='utf-8')
     town_files(DIST)
@@ -949,6 +952,7 @@ def build(report=None):
     (DIST / 'data' / 'news.js').write_text(news_js(), encoding='utf-8')
     (DIST / 'data' / 'kaji23.json').write_text(json.dumps(public, ensure_ascii=False, indent=1), encoding='utf-8')
     # 内部用（OG画像・検査で使う）
+    (DIST / 'data' / '_guides.json').write_text(json.dumps(GUIDE_OG, ensure_ascii=False), encoding='utf-8')   # 読み物の OG 画像用（og.js）
     (DIST / 'data' / '_model.json').write_text(json.dumps({'wards': [{k: v for k, v in w.items() if k != 'stations'} | {'stations': [s['slug'] for s in w['stations']]} for w in wards],
                                                             'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news,
                                                             'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
@@ -975,7 +979,7 @@ def build(report=None):
     # IndexNow（Bing など）の確認用の鍵ファイル
     _ik = (SITE / 'indexnow_key.txt').read_text().strip()
     (DIST / f'{_ik}.txt').write_text(_ik, encoding='utf-8')
-    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
+    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nDisallow: /data/_guides.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:
         (DIST / 'ads.txt').write_text(f"google.com, {ADS_CLIENT.replace('ca-pub-', 'pub-')}, DIRECT, f08c47fec0942fa0\n", encoding='utf-8')
