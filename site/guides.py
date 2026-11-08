@@ -9,10 +9,10 @@ GUIDE_UPDATED = '2026-11-05'   # 一覧ページ用
 GUIDE_DATES = {'kajidoko': ('2026-11-05', '2026-11-08'), 'siren': ('2026-11-05', '2026-11-08'), '119': ('2026-11-05', '2026-11-08'), 'cause': ('2026-11-05', '2026-11-08')}
 GUIDE_OG = []   # og.js で記事ごとの OG 画像を作るための情報
 
-# 外部のフリー素材（写真AC・イラストAC）。site/assets/img/ に置き、dist/assets/img/ へコピーする
+# 外部のフリー素材（写真AC・イラストAC）。1200×675 に整えて site/assets/img/ に置き、dist/assets/img/ へコピーする
 PHOTOS = {
     'kajidoko': ('g-kajidoko.png', '炎と煙が上がる家のイラスト', 'イラストAC'),
-    'siren': ('g-siren.jpg', '消防署の前に並ぶ赤い消防車', '写真AC'),
+    'siren': ('g-siren.png', '赤い消防ポンプ自動車のイラスト', 'イラストAC'),
     '119': ('g-119.jpg', 'スマートフォンの画面に表示された「119」', '写真AC'),
     'cause': ('g-cause.png', 'こんろの鍋から火が上がるイラスト', 'イラストAC'),
 }
@@ -22,12 +22,7 @@ def photo(slug):
     f, alt, src = PHOTOS.get(slug, (None, '', ''))
     if not f or not (SITE / 'assets' / 'img' / f).exists():
         return None
-    try:
-        from PIL import Image
-        w, h = Image.open(SITE / 'assets' / 'img' / f).size
-    except Exception:
-        w, h = 1200, 800
-    return f'<img src="assets/img/{f}" width="{w}" height="{h}" alt="{esc(alt)}" decoding="async"><span class="g-credit">{esc(src)}</span>'
+    return f'<img src="assets/img/{f}" width="1200" height="675" alt="{esc(alt)}" decoding="async"><span class="g-credit">{esc(src)}</span>'
 
 def _src(items):
     return ('<section class="section" aria-labelledby="src"><h2 id="src">出典・参考</h2><ul class="plain">'

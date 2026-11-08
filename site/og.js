@@ -61,6 +61,7 @@ const guides = fs.existsSync(path.join(DIST, 'data', '_guides.json')) ? JSON.par
   const jobs = [['index', indexHTML()], ['live', liveHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)])).concat(guides.map(g => ['g-' + g.slug, guideHTML(g)]));
   for (const [name, html] of jobs) {
     await page.setContent(html, { waitUntil: 'load' });
+    await page.evaluate(() => Promise.all([...document.images].map(i => i.decode().catch(() => {}))));   // 写真の描画を待つ
     await page.screenshot({ path: path.join(out, name + '.png'), type: 'png' });
   }
   await browser.close();
