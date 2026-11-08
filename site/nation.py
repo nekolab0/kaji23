@@ -205,7 +205,7 @@ def index_page(full=True):
   {ALERT_JP}
 </section>
 <section class="section" aria-labelledby="now">
-  <div class="sec-head"><h2 id="now">いま・直近24時間の火事</h2><span class="small muted live-updated"></span></div>
+  <div class="sec-head"><h2 id="now">いま・直近24時間の火事</h2><span class="small muted live-updated"></span><a class="map-link" href="map.html">地図で見る →</a></div>
   <div class="two-col">
     {live_jp(empty='いま上がっている報告はありません。サイレンや煙に気づいたら、右の欄から知らせてください。')}
     {post_panel(title='サイレン・煙・火に気づいたら', note='全国どこからでも送れます。同じ場所の近くの人の報告とまとめて「火事のページ」ができ、近所の人と共有できます。消防への通報にはなりません。')}
@@ -229,7 +229,7 @@ def index_page(full=True):
 <section class="section" aria-labelledby="gd">
   <h2 id="gd">火事の調べ方・備え</h2>
   <ul class="plain"><li><a href="g-kajidoko.html">近くで火事？今どこで火事か調べる方法5つ</a></li><li><a href="g-siren.html">消防車のサイレン「ウーウーカンカン」の意味</a></li>
-  <li><a href="g-119.html">火事を見つけたら：119番通報の伝え方</a></li><li><a href="g-cause.html">火事の原因ランキング（消防白書）</a></li><li><a href="dial-list.html">都道府県別 火災の案内ダイヤル一覧</a></li></ul>
+  <li><a href="g-119.html">火事を見つけたら：119番通報の伝え方</a></li><li><a href="g-cause.html">火事の原因ランキング（消防白書）</a></li><li><a href="g-taika-itoigawa.html">糸魚川大火（2016年）とは？原因・被害とその後</a></li><li><a href="map.html">火事マップ（全国）</a></li><li><a href="dial-list.html">都道府県別 火災の案内ダイヤル一覧</a></li></ul>
 </section>
 </div>'''
     title = f'{SITE_NAME}｜今どこで火事？全国の火事の目撃情報・速報を町名でリアルタイムに'
@@ -269,7 +269,7 @@ def pref_page(p):
   {ALERT_JP if p != '東京都' else ALERT}
 </section>
 <section class="section" aria-labelledby="now">
-  <h2 id="now">いまの{esc(p)}</h2>
+  <div class="sec-head"><h2 id="now">いまの{esc(p)}</h2><a class="map-link" href="map.html#p={quote(p)}">{esc(p)}の火事を地図で見る →</a></div>
   <div class="two-col">{live_jp(pref=p)}{post_panel(p, title=f'{p}で気づいたことを知らせる')}</div>
 </section>
 <section class="section" aria-labelledby="news">
@@ -290,6 +290,14 @@ def pref_page(p):
     title = f'【速報】{p}の火事どこ？今日のサイレン・火事情報｜{SITE_NAME}'
     desc = area_desc(p)
     return page(pref_file(p)[:-5], title, desc, body, og_image='og/live.png')
+
+# ---------- 地域の過去の大きな火事（読み物へのリンク。SEO 担当の決定 2026-11-07：被災した市と記事を相互リンク） ----------
+TAIKA = {('新潟県', '糸魚川市'): ('g-taika-itoigawa.html', '糸魚川大火（2016年）', '2016年12月22日、糸魚川駅の北側で147棟が焼けた火事。原因・燃え広がった理由と、その後の10年で変わったことをまとめています。')}
+def taika_block(p, c):
+    x = TAIKA.get((p, c))
+    if not x: return ''
+    return (f'<section class="section" aria-labelledby="taika"><h2 id="taika">{esc(c)}の過去の大きな火事</h2>'
+            f'<p><a href="{x[0]}"><b>{esc(x[1])}</b></a>　{esc(x[2])}</p></section>')
 
 # ---------- 市区町村（23区以外） ----------
 def city_page(p, c):
@@ -326,6 +334,7 @@ def city_page(p, c):
 </section>
 {dial_block(p, c)}
 {city_records(p, c)}
+{taika_block(p, c)}
 {main}
 <section class="section" aria-labelledby="sns">
   <h2 id="sns">SNS・ニュースで確かめる</h2>

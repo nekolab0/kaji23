@@ -36,6 +36,14 @@ function liveHTML() {
 <div class="foot"><span>全国・町名ごとにリアルタイム</span><span>kajisoku.jp</span></div>`;
 }
 
+function mapHTML() {
+  const dot = c => `<i style="display:inline-block;width:26px;height:26px;border-radius:50%;background:${c};border:3px solid #fff;box-shadow:0 0 0 2px #ddd;margin-right:10px;vertical-align:-4px"></i>`;
+  return `<style>${css}.lg{display:flex;gap:36px;font-size:30px;font-weight:700;color:#3a3f48}</style><div class="brand">${icon}<span>火事<b>速</b></span></div>
+<h1>火事マップ<br>今日どこで火事？</h1>
+<div class="sub">全国の火事を地図で。24時間・7日・30日で切り替え。</div>
+<div class="lg"><span>${dot('#c2341b')}消防の発表</span><span>${dot('#e8891c')}報道</span><span>${dot('#2f6fb3')}近所の人の報告</span></div>
+<div class="foot"><span>全国・町名ごとに</span><span>kajisoku.jp</span></div>`;
+}
 // 写真は setContent では相対パスで読めないので、data URI に埋め込む
 function inlineImg(h) {
   return String(h || '').replace(/src="(assets\/img\/[^"]+)"/g, (m, p) => {
@@ -58,7 +66,7 @@ const guides = fs.existsSync(path.join(DIST, 'data', '_guides.json')) ? JSON.par
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-  const jobs = [['index', indexHTML()], ['live', liveHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)])).concat(guides.map(g => ['g-' + g.slug, guideHTML(g)]));
+  const jobs = [['index', indexHTML()], ['live', liveHTML()], ['map', mapHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)])).concat(guides.map(g => ['g-' + g.slug, guideHTML(g)]));
   for (const [name, html] of jobs) {
     await page.setContent(html, { waitUntil: 'load' });
     await page.evaluate(() => Promise.all([...document.images].map(i => i.decode().catch(() => {}))));   // 写真の描画を待つ

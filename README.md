@@ -13,7 +13,8 @@
 ## 仕組み
 1. `collector/run.mjs` … 東京消防庁サイトから収集（23区の管轄表 → 58署の災害情報ページ → 日次速報）。解析は `parse_station.js`（署ごとに違う表の書式を見出しで読み分け、読み取った行も記録）。
 2. `site/build.py` … `data/raw/` の最新データからページを生成（`dist/`）。トップ（町名検索・現在地・いまの火事）、町ページ926（渋谷区・目黒区の町名は `towns_extra.json`）、火事のページ、区ページ、統計、投稿ルール。
-3. `site/og.js` … SNS共有用のOGP画像（区ごと）。
+3. `site/og.js` … SNS共有用のOGP画像（区ごと・読み物・火事マップ）。
+   - `site/mapview.py` … 火事マップ `map.html`。直近30日の記録を町の代表点に置いた `dist/data/map.json` と、近所の人の報告に位置をつけるための都道府県ごとの町の代表点 `dist/data/geo/NN.json` を作る。地図の動きは `site/assets/map.js`（Leaflet＋国土地理院タイル、`#p=都道府県&d=7` で絞り込み）
 4. `site/verify.js` … 自動チェック（出典行と値の一致、区の合計の再計算、人口の検算、表示エラー・横はみ出し・リンク切れ・検索・並べ替え）。
 5. `site/verify_live.mjs` … 公開前に、全署の公式ページを取り直して値を再照合。
 6. `collector/news_run.mjs` … 報道（Googleニュースの検索RSS 74本：全国・47都道府県・23区）から全国の火事を抽出（`news_jp.js`、テストは `news_jp.test.mjs`）し `data/raw/news.json` に30日分を保持。見出し文は保存・表示せず、区・町名・建物の種類・けが人の有無・報道元リンクだけを使う（`news.js`）。

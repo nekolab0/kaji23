@@ -339,7 +339,7 @@ h1, .fire-card .place b { word-break: auto-phrase; }
 .g-hero{position:relative}
 .g-hero img{width:100%;height:auto;display:block;border-radius:12px;aspect-ratio:16/9;object-fit:cover;background:#fff}
 .g-hero img[src$=".png"]{object-fit:contain}
-.g-credit{position:absolute;right:8px;bottom:6px;font-size:11px;color:#6b6560;background:rgba(255,255,255,.85);padding:1px 6px;border-radius:4px}
+.g-hero .g-credit,.g-thumb .g-credit{position:absolute;right:8px;bottom:6px;font-size:11px;color:#6b6560;background:rgba(255,255,255,.85);padding:1px 6px;border-radius:4px}
 .g-thumb{position:relative;display:block}
 .g-thumb img{width:100%;height:auto;display:block;border-radius:8px;aspect-ratio:16/9;object-fit:cover;background:#fff}
 .g-thumb img[src$=".png"]{object-fit:contain}
@@ -361,3 +361,21 @@ h1, .fire-card .place b { word-break: auto-phrase; }
 .g-card{display:grid;gap:6px;text-decoration:none;color:inherit;border:1px solid #e6e2dc;border-radius:12px;padding:10px 12px 14px}
 .g-card:hover b{text-decoration:underline}
 .g-thumb svg{width:100%;height:auto;display:block;border-radius:8px}
+
+/* 火事マップ（map.html） */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.map-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:0 0 10px}
+.seg{display:inline-flex;border:1px solid #d9d3cb;border-radius:999px;overflow:hidden}
+.seg button{font:inherit;font-size:14px;font-weight:700;padding:8px 16px;border:0;background:#fff;color:#4a4540;cursor:pointer}
+.seg button+button{border-left:1px solid #d9d3cb}
+.seg button[aria-pressed="true"]{background:#c2341b;color:#fff}
+.map-pref-sel select{font:inherit;font-size:14px;padding:8px 10px;border:1px solid #d9d3cb;border-radius:8px;background:#fff}
+.fire-map{height:min(70vh,520px);min-height:360px;border:1px solid #e6e2dc;border-radius:12px;background:#f3f1ee;position:relative;z-index:0}
+.fire-map .map-loading{padding:16px}
+.map-foot{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-top:8px}
+.map-legend{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+.map-legend .dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1.5px solid #fff;box-shadow:0 0 0 1px #ccc}
+.dot.o{background:#c2341b}.dot.n{background:#e8891c}.dot.r{background:#2f6fb3}
+.map-pop{font-size:14px;line-height:1.6}
+.map-pref{font-size:16px;margin:18px 0 6px}
+.sec-head .map-link{font-size:14px;font-weight:700}
