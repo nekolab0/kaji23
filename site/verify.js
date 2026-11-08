@@ -190,6 +190,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       if (/^(https?:|mailto:|tel:)/.test(href)) continue;
       const [file0, hash] = href.split('#'); const file = decodeURIComponent((file0 || f).split('?')[0]);
       if (!fileSet.has(file)) { links.push(`${f} → ${href}（ファイルなし）`); continue; }
+      if (hash && /^[pd]=/.test(decodeURIComponent(hash))) continue;   // 火事マップの絞り込み（#p=都道府県&d=7）はアンカーではない
       if (hash && !fs.readFileSync(path.join(DIST, file), 'utf8').includes(`id="${hash}"`)) links.push(`${f} → ${href}（#${hash}なし）`);
     }
   }
@@ -197,9 +198,9 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   for (const width of [375, 1280]) {
     const wctx = await mkctx(width);
     const page = await wctx.newPage();
-    page.on('console', m => { if (m.type() === 'error' && !/fonts\.g/.test(m.text()) && !/ERR_FAILED/.test(m.text())) consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${m.text()}`); });
+    page.on('console', m => { if (m.type() === 'error' && !/cyberjapandata/.test((m.location() || {}).url || '') && !/fonts\.g/.test(m.text()) && !/ERR_FAILED/.test(m.text())) consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${m.text()}`); });
     page.on('pageerror', e => consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${e.message}`));
-    page.on('requestfailed', r => { const ft = (r.failure() && r.failure().errorText) || ''; if (/\/api\//.test(r.url()) && /ERR_ABORTED/.test(ft)) return;   // 次のページへ移るときに打ち切られた受付サーバーへの問い合わせ（表示の不具合ではない）
+    page.on('requestfailed', r => { const ft = (r.failure() && r.failure().errorText) || ''; if (/\/api\//.test(r.url()) && /ERR_ABORTED/.test(ft)) return; if (/cyberjapandata\.gsi\.go\.jp/.test(r.url())) return;   // 前者：次のページへ移るときに打ち切られた受付サーバーへの問い合わせ。後者：火事マップの地図タイル（国土地理院の配信の都合）。どちらも表示の不具合ではない
     if (!/fonts\.g|x\.com|twitter|yahoo|google|workers\.dev/.test(r.url())) reqFail.push(`${r.url()} ${r.failure() && r.failure().errorText}`); });
     for (const f of pages) {
       await page.goto('file://' + path.join(DIST, f.split('?')[0]) + (f.includes('?') ? '?' + f.split('?')[1].split('&').map(kv => kv.split('=').map(encodeURIComponent).join('=')).join('&') : ''), { waitUntil: 'load' });
@@ -209,7 +210,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       const o = await page.evaluate(() => {
         const vw = document.documentElement.clientWidth, sw = document.documentElement.scrollWidth;
         const wide = [...document.querySelectorAll('body *')].filter(el => {
-          if (el.closest('.table-box') || el.closest('.nav') || el.closest('script') || el.closest('.sr')) return false;
+          if (el.closest('.table-box') || el.closest('.nav') || el.closest('script') || el.closest('.sr') || el.closest('.sr-only') || el.closest('.leaflet-container')) return false;   // 地図は枠の外を隠している
           const r = el.getBoundingClientRect(); return r.width > 0 && (r.right > vw + 1 || r.left < -1);
         }).slice(0, 3).map(el => el.tagName + '.' + el.className);
         return { vw, sw, wide };

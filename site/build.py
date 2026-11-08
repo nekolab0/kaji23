@@ -269,7 +269,7 @@ def search_block(autofocus=False):
 
 # ---------- 部品 ----------
 FIRE_ICON = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c2341c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-6 1-10z"/></svg>'
-NAV = [('index', 'いまの火事'), ('index#regions', '地域から探す'), ('p-東京都', '東京23区'), ('dial', 'サイレン・119'), ('rules', '投稿のルール'), ('about', '出典')]
+NAV = [('index', 'いまの火事'), ('map', '火事マップ'), ('index#regions', '地域から探す'), ('p-東京都', '東京23区'), ('dial', 'サイレン・119'), ('rules', '投稿のルール'), ('about', '出典')]
 
 ADS = json.loads((SITE / 'ads.json').read_text(encoding='utf-8'))
 ADS_CLIENT = (ADS.get('client') or '').strip()
@@ -901,6 +901,7 @@ if _auto.exists():
     OFFICIAL_SOURCES = list(dict.fromkeys(OFFICIAL_SOURCES + [(x['name'], x['url']) for x in _aj]))
 exec((SITE / 'nation.py').read_text(encoding='utf-8'))   # 全国版（都道府県・市区町村・町のページ、検索索引）
 exec((SITE / 'guides.py').read_text(encoding='utf-8'))   # 読み物（ガイド記事）と案内ダイヤルの一覧
+exec((SITE / 'mapview.py').read_text(encoding='utf-8'))   # 火事マップ（map.html）
 
 # サイトマップの lastmod：ページの中身が実際に変わった日を記録する（data/raw/sitemap_lastmod.json）
 # Google は lastmod が実際の更新日と一致しているサイトだけ信用するので、生成のたびに今日にはしない。
@@ -928,8 +929,9 @@ def build(report=None):
             shutil.rmtree(p) if p.is_dir() else p.unlink()
     (DIST / 'assets').mkdir(parents=True, exist_ok=True)
     (DIST / 'data').mkdir(exist_ok=True)
-    for f in ('site.css', 'site.js'):
+    for f in ('site.css', 'site.js', 'map.js'):
         shutil.copy(SITE / 'assets' / f, DIST / 'assets' / f)
+    shutil.copytree(SITE / 'assets' / 'vendor', DIST / 'assets' / 'vendor', dirs_exist_ok=True)   # Leaflet 1.9.4（BSD-2-Clause）。火事マップで使う
     if (SITE / 'assets' / 'img').is_dir():   # 読み物の写真・イラスト（写真AC・イラストAC）
         shutil.copytree(SITE / 'assets' / 'img', DIST / 'assets' / 'img', dirs_exist_ok=True)
     sizes = build_search_index(DIST)
@@ -941,6 +943,9 @@ def build(report=None):
     for t in TOWN_LIST: pages[t['file']] = machi_page(t)
     pages.update(national_pages())
     pages.update(guide_pages())
+    pages['map.html'], mapdata = map_page()
+    (DIST / 'data' / 'map.js').write_text('window.KAJI_MAP = ' + json.dumps(mapdata, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')   # ファイルのままでも読めるよう script で
+    geo_files(DIST)
     for fn, h in pages.items(): (DIST / fn).write_text(h, encoding='utf-8')
     # 公開データ（誰でも検証できるように）
     public = {'fetchedAt': tfd['fetchedAt'], 'source': tfd_file, 'population_source': pop['url'], 'daily': daily,

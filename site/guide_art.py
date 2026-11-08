@@ -1,4 +1,4 @@
-# 読み物の図・イラスト（すべて火事速で作ったオリジナルの SVG。写真や他サイトの画像は使わない）
+# 読み物の図（火事速で作ったオリジナルの SVG。棒グラフ・手順図などの簡単な図解だけ。アイキャッチは写真AC・イラストACの素材を使う → guides.py の PHOTOS）
 # guides.py から exec される（esc を使う）
 
 C_RED, C_ORG, C_INK, C_MUTE, C_LINE, C_BG, C_SMOKE = '#c2341b', '#f08a24', '#1f1d1b', '#6b6560', '#e6e2dc', '#faf5f2', '#9a948e'
@@ -138,4 +138,16 @@ def art_bars(rows, title, unit='件', color=C_RED):
         w = max(4, int(170 * v / mx))
         b += f'<text x="20" y="{y + 23}" font-size="{17 if len(k) <= 5 else 15}" fill="{C_INK}">{esc(k)}</text><rect x="132" y="{y + 2}" width="{w}" height="30" rx="6" fill="{color if i == 0 else "#e8a291" if color == C_RED else "#9cbbd9"}"/>'
         b += f'<text x="{140 + w}" y="{y + 24}" font-size="16" fill="{C_INK}" font-weight="700">{v:,}{esc(unit)}</text>'
+    return _svg(400, h, b, title)
+
+def art_timeline(rows, title):
+    """時間の流れ（幅400・スマホ向け）。rows = [(時刻, できごと, 補足), ...]"""
+    h = 24 + len(rows) * 96
+    b = f'<rect width="400" height="{h}" rx="16" fill="{C_BG}"/><line x1="40" y1="40" x2="40" y2="{h - 40}" stroke="{C_LINE}" stroke-width="4"/>'
+    for i, (t, ev, note) in enumerate(rows):
+        y = 24 + i * 96
+        b += f'<circle cx="40" cy="{y + 22}" r="12" fill="{C_RED if i < 2 else C_MUTE}"/>'
+        b += f'<text x="66" y="{y + 16}" font-size="14" fill="{C_MUTE}">{esc(t)}</text>'
+        b += f'<text x="66" y="{y + 42}" font-size="20" font-weight="700" fill="{C_INK}">{esc(ev)}</text>'
+        b += f'<text x="66" y="{y + 66}" font-size="15" fill="{C_INK}">{esc(note)}</text>'
     return _svg(400, h, b, title)
