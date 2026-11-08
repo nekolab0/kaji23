@@ -1,4 +1,4 @@
-// 火事マップ（map.html）：消防の発表・報道（data/map.json）と、近所の人の報告（受付サーバー /api/live）を地図に置く
+// 火事マップ（map.html）：消防の発表・報道（data/map.js）と、近所の人の報告（受付サーバー /api/live）を地図に置く
 // 地図は Leaflet ＋ 国土地理院の地図タイル。絞り込みは URL の # に入れる（例 #p=東京都&d=7）
 (function () {
   var box = document.getElementById('fire-map');
@@ -25,12 +25,15 @@
     if (h !== location.hash) history.replaceState(null, '', location.pathname + location.search + h);
   }
   function getJSON(u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  function loadScript(src) {
+    return new Promise(function (ok, ng) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ng; document.head.appendChild(s); });
+  }
   function baseTown(t) { return String(t || '').replace(/[0-9０-９一二三四五六七八九十]+丁目.*$/, '').replace(/[0-9０-９]+(番地?|号|-).*$/, '').replace(/付近$/, ''); }
 
   // 近所の人の報告に、町の代表点をつける（都道府県ごとの data/geo/NN.json を必要な分だけ読む）
   function geoOf(pref) {
     var i = prefs.indexOf(pref); if (i < 0) return Promise.resolve(null);
-    if (!geoCache[pref]) geoCache[pref] = getJSON('data/geo/' + ('0' + (i + 1)).slice(-2) + '.json').catch(function () { return null; });
+    if (!geoCache[pref]) geoCache[pref] = loadScript('data/geo/' + ('0' + (i + 1)).slice(-2) + '.js').then(function () { return (window.KAJI_GEO || {})[i + 1] || null; }, function () { return null; });
     return geoCache[pref];
   }
   function liveFires() {
@@ -102,7 +105,8 @@
     for (var i = 0; i < btns.length; i++) btns[i].addEventListener('click', function () { state.days = +this.getAttribute('data-days'); writeHash(); render(false); });
     var sel = document.querySelector('[data-map-pref]');
     if (sel) sel.addEventListener('change', function () { state.pref = sel.value; writeHash(); render(true); });
-    getJSON('data/map.json').then(function (j) {
+    loadScript('data/map.js').then(function () {
+      var j = window.KAJI_MAP;
       prefs = j.prefs || [];
       fires = j.fires.map(function (a) {
         return { lat: a[0], lng: a[1], src: a[2], at: new Date(a[3]), pref: a[4], city: a[5], town: a[6], kind: a[7], href: a[8], area: a[9], exact: !!a[10] };

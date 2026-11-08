@@ -1,4 +1,4 @@
-# 火事マップ（map.html）と、地図に使うデータ（data/map.json・data/geo/NN.json）
+# 火事マップ（map.html）と、地図に使うデータ（data/map.js・data/geo/NN.js。ファイルのままでも読めるよう script で読み込む）
 # build.py の名前空間で exec される（RECORDS・TOWNS_JP・CODE_OF・PREFS・page・esc などを使う）
 # SEO 担当の決定（seo/decisions.md 2026-11-07・11-08）：地図は1ページだけ。絞り込みは # で、canonical は map.html。
 # 地図の下に直近24時間（0件なら直近3日）の火事を HTML のリンクで並べ、JS なしでも読めるようにする
@@ -75,7 +75,7 @@ def geo_files(out_dir):
     for (p, w), par in WARD_PARENT.items():
         if par not in by_pref[p]: by_pref[p][par] = {'_': city_pt(p, par)}
     for i, p in enumerate(PREFS, 1):
-        (d / f'{i:02d}.json').write_text(json.dumps(by_pref[p], ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        (d / f'{i:02d}.js').write_text(f'(window.KAJI_GEO = window.KAJI_GEO || {{}})[{i}] = ' + json.dumps(by_pref[p], ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')
 
 def map_page():
     recs = map_records(30)

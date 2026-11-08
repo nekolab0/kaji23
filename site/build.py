@@ -944,7 +944,7 @@ def build(report=None):
     pages.update(national_pages())
     pages.update(guide_pages())
     pages['map.html'], mapdata = map_page()
-    (DIST / 'data' / 'map.json').write_text(json.dumps(mapdata, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    (DIST / 'data' / 'map.js').write_text('window.KAJI_MAP = ' + json.dumps(mapdata, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')   # ファイルのままでも読めるよう script で
     geo_files(DIST)
     for fn, h in pages.items(): (DIST / fn).write_text(h, encoding='utf-8')
     # 公開データ（誰でも検証できるように）

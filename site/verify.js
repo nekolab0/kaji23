@@ -210,7 +210,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       const o = await page.evaluate(() => {
         const vw = document.documentElement.clientWidth, sw = document.documentElement.scrollWidth;
         const wide = [...document.querySelectorAll('body *')].filter(el => {
-          if (el.closest('.table-box') || el.closest('.nav') || el.closest('script') || el.closest('.sr')) return false;
+          if (el.closest('.table-box') || el.closest('.nav') || el.closest('script') || el.closest('.sr') || el.closest('.sr-only') || el.closest('.leaflet-container')) return false;   // 地図は枠の外を隠している
           const r = el.getBoundingClientRect(); return r.width > 0 && (r.right > vw + 1 || r.left < -1);
         }).slice(0, 3).map(el => el.tagName + '.' + el.className);
         return { vw, sw, wide };
