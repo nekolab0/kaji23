@@ -195,11 +195,10 @@
     li.appendChild(tm);
     var body = el('div', { class: 'fc-body' });
     var a = el('a', { class: 'place', href: fireHref(x.id) });
-    if (x.place) a.appendChild(el('b', null, x.place + '付近'));
-    else {
-      a.appendChild(el('span', { class: 'fc-pref' }, x.pref || '東京都'));
-      a.appendChild(el('b', null, (x.city || x.ward) + (x.town || '') + '付近'));
-    }
+    var pf = x.pref || '東京都', pl = x.place || ((x.city || x.ward) + (x.town || ''));
+    if (pl.indexOf(pf) === 0) pl = pl.slice(pf.length);   // 受付サーバーの place は都道府県から始まる
+    a.appendChild(el('span', { class: 'fc-pref' }, pf));
+    a.appendChild(el('b', null, pl + '付近'));
     body.appendChild(a);
     var row = el('div', { class: 'row' });
     if (x.official) row.appendChild(el('span', { class: 'tag off' }, '消防の発表・' + (x.official.kind || '火災')));
