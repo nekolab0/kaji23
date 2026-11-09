@@ -23,7 +23,7 @@ def photo(slug):
     f, alt, src = PHOTOS.get(slug, (None, '', ''))
     if not f or not (SITE / 'assets' / 'img' / f).exists():
         return None
-    return f'<img src="assets/img/{f}" width="1200" height="675" alt="{esc(alt)}" decoding="async"><span class="g-credit">{esc(src)}</span>'
+    return f'<img src="assets/img/{f}" width="1200" height="675" alt="{esc(alt)}" decoding="async">'
 
 def _src(items):
     return ('<section class="section" aria-labelledby="src"><h2 id="src">出典・参考</h2><ul class="plain">'
