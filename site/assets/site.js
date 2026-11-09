@@ -183,19 +183,65 @@
 
   // ---------------- いまの火事 ----------------
   var liveBoxes = [], tiles = [];
+  // いまの火事のカード：左に「いつ」（時刻を大きく・何分前）、右に「どこ」（都道府県は小さく、市区町村・町を大きく）
   function fireCard(x) {
-    var li = el('li', { class: 'fire-card' + (Date.now() - Date.parse(x.last) > 90 * 60000 ? ' calm' : '') });
+    var age = Date.now() - Date.parse(x.last), calm = age > 90 * 60000;
+    var li = el('li', { class: 'fire-card' + (calm ? ' calm' : '') });
+    var t = new Date(x.last), today = new Date().toDateString() === t.toDateString();
+    var tm = el('div', { class: 'fc-time' });
+    if (!today) tm.appendChild(el('span', { class: 'fc-day' }, (t.getMonth() + 1) + '/' + t.getDate()));
+    tm.appendChild(el('b', null, t.getHours() + ':' + ('0' + t.getMinutes()).slice(-2)));
+    tm.appendChild(el('span', { class: 'fc-ago' }, ago(x.last)));
+    li.appendChild(tm);
+    var body = el('div', { class: 'fc-body' });
     var a = el('a', { class: 'place', href: fireHref(x.id) });
-    a.appendChild(el('b', null, placeOf(x) + '付近')); li.appendChild(a);
+    if (x.place) a.appendChild(el('b', null, x.place + '付近'));
+    else {
+      a.appendChild(el('span', { class: 'fc-pref' }, x.pref || '東京都'));
+      a.appendChild(el('b', null, (x.city || x.ward) + (x.town || '') + '付近'));
+    }
+    body.appendChild(a);
     var row = el('div', { class: 'row' });
-    if (x.official) row.appendChild(el('span', { class: 'tag off' }, '消防の発表 ' + (x.official.kind || '火災')));
+    if (x.official) row.appendChild(el('span', { class: 'tag off' }, '消防の発表・' + (x.official.kind || '火災')));
     if (x.counts.total) row.appendChild(el('span', { class: 'tag warn' }, '報告 ' + x.counts.total + '件'));
     var ct = countsText(x.counts); if (ct) row.appendChild(el('span', { class: 'small muted' }, ct));
     if (x.comments) row.appendChild(el('span', { class: 'tag' }, '口コミ ' + x.comments));
-    li.appendChild(row);
-    li.appendChild(el('span', { class: 'small muted' }, (x.counts.total ? '最新の報告 ' : '消防の出動 ') + ago(x.last) + '（' + hm(x.last) + '）' + (Date.now() - Date.parse(x.last) > 90 * 60000 ? '・落ち着いている可能性があります' : '')));
-    if (x.latest && x.latest[0]) li.appendChild(el('p', { class: 'quote' }, '「' + x.latest[0].body + '」'));
+    if (calm) row.appendChild(el('span', { class: 'small muted' }, '落ち着いている可能性'));
+    body.appendChild(row);
+    if (x.latest && x.latest[0]) body.appendChild(el('p', { class: 'quote' }, '「' + x.latest[0].body + '」'));
+    li.appendChild(body);
     return li;
+  }
+  // 件数が多いときは最初の数件だけ出し、残りはボタンで開く（ページが縦に長くなりすぎないように）
+  var LIVE_FIRST = 6;
+  function fireList(box, list) {
+    var ul = el('ul', { class: 'fires' });
+    list.forEach(function (x, i) { var li = fireCard(x); if (i >= LIVE_FIRST) li.className += ' more'; ul.appendChild(li); });
+    box.appendChild(ul);
+    if (list.length > LIVE_FIRST) {
+      var b = el('button', { type: 'button', class: 'fires-more', 'aria-expanded': 'false' }, '残り' + (list.length - LIVE_FIRST) + '件を表示');
+      b.addEventListener('click', function () {
+        var open = ul.classList.toggle('open'); b.setAttribute('aria-expanded', String(open));
+        b.textContent = open ? '閉じる' : '残り' + (list.length - LIVE_FIRST) + '件を表示';
+        if (!open) box.scrollIntoView({ block: 'nearest' });
+      });
+      box.appendChild(b);
+    }
+  }
+  // 長い一覧（報道された火事など）は最初の数件だけ出し、残りはボタンで開く
+  function initCollapse() {
+    $$('[data-collapse]').forEach(function (ul) {
+      var n = +ul.getAttribute('data-collapse'), items = ul.children;
+      if (items.length <= n + 1) return;
+      for (var i = n; i < items.length; i++) items[i].classList.add('more');
+      var rest = items.length - n;
+      var b = el('button', { type: 'button', class: 'fires-more', 'aria-expanded': 'false' }, '残り' + rest + '件を表示');
+      b.addEventListener('click', function () {
+        var open = ul.classList.toggle('open'); b.setAttribute('aria-expanded', String(open));
+        b.textContent = open ? '閉じる' : '残り' + rest + '件を表示';
+      });
+      ul.parentNode.insertBefore(b, ul.nextSibling);
+    });
   }
   function loadLive() {
     liveBoxes = $$('[data-live]'); tiles = $$('[data-ward-tile]');
@@ -207,7 +253,7 @@
         var list = j.incidents.filter(function (x) { return (!pf || (x.pref || '東京都') === pf) && (!w || x.ward === w) && (!t || (x.town && baseTown(x.town) === t)); });
         box.innerHTML = '';
         if (!list.length) { box.appendChild(el('p', { class: 'muted live-empty' }, box.getAttribute('data-empty'))); }
-        else { var ul = el('ul', { class: 'fires' }); list.forEach(function (x) { ul.appendChild(fireCard(x)); }); box.appendChild(ul); }
+        else fireList(box, list);
       });
       tiles.forEach(function (tile) {
         var n = j.incidents.filter(function (x) { return (x.pref || '東京都') === '東京都' && x.ward === tile.getAttribute('data-ward-tile'); }).reduce(function (a, x) { return a + x.counts.total; }, 0);
@@ -219,6 +265,7 @@
       liveBoxes.forEach(function (b) { b.innerHTML = ''; b.appendChild(el('p', { class: 'muted small' }, 'いまの報告を読み込めませんでした。少し待ってから再読み込みしてください。')); });
     });
   }
+  initCollapse();
   loadLive(); if ($$('[data-live]').length || $$('[data-ward-tile]').length) setInterval(loadLive, 60000);
 
   // ---------------- 投稿欄（全国）: 場所＋「ボタンで報告」／「口コミを書く」 ----------------

@@ -174,7 +174,7 @@ def news_list_jp(items, empty='報道は見つかっていません。', show_pr
         srcs = '・'.join(f'<a href="{esc(s["link"])}" target="_blank" rel="noopener nofollow">{esc(s["name"])}</a>' for s in x['sources'])
         lis.append(f'<li class="news-item" data-pref="{esc(xp)}" data-ward="{esc(xc)}"><div class="row"><a class="place" href="{esc(fire_href(news_fire_id(x)))}"><b>{place}</b></a>{"".join(tags)}</div>'
                    f'<span class="small muted">最初の報道 {jtime(x["first"])}　報道：{srcs}</span></li>')
-    return f'<ul class="news">{"".join(lis)}</ul>'
+    return f'<ul class="news" data-collapse="5">{"".join(lis)}</ul>'   # 6件目からは「残りを表示」で開く（site.js）
 
 NEWS_NOTE_JP = ('<p class="small muted">報道各社のニュースから、火事の場所（町名まで）・建物の種類・けが人の有無だけを自動で取り出しています。'
                 '詳しい内容はリンク先の記事でご確認ください。報道されない小さな火事は載りません。' +

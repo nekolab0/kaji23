@@ -395,7 +395,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     await ingestOfficial(W.env, [{ source: 'sapporo', pref: '北海道', city: '札幌市北区', town: '北32条西7丁目', kind: '建物火災', at: new Date(Date.now() - 20 * 60e3).toISOString() }], new Date());
     const offInc = W.db.prepare("SELECT id FROM incidents WHERE ward = '札幌市北区'").get();
     await fp.goto('file://' + path.join(DIST, 'index.html'));
-    await fp.waitForFunction(() => [...document.querySelectorAll('.fire-card')].some(c => /札幌市北区北32条西7丁目付近/.test(c.textContent) && /消防の発表 建物火災/.test(c.textContent)), null, { timeout: 5000 })
+    await fp.waitForFunction(() => [...document.querySelectorAll('.fire-card')].some(c => /札幌市北区北32条西7丁目付近/.test(c.textContent) && /消防の発表・建物火災/.test(c.textContent)), null, { timeout: 5000 })
       .then(() => flowOk.push('一覧に「消防の発表」'), () => flowBad.push('一覧に消防の発表が出ない'));
     if (offInc) {
       await fp.goto('file://' + path.join(DIST, 'fire.html') + '?id=' + offInc.id);
