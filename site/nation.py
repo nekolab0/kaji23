@@ -229,7 +229,7 @@ def index_page(full=True):
 <section class="section" aria-labelledby="gd">
   <h2 id="gd">火事の調べ方・備え</h2>
   <ul class="plain"><li><a href="g-kajidoko.html">近くで火事？今どこで火事か調べる方法5つ</a></li><li><a href="g-siren.html">消防車のサイレン「ウーウーカンカン」の意味</a></li>
-  <li><a href="g-119.html">火事を見つけたら：119番通報の伝え方</a></li><li><a href="g-cause.html">火事の原因ランキング（消防白書）</a></li><li><a href="g-taika-itoigawa.html">糸魚川大火（2016年）とは？原因・被害とその後</a></li><li><a href="map.html">火事マップ（全国）</a></li><li><a href="dial-list.html">都道府県別 火災の案内ダイヤル一覧</a></li></ul>
+  <li><a href="g-119.html">火事を見つけたら：119番通報の伝え方</a></li><li><a href="g-cause.html">火事の原因ランキング（消防白書）</a></li><li><a href="g-taika-itoigawa.html">糸魚川大火（2016年）とは？原因・被害とその後</a></li><li><a href="g-stats.html">火事が多い月・時間帯・曜日は？</a></li><li><a href="map.html">火事マップ（全国）</a></li><li><a href="dial-list.html">都道府県別 火災の案内ダイヤル一覧</a></li></ul>
 </section>
 </div>'''
     title = f'{SITE_NAME}｜今どこで火事？全国の火事の目撃情報・速報を町名でリアルタイムに'

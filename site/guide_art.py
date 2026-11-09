@@ -151,3 +151,19 @@ def art_timeline(rows, title):
         b += f'<text x="66" y="{y + 42}" font-size="20" font-weight="700" fill="{C_INK}">{esc(ev)}</text>'
         b += f'<text x="66" y="{y + 66}" font-size="15" fill="{C_INK}">{esc(note)}</text>'
     return _svg(400, h, b, title)
+
+def art_cols(rows, title, top=3, note=''):
+    """縦棒グラフ（幅400・スマホ向け。rows: [(ラベル, 数値)] を順番どおりに並べ、多い top 本を赤くする）"""
+    if not rows: return ''
+    mx = max(v for _, v in rows) or 1
+    n = len(rows); cw = 340 / n; bw = cw * 0.7; base = 250
+    hi = set(sorted(range(n), key=lambda i: -rows[i][1])[:top])
+    b = f'<rect width="400" height="300" rx="16" fill="#fff" stroke="{C_LINE}"/><text x="20" y="34" font-size="17" font-weight="700" fill="{C_INK}">{esc(title)}</text>'
+    if note: b += f'<text x="20" y="56" font-size="13" fill="{C_MUTE}">{esc(note)}</text>'
+    b += f'<line x1="30" y1="{base}" x2="370" y2="{base}" stroke="{C_LINE}" stroke-width="2"/>'
+    for i, (k, v) in enumerate(rows):
+        x = 30 + i * cw + (cw - bw) / 2; h = max(3, 160 * v / mx)
+        b += f'<rect x="{x:.1f}" y="{base - h:.1f}" width="{bw:.1f}" height="{h:.1f}" rx="3" fill="{C_RED if i in hi else "#e8c2b8"}"/>'
+        b += f'<text x="{x + bw / 2:.1f}" y="{base + 20}" font-size="{13 if n <= 12 else 11}" fill="{C_INK}" text-anchor="middle">{esc(k)}</text>'
+        if i in hi: b += f'<text x="{x + bw / 2:.1f}" y="{base - h - 6:.1f}" font-size="{12 if n <= 7 else 10}" font-weight="700" fill="{C_INK}" text-anchor="middle">{v:,}</text>'
+    return _svg(400, 300, b, title)

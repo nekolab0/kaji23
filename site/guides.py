@@ -6,7 +6,7 @@ exec((SITE / 'guide_art.py').read_text(encoding='utf-8'))   # 図・イラスト
 
 GUIDE_UPDATED = '2026-11-05'   # 一覧ページ用
 # 記事ごとの公開日・更新日（記事を足しても、ほかの記事の更新日は変わらないように）
-GUIDE_DATES = {'kajidoko': ('2026-11-05', '2026-11-08'), 'siren': ('2026-11-05', '2026-11-08'), '119': ('2026-11-05', '2026-11-08'), 'cause': ('2026-11-05', '2026-11-08'), 'taika-itoigawa': ('2026-11-08', '2026-11-08')}
+GUIDE_DATES = {'kajidoko': ('2026-11-05', '2026-11-08'), 'siren': ('2026-11-05', '2026-11-08'), '119': ('2026-11-05', '2026-11-08'), 'cause': ('2026-11-05', '2026-11-08'), 'taika-itoigawa': ('2026-11-08', '2026-11-08'), 'stats': ('2026-11-09', '2026-11-09')}
 GUIDE_OG = []   # og.js で記事ごとの OG 画像を作るための情報
 
 # 外部のフリー素材（写真AC・イラストAC）。1200×675 に整えて site/assets/img/ に置き、dist/assets/img/ へコピーする
@@ -15,6 +15,7 @@ PHOTOS = {
     'siren': ('g-siren.png', '赤い消防ポンプ自動車のイラスト', 'イラストAC'),
     '119': ('g-119.jpg', 'スマートフォンの画面に表示された「119」', '写真AC'),
     'cause': ('g-cause.png', 'こんろの鍋から火が上がるイラスト', 'イラストAC'),
+    'stats': ('g-stats.png', '「火の用心」のイラスト', 'イラストAC No.643950'),
     'taika-itoigawa': ('g-taika-itoigawa.jpg', '糸魚川駅の駅舎と赤れんがの建物', '写真AC'),
 }
 
@@ -94,6 +95,79 @@ def guide_article(slug, title, h1, desc, lead, body, sources, related, art=None)
 </div>'''
     GUIDE_OG.append({'slug': slug, 'h1': h1, 'hero': art.get('hero', '')})
     return page(f'g-{slug}', f'{title}｜{SITE_NAME}', desc, html, og_image=f'og/g-{slug}.png', ld_extra=[bc_ld([('火事の調べ方・備え', 'guide.html'), (h1, None)]), _article_ld(slug, title, desc)])
+
+
+# ---------- 火事が多い月・曜日・時間帯（g-stats.html） ----------
+# SEO 担当の決定（2026-11-07）：月・季節は消防庁の公的な統計で示す。火事速の記録は収録元が増え続けているので
+# 月ごとの件数は季節の根拠にしない。記録は時間帯・曜日・直近の件数にだけ使い、「収録分のみ」と明記する
+NAT_MONTH = [3761, 3277, 3634, 3289, 3261, 2585, 2618, 3248, 2605, 2512, 2579, 3772]   # 令和6年 月別出火件数（確定値）
+NAT_HOUR2 = [1518, 1254, 1309, 1755, 3105, 4953, 4967, 4860, 4007, 3223, 2438, 1861]   # 0〜1時台…22〜23時台（不明 1,891件を除く）
+NAT_SRC = ('総務省消防庁「令和6年（1～12月）における火災の状況（確定値）」', 'https://www.fdma.go.jp/pressrelease/statistics/items/cfff9e3173795eb802e15902ab9b9a348f3259ad.pdf')
+WDAY = '月火水木金土日'
+
+def _own_times():
+    """消防本部の出動情報（火事速の記録）の出動時刻"""
+    try: F = json.loads((RAW / 'official_archive.json').read_text(encoding='utf-8'))['fires']
+    except (OSError, ValueError, KeyError): return []
+    out = []
+    for x in F.values():
+        try: out.append(datetime.datetime.fromisoformat(x[5].replace('Z', '+00:00')).astimezone(JST))
+        except (TypeError, ValueError, IndexError): pass
+    return out
+
+def stats_article():
+    ts = _own_times()
+    n = len(ts)
+    h2 = [0] * 12; wd = [0] * 7
+    for t in ts: h2[t.hour // 2] += 1; wd[t.weekday()] += 1
+    since = min(ts) if ts else None
+    now = datetime.datetime.now(JST)
+    n30 = sum(1 for t in ts if now - t <= datetime.timedelta(days=30))
+    total = sum(NAT_MONTH)
+    winter_spring = NAT_MONTH[11] + NAT_MONTH[0] + NAT_MONTH[1] + NAT_MONTH[2] + NAT_MONTH[3] + NAT_MONTH[4]
+    day = sum(NAT_HOUR2[5:8]); known = sum(NAT_HOUR2)
+    own_day = sum(h2[5:8])
+    wmax = max(range(7), key=lambda i: wd[i]) if n else 0
+    wmin = min(range(7), key=lambda i: wd[i]) if n else 0
+    sp = f'{since.year}年{since.month}月' if since else ''
+    month_rows = ''.join(f'<tr><td>{i + 1}月</td><td class="num">{v:,}件</td></tr>' for i, v in enumerate(NAT_MONTH))
+    hour_rows = ''.join(f'<tr><td>{i * 2}〜{i * 2 + 1}時台</td><td class="num">{v:,}件</td><td class="num">{h2[i]:,}件</td></tr>' for i, v in enumerate(NAT_HOUR2))
+    wd_rows = ''.join(f'<tr><td>{WDAY[i]}曜日</td><td class="num">{wd[i]:,}件</td></tr>' for i in range(7))
+    body = f'''<section class="section"><h2>火事が多い月・季節は冬〜春（12月・1月・3月）</h2>
+<p>2024年（令和6年）に全国で起きた火事は<strong>{total:,}件</strong>。月別にみると、<strong>12月（{NAT_MONTH[11]:,}件）・1月（{NAT_MONTH[0]:,}件）・3月（{NAT_MONTH[2]:,}件）</strong>が多く、少ないのは10月（{NAT_MONTH[9]:,}件）でした。</p>
+<p>冬（12〜2月）と春（3〜5月）の6か月で全体の約{round(winter_spring / total * 100)}％。消防白書は、山林の火事（林野火災）が多いのは「降水量が少なく空気が乾燥し、強風が吹く時期」だとしています。</p>
+<details class="g-data"><summary>月別の件数（表）</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>月</th><th>件数</th></tr></thead><tbody>{month_rows}</tbody></table></div></details></section>
+<section class="section"><h2>火事が多い時間帯は昼の10時〜15時台</h2>
+<p>時間帯別では、<strong>10〜15時台の6時間に全体の約{round(day / known * 100)}％</strong>が集中しています。いちばん少ないのは深夜2〜3時台（{NAT_HOUR2[1]:,}件）です（時刻がわからない火事を除く）。</p>
+<p>火事速が記録した消防本部の出動情報（{n:,}件）でも、10〜15時台が約{round(own_day / n * 100) if n else 0}％と、同じ傾向でした。</p>
+<details class="g-data"><summary>時間帯別の件数（表）</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>時間帯</th><th>全国（2024年）</th><th>火事速の記録</th></tr></thead><tbody>{hour_rows}</tbody></table></div></details></section>
+<section class="section"><h2>火事が多い曜日は？差は小さい（火事速の記録）</h2>
+<p>全国の統計には、すべての火事の曜日別の件数はありません（放火だけは公表されていて、日曜・月曜・土曜がやや多い）。</p>
+<p>火事速の記録（収録分のみ・{n:,}件）では、多いのは{WDAY[wmax]}曜日（{wd[wmax]:,}件）、少ないのは{WDAY[wmin]}曜日（{wd[wmin]:,}件）で、<strong>曜日による差は大きくありません</strong>。曜日に関係なく、毎日気をつける必要があります。</p>
+<details class="g-data"><summary>曜日別の件数（火事速の記録）</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>曜日</th><th>件数</th></tr></thead><tbody>{wd_rows}</tbody></table></div></details></section>
+<section class="section"><h2>多い時期・時間に気をつけたいこと</h2>
+<ul>
+<li><strong>冬〜春の乾燥した日・風の強い日</strong>は、たき火や屋外での火の使用を控える。原因の上位には、たばこ・たき火・こんろが並びます（<a href="g-cause.html">火事の原因ランキング</a>）</li>
+<li><strong>昼の調理中</strong>は、こんろから離れるときに必ず火を消す</li>
+<li>寝る前・出かける前に、たばこの火や暖房器具を確かめる</li>
+<li>住宅用火災警報器が鳴るか、ときどきテストする</li>
+</ul></section>
+<section class="section"><h2>いま、どこで火事が起きているか</h2>
+<p>火事速が直近30日に記録した火事は<strong>{n30:,}件</strong>（消防本部の出動情報のうち、収録している分）。いまの火事は<a href="map.html">火事マップ</a>と<a href="index.html">トップ</a>で確かめられます。</p></section>
+<p class="small muted">「火事速の記録」は、全国の消防本部が出している出動情報のうち火事速が収録している分（{sp}以降、{n:,}件。{now.month}月{now.day}日時点）で、すべての火事ではありません。収録元は増え続けているため、月ごとの件数の比較には使っていません。</p>'''
+    entry = ('stats', '火事が多い月・時期・時間帯・曜日は？消防庁の統計（2024年）と火事速の記録',
+             '火事が多い月・時期・時間帯・曜日は？',
+             f'火事が多いのは12月・1月・3月、時間帯は昼の10〜15時台。消防庁の統計（2024年・{total:,}件）と、火事速が記録した消防の出動情報（{n:,}件）から、火事が起きやすい時期・時間帯・曜日をグラフで紹介します。',
+             '火事が多いのは何月？何時ごろ？消防庁がまとめた2024年の全国の統計と、火事速が記録した消防本部の出動情報から、火事が起きやすい時期・時間帯・曜日をグラフでまとめます。',
+             body, [NAT_SRC, ('令和7年版 消防白書「火災の状況」', 'https://www.fdma.go.jp/publication/hakusho/r7/chapter1/section1/para1/69224.html'), ('令和7年版 消防白書「火災種別ごとの状況」', 'https://www.fdma.go.jp/publication/hakusho/r7/chapter1/section1/para1/69235.html')],
+             [('cause', '火事の原因ランキング'), ('kajidoko', '今どこで火事か調べる方法'), ('taika-itoigawa', '糸魚川大火（2016年）とは')])
+    art = {'hero': photo('stats'),
+           'points': [f'多い月は<strong>12月・1月・3月</strong>。冬〜春の6か月で全体の約{round(winter_spring / total * 100)}％', f'多い時間帯は<strong>昼の10〜15時台</strong>（全体の約{round(day / known * 100)}％）。少ないのは深夜2〜3時台', '曜日による差は小さい（火事速の記録）'],
+           'figs': {'多い月・季節は': fig(art_cols([(f'{i + 1}', v) for i, v in enumerate(NAT_MONTH)], '月別の火事の件数（全国・2024年）', 3, '単位：件・月'), '出典：総務省消防庁'),
+                    '多い時間帯は': fig(art_cols([(str(i * 2), v) for i, v in enumerate(NAT_HOUR2)], '時間帯別の件数（全国・2024年）', 3, '数字は〇時台から2時間'), '出典：総務省消防庁'),
+                    '多い曜日は': fig(art_cols([(WDAY[i], wd[i]) for i in range(7)], f'曜日別の件数（火事速の記録 {n:,}件）', 2), '火事速の記録（収録分のみ）')},
+           'tip': ['気をつけたいこと']}
+    return entry, art
 
 def guide_pages():
     pages = {}
@@ -241,6 +315,7 @@ def guide_pages():
         'figs': {'概要と被害': fig(art_timeline([('10:20ごろ', '飲食店から出火', 'こんろの消し忘れ'), ('11:40', '最大瞬間風速27.2m/s', '飛び火で10か所に'), ('約11時間後', '鎮圧', '19の消防本部が応援'), ('約30時間後', '鎮火', '147棟が焼けた')], '糸魚川大火の時間の流れ（2016年12月22〜23日）'), '出典：新潟県 災害アーカイブ')},
         'warn': ['原因と、燃え広がった理由'], 'tip': ['家やお店でできること']},
     }
+    st, ART['stats'] = stats_article(); G.append(st)
     for slug, title, h1, desc, lead, body, sources, related in G:
         pages[f'g-{slug}.html'] = guide_article(slug, title, h1, desc, lead, body, sources, related, ART.get(slug))
     items = ''.join(f'<li><a class="g-card" href="g-{esc(s_)}.html"><span class="g-thumb">{ART[s_]["hero"] or ""}</span><b>{esc(h1)}</b><span class="small muted">{esc(d_[:70])}…</span></a></li>' for s_, _t, h1, d_, *_ in G)
