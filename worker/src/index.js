@@ -148,6 +148,10 @@ const comOut = r => ({ id: r.id, inc: r.inc, pref: r.pref, city: r.ward, ward: r
 export async function handle(request, env, now = new Date()) {
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return cors(env, new Response(null, { status: 204 }));
+  // 受付サーバー（api.kajisoku.jp）は検索結果に出す場所ではない。検索エンジンには読まないよう伝え、
+  // トップ（/）に来た人はサイトへ移す（Search Console の「見つかりませんでした（404）」対策）
+  if (request.method === 'GET' && url.pathname === '/robots.txt') return new Response('User-agent: *\nDisallow: /\n', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  if (request.method === 'GET' && url.pathname === '/') return new Response(null, { status: 301, headers: { Location: 'https://kajisoku.jp/', 'X-Robots-Tag': 'noindex' } });
   if (!ready || ready.env !== env) { const p = setup(env); ready = { env, p }; p.catch(() => { ready = null; }); }
   const salt = await ready.p;
   const DB = env.DB;
@@ -482,6 +486,9 @@ export async function receiveMail(env, raw, now = new Date()) {
   return { ...r, added };
 }
 
+// GitHub Pages の公開が毎晩この時間帯（日本時間 2:30〜3:10ごろ）に詰まって失敗し、エラーのメールが届くので、この2回は作り直しを頼まない
+const QUIET_KICK = ['17:37', '18:07'];
+
 export default {
   fetch: (request, env) => handle(request, env),
   email: async (message, env) => {
@@ -505,6 +512,6 @@ export default {
     try { await phoneTick(env); } catch (e) {}
     try { await pushTick(env); } catch (e) {}
     // GitHub の定期実行は混雑で数時間あくことがあるため、30分ごとにこちらからサイトの作り直し（報道の取り直し）を頼む（GH_TOKEN を設定したときだけ）
-    if (env.GH_TOKEN && [7, 37].includes(new Date().getUTCMinutes())) { try { await kickBuild(env); } catch (e) {} }   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
+    if (env.GH_TOKEN && [7, 37].includes(new Date().getUTCMinutes()) && !QUIET_KICK.includes(new Date().toISOString().slice(11, 16))) { try { await kickBuild(env); } catch (e) {} }   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
   },
 };

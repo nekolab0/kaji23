@@ -921,6 +921,57 @@ def page_lastmod(pages):
     path.write_text(json.dumps(new, ensure_ascii=False, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     return {fn: v[1] for fn, v in new.items()}
 
+# 消えたページの引っ越し先（Search Console の「見つかりませんでした（404）」対策）
+# 報道の火事のページ（f-…）は、あとから町名がわかる・同じ火事の記事がまとまるなどで ID が変わり、前の URL が消える。
+# 町のページ（m-…）も記録がなくなると消える。一度公開した URL は data/raw/moved_pages.json に残し、
+# 同じ市区町村・同じ日の火事のページ（なければ町・市区町村のページ）へ自動で移る小さなページを置く（サイトマップには載せない）
+def moved_target(fn, pages):
+    stem = fn[:-5]
+    if stem.startswith('f-n-'):
+        parts = stem[4:].split('-')
+        if len(parts) >= 4:
+            p, c, day = parts[0], parts[1], '-'.join(parts[-3:]) if len(parts) >= 6 else parts[-1]
+            t = '-'.join(parts[2:-3]) if len(parts) >= 6 else ''
+            same = [f for f in pages if f.startswith(f'f-n-{p}-{c}-') and f.endswith(f'-{day}.html')]
+            best = [f for f in same if f.startswith(f'f-n-{p}-{c}-{t}-')] or same
+            if best: return sorted(best)[0]
+            cf = city_file(p, c)
+            if cf in pages: return cf
+            if pref_file(p) in pages: return pref_file(p)
+    if stem.startswith('f-o-'):   # 消防の発表のページ：あとから同じ火事の報道が来ると、報道のページにまとまる
+        v = OFFICIAL.get(stem[2:])
+        if v:
+            p, c, t, day = (list(v) + [''] * 4)[:4]
+            t = norm_town(p, c, t)
+            same = [f for f in pages if f.startswith(f'f-n-{p}-{c}-') and f.endswith(f'-{day}.html')]
+            best = [f for f in same if t and f.startswith(f'f-n-{p}-{c}-{t}-')] or same
+            if best: return sorted(best)[0]
+            for cand in (city_file(p, c), pref_file(p)):
+                if cand in pages: return cand
+    if stem.startswith('m-'):
+        parts = stem[2:].split('-', 2)
+        if len(parts) == 3:
+            p, c, t = parts
+            for cand in (town_href(p, c, t), city_file(p, c), pref_file(p)):
+                if cand.split('?')[0] in pages or cand.startswith('town.html'): return cand
+    return 'index.html'
+
+def moved_pages(pages):
+    path = RAW / 'moved_pages.json'
+    moved = set(json.loads(path.read_text(encoding='utf-8'))) if path.exists() else set()
+    old = RAW / 'sitemap_lastmod.json'
+    if old.exists(): moved |= {fn for fn in json.loads(old.read_text(encoding='utf-8')) if fn.startswith(('f-', 'm-'))}
+    moved -= set(pages)
+    path.write_text(json.dumps(sorted(moved), ensure_ascii=False, indent=0), encoding='utf-8')
+    n = 0
+    for fn in moved:
+        to = esc(moved_target(fn, pages))
+        (DIST / fn).write_text(f'<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ページが移動しました｜{SITE_NAME}</title>'
+            f'<meta name="robots" content="noindex"><link rel="canonical" href="{SITE_URL}/{to}"><meta http-equiv="refresh" content="0;url={to}">'
+            f'</head><body><p>このページは移動しました。<a href="{to}">移動先のページ</a>をご覧ください。</p></body></html>', encoding='utf-8')
+        n += 1
+    return n
+
 def build(report=None):
     # og/（OGP画像）は og.js が作るので残す
     if DIST.exists():
@@ -963,6 +1014,7 @@ def build(report=None):
                                                             'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
     # 検索エンジン向け: サイトマップと robots.txt（独自ドメインに移すと robots.txt がドメインの直下に置かれて有効になる）
     skip = {'fire.html', 'town.html'}   # 中身が URL のパラメータで変わるページは載せない
+    n_moved = moved_pages(pages)   # page_lastmod が前回のページ一覧を上書きする前に呼ぶ
     lastmod = page_lastmod({fn: h for fn, h in pages.items() if fn not in skip})
     urls = [((f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip]
     # 1ファイル5万件までの決まりがあるので、4万件ずつに分けて索引（sitemap.xml）から指す

@@ -150,6 +150,8 @@ if (isMain) {
   { let got = null; const st = await kickBuild({ GH_TOKEN: 'tok' }, async (u, o) => { got = { u, o }; return new Response(null, { status: 204 }); });
     ok('サイトの作り直しを GitHub に頼む（報道だけ・main）', st === 204 && /workflows\/daily\.yml\/dispatches$/.test(got.u) && JSON.parse(got.o.body).inputs.quick === 'true' && got.o.headers.Authorization === 'Bearer tok'); }
   ok('表と塩を自動で用意（塩はランダム48桁）', salt && /^[0-9a-f]{48}$/.test(salt.v));
+  { const rb = await handle(new Request('https://api.example/robots.txt'), env); const top = await handle(new Request('https://api.example/'), env);
+    ok('受付サーバーは検索エンジンに読ませない（robots.txt）・トップはサイトへ移す', /Disallow: \//.test(await rb.text()) && top.status === 301 && top.headers.get('Location') === 'https://kajisoku.jp/'); }
 
   results.forEach(x => console.log(`${x.ok ? 'PASS' : 'FAIL'}  ${x.name}${x.detail !== '' ? ' — ' + x.detail : ''}`));
   fs.mkdirSync(new URL('../verify/', import.meta.url), { recursive: true });
