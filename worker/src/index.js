@@ -148,6 +148,10 @@ const comOut = r => ({ id: r.id, inc: r.inc, pref: r.pref, city: r.ward, ward: r
 export async function handle(request, env, now = new Date()) {
   const url = new URL(request.url);
   if (request.method === 'OPTIONS') return cors(env, new Response(null, { status: 204 }));
+  // 受付サーバー（api.kajisoku.jp）は検索結果に出す場所ではない。検索エンジンには読まないよう伝え、
+  // トップ（/）に来た人はサイトへ移す（Search Console の「見つかりませんでした（404）」対策）
+  if (request.method === 'GET' && url.pathname === '/robots.txt') return new Response('User-agent: *\nDisallow: /\n', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  if (request.method === 'GET' && url.pathname === '/') return new Response(null, { status: 301, headers: { Location: 'https://kajisoku.jp/', 'X-Robots-Tag': 'noindex' } });
   if (!ready || ready.env !== env) { const p = setup(env); ready = { env, p }; p.catch(() => { ready = null; }); }
   const salt = await ready.p;
   const DB = env.DB;
