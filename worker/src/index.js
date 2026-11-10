@@ -482,6 +482,9 @@ export async function receiveMail(env, raw, now = new Date()) {
   return { ...r, added };
 }
 
+// GitHub Pages の公開が毎晩この時間帯（日本時間 2:30〜3:10ごろ）に詰まって失敗し、エラーのメールが届くので、この2回は作り直しを頼まない
+const QUIET_KICK = ['17:37', '18:07'];
+
 export default {
   fetch: (request, env) => handle(request, env),
   email: async (message, env) => {
@@ -505,6 +508,6 @@ export default {
     try { await phoneTick(env); } catch (e) {}
     try { await pushTick(env); } catch (e) {}
     // GitHub の定期実行は混雑で数時間あくことがあるため、30分ごとにこちらからサイトの作り直し（報道の取り直し）を頼む（GH_TOKEN を設定したときだけ）
-    if (env.GH_TOKEN && [7, 37].includes(new Date().getUTCMinutes())) { try { await kickBuild(env); } catch (e) {} }   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
+    if (env.GH_TOKEN && [7, 37].includes(new Date().getUTCMinutes()) && !QUIET_KICK.includes(new Date().toISOString().slice(11, 16))) { try { await kickBuild(env); } catch (e) {} }   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
   },
 };

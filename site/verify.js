@@ -140,7 +140,8 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
 
 // ================= 表示 =================
 (async function renderChecks() {
-  const allPages = fs.readdirSync(DIST).filter(f => f.endsWith('.html'));
+  const movedSet = new Set(fs.existsSync(path.join(RAW, 'moved_pages.json')) ? JSON.parse(fs.readFileSync(path.join(RAW, 'moved_pages.json'), 'utf8')) : []);   // 消えたページの引っ越し用の小さなページ（build.py moved_pages）は検査しない
+  const allPages = fs.readdirSync(DIST).filter(f => f.endsWith('.html') && !movedSet.has(f));
   const machi = allPages.filter(f => f.startsWith('m-')).sort();
   // ブラウザで開くのは、町ページ以外の全ページ＋町ページの見本（25ページに1つ）
   const cpages = allPages.filter(f => f.startsWith('c-')).sort();
