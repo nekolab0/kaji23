@@ -1,15 +1,15 @@
 {
- "fetchedAt": "2026-11-09T11:28+09:00",
+ "fetchedAt": "2026-11-10T13:50+09:00",
  "property": "sc-domain:kajisoku.jp",
  "range28d": [
-  "2026-10-11",
-  "2026-11-07"
+  "2026-10-12",
+  "2026-11-08"
  ],
- "sitemapUrls": 9369,
- "inspectedUrls": 1196,
+ "sitemapUrls": 9495,
+ "inspectedUrls": 1495,
  "coverage": {
   "送信して登録されました": 1,
-  "URL が Google に認識されていません": 1195
+  "URL が Google に認識されていません": 1494
  },
  "submittedSitemaps": [
   {
