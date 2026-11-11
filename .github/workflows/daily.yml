@@ -19,6 +19,8 @@ permissions: { contents: write, pages: write, id-token: write, actions: read }
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      monitor: ${{ steps.mon.outputs.fail }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -39,6 +41,14 @@ jobs:
       - name: 生成・検査
         env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}' }
         run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh
+      - name: 失敗したときに検査結果を残す（どの検査で落ちたかを Artifacts の verify-report で見られる）
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with: { name: verify-report, path: verify/report.json, if-no-files-found: ignore, retention-days: 14 }
+      - name: 本番の監視の結果を渡す
+        id: mon
+        run: |
+          if [ -s verify/monitor_fail.txt ]; then { echo 'fail<<EOF'; cat verify/monitor_fail.txt; echo EOF; } >> "$GITHUB_OUTPUT"; fi
       - name: 新しいページを検索エンジンに知らせる（IndexNow）
         run: node collector/indexnow.mjs || true
       - name: データを保存
@@ -79,3 +89,16 @@ jobs:
           else
             echo "::error::GitHub Pages の公開が3時間以上できていません"; exit 1
           fi
+
+  # 本番（受付サーバー・消防本部の読み取り・報道の収集）の監視。失敗するとメールが届くが、サイトの公開（deploy）は止めない
+  monitor:
+    needs: build
+    if: needs.build.outputs.monitor != ''
+    runs-on: ubuntu-latest
+    steps:
+      - env: { FAILS: '${{ needs.build.outputs.monitor }}' }
+        run: |
+          echo "$FAILS"
+          echo "$FAILS" | while IFS= read -r l; do [ -n "$l" ] && echo "::error::$l"; done
+          exit 1
+

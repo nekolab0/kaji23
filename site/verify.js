@@ -140,7 +140,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
 
 // ================= 表示 =================
 (async function renderChecks() {
-  const movedSet = new Set(fs.existsSync(path.join(RAW, 'moved_pages.json')) ? JSON.parse(fs.readFileSync(path.join(RAW, 'moved_pages.json'), 'utf8')) : []);   // 消えたページの引っ越し用の小さなページ（build.py moved_pages）は検査しない
+  const movedSet = new Set(fs.existsSync(path.join(RAW, 'moved_pages.json')) ? Object.keys(JSON.parse(fs.readFileSync(path.join(RAW, 'moved_pages.json'), 'utf8'))) : []);   // 消えたページの引っ越し用の小さなページ（build.py moved_pages）は検査しない
   const allPages = fs.readdirSync(DIST).filter(f => f.endsWith('.html') && !movedSet.has(f));
   const machi = allPages.filter(f => f.startsWith('m-')).sort();
   // ブラウザで開くのは、町ページ以外の全ページ＋町ページの見本（25ページに1つ）
@@ -445,7 +445,9 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   // M1〜M3 本番の監視（GitHub上で動くときだけ失敗扱い。失敗するとGitHubからメールが届く）
   const inCI = !!process.env.CI;
   const lvl = inCI ? 'error' : 'warn';
-  const getJ = async (u) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), 15000); try { const r = await fetch(u, { signal: c.signal }); return r.ok ? await r.json() : null; } catch (e) { return null; } finally { clearTimeout(t); } };
+  const getJ1 = async (u) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), 15000); try { const r = await fetch(u, { signal: c.signal }); return r.ok ? await r.json() : null; } catch (e) { return null; } finally { clearTimeout(t); } };
+  // 本番の一時的な不調で落ちないよう、GitHub 上では20秒あけて3回まで試す（2026-11-11：/api/sources が1回返らず公開が止まった）
+  const getJ = async (u) => { for (let i = 0; i < (inCI ? 3 : 1); i++) { if (i) await new Promise(r => setTimeout(r, 20000)); const j = await getJ1(u); if (j) return j; } return null; };
   if (API) {
     const live = await getJ(API + '/api/live?hours=1');
     add('M1 受付サーバーの応答', !!live, live ? '本番の受付サーバーが応答' : (inCI ? '本番の受付サーバーに接続できない' : '作業環境から本番に接続できないため未確認'), live || inCI ? 'error' : 'warn');
@@ -473,8 +475,14 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   const now = new Date(Date.now() + 9 * 3600e3).toISOString().replace('T', ' ').slice(0, 16) + '（日本時間）';
   const report = { ran_at: now, data_fetched_at: raw.fetchedAt, checks };
   fs.writeFileSync(path.join(OUT, 'report.json'), JSON.stringify(report, null, 1));
-  const fails = checks.filter(c => !c.ok && c.level === 'error');
-  for (const c of checks) console.log(`${c.ok ? 'PASS' : c.level === 'warn' ? 'WARN' : 'FAIL'}  ${c.name} — ${c.detail}`);
-  console.log(fails.length ? `\n${fails.length} failure(s)` : '\nALL CHECKS PASSED');
+  // 本番の監視（M1〜M4）の失敗は、サイトの生成・公開を止めない。verify/monitor_fail.txt に書き出し、
+  // daily.yml の monitor ジョブがそれを見て失敗する（GitHub からメールは届くが、公開は続く）
+  const isMon = c => /^M\d/.test(c.name);
+  const fails = checks.filter(c => !c.ok && c.level === 'error' && !isMon(c));
+  const monFails = checks.filter(c => !c.ok && c.level === 'error' && isMon(c));
+  const mf = path.join(OUT, 'monitor_fail.txt');
+  if (monFails.length) fs.writeFileSync(mf, monFails.map(c => `${c.name} — ${c.detail}`).join('\n') + '\n'); else if (fs.existsSync(mf)) fs.unlinkSync(mf);
+  for (const c of checks) console.log(`${c.ok ? 'PASS' : c.level === 'warn' ? 'WARN' : isMon(c) ? 'MONITOR-FAIL' : 'FAIL'}  ${c.name} — ${c.detail}`);
+  console.log(fails.length ? `\n${fails.length} failure(s)` : '\nALL CHECKS PASSED' + (monFails.length ? `（本番の監視で ${monFails.length} 件の失敗。公開は続ける）` : ''));
   process.exit(fails.length ? 1 : 0);
 })();

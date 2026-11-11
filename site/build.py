@@ -954,23 +954,45 @@ def moved_target(fn, pages):
             p, c, t = parts
             for cand in (town_href(p, c, t), city_file(p, c), pref_file(p)):
                 if cand.split('?')[0] in pages or cand.startswith('town.html'): return cand
-    return 'index.html'
+    return None   # 移動先が見つからない：移動ページは作らない（404）
 
 def moved_pages(pages):
+    """SEO 担当の決定（2026-11-11）：noindex は付けない（0秒の meta refresh は恒久的な移動として扱われ、noindex と食い違う）。
+    移動先が見つからないもの（トップに送るしかないもの）は移動ページを作らず 404 のままにする（ソフト404を避ける）。記録から1年で消す"""
     path = RAW / 'moved_pages.json'
-    moved = set(json.loads(path.read_text(encoding='utf-8'))) if path.exists() else set()
+    today = datetime.datetime.now(JST).date().isoformat()
+    moved = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+    if isinstance(moved, list): moved = {fn: today for fn in moved}   # 前の形式（ファイル名の一覧）
     old = RAW / 'sitemap_lastmod.json'
-    if old.exists(): moved |= {fn for fn in json.loads(old.read_text(encoding='utf-8')) if fn.startswith(('f-', 'm-'))}
-    moved -= set(pages)
-    path.write_text(json.dumps(sorted(moved), ensure_ascii=False, indent=0), encoding='utf-8')
+    if old.exists():
+        for fn in json.loads(old.read_text(encoding='utf-8')):
+            if fn.startswith(('f-', 'm-')): moved.setdefault(fn, today)
+    limit = (datetime.datetime.now(JST).date() - datetime.timedelta(days=365)).isoformat()
+    moved = {fn: d for fn, d in moved.items() if fn not in pages and d >= limit}
+    path.write_text(json.dumps(dict(sorted(moved.items())), ensure_ascii=False, indent=0), encoding='utf-8')
     n = 0
     for fn in moved:
-        to = esc(moved_target(fn, pages))
+        to = moved_target(fn, pages)
+        if not to: continue
+        to = esc(to)
         (DIST / fn).write_text(f'<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ページが移動しました｜{SITE_NAME}</title>'
-            f'<meta name="robots" content="noindex"><link rel="canonical" href="{SITE_URL}/{to}"><meta http-equiv="refresh" content="0;url={to}">'
+            f'<link rel="canonical" href="{SITE_URL}/{to}"><meta http-equiv="refresh" content="0;url={to}">'
             f'</head><body><p>このページは移動しました。<a href="{to}">移動先のページ</a>をご覧ください。</p></body></html>', encoding='utf-8')
         n += 1
     return n
+
+def not_found_page():
+    """GitHub Pages が、ないページのかわりに出すページ（404.html）"""
+    body = '''<div class="wrap"><section class="hero"><h1>ページが見つかりません</h1>
+<p class="lead">お探しのページは、移動したか、なくなった可能性があります。火事の情報は、下のページから探せます。</p></section>
+<section class="section"><ul class="plain">
+<li><a href="index.html"><b>トップ（町名で検索・いまの火事）</b></a></li>
+<li><a href="map.html">火事マップ（全国）</a></li>
+<li><a href="index.html#regions">地域から探す（都道府県・市区町村・町）</a></li>
+<li><a href="guide.html">火事の調べ方・備え</a></li>
+</ul></section></div>'''
+    h = page('404', f'ページが見つかりません｜{SITE_NAME}', 'お探しのページは見つかりませんでした。町名の検索や火事マップから、火事の情報を探せます。', body)
+    return h.replace('<title>', '<meta name="robots" content="noindex">\n<title>', 1)
 
 def build(report=None):
     # og/（OGP画像）は og.js が作るので残す
@@ -994,6 +1016,7 @@ def build(report=None):
     for t in TOWN_LIST: pages[t['file']] = machi_page(t)
     pages.update(national_pages())
     pages.update(guide_pages())
+    pages['404.html'] = not_found_page()
     pages['map.html'], mapdata = map_page()
     (DIST / 'data' / 'map.js').write_text('window.KAJI_MAP = ' + json.dumps(mapdata, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')   # ファイルのままでも読めるよう script で
     geo_files(DIST)
@@ -1013,7 +1036,7 @@ def build(report=None):
                                                             'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news,
                                                             'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
     # 検索エンジン向け: サイトマップと robots.txt（独自ドメインに移すと robots.txt がドメインの直下に置かれて有効になる）
-    skip = {'fire.html', 'town.html'}   # 中身が URL のパラメータで変わるページは載せない
+    skip = {'fire.html', 'town.html', '404.html'}   # 中身が URL のパラメータで変わるページは載せない
     n_moved = moved_pages(pages)   # page_lastmod が前回のページ一覧を上書きする前に呼ぶ
     lastmod = page_lastmod({fn: h for fn, h in pages.items() if fn not in skip})
     urls = [((f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip]
