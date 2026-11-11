@@ -997,6 +997,41 @@ def not_found_page():
     h = page('404', f'ページが見つかりません｜{SITE_NAME}', 'お探しのページは見つかりませんでした。町名の検索や火事マップから、火事の情報を探せます。', body)
     return h.replace('<title>', '<meta name="robots" content="noindex">\n<title>', 1)
 
+# サイトマップの型（SEO 担当の決定 2026-11-11）。sitemap-main は トップ・読み物・地図・一覧・23区の区ページなど
+SITEMAP_KINDS = ('main', 'dial', 'pref', 'city', 'town', 'fire')
+def sitemap_kind(fn):
+    if fn.startswith('f-'): return 'fire'
+    if fn.startswith('m-'): return 'town'
+    if fn.startswith('c-'): return 'city'
+    if fn.startswith('p-'): return 'pref'
+    if fn.startswith('dial-') and fn != 'dial-list.html': return 'dial'
+    return 'main'
+
+def thin_pages(old_day):
+    """クロールが少ない間、サイトマップから外すページ（ページは残す。noindex なし。新しい火事が入れば自動で戻る）
+    (1) 火事の記録も案内ダイヤルもない市区町村 (2) 23区以外の町で、記録が1件だけで90日より古いもの (3) 23区の町で、町単位の記録がないもの
+    ※ 近所の人の報告・口コミは受付サーバーにあり生成時には見えないので、条件に使っていない"""
+    by_city, by_town = {}, {}
+    for r in RECORDS:
+        p, c, t = r['pref'], r['city'], r['town']
+        for cc in {c, WARD_PARENT.get((p, c))} - {None}: by_city[(p, cc)] = by_city.get((p, cc), 0) + 1
+        if t: by_town.setdefault((p, c, t), []).append(r['day'])
+    out = set()
+    for p, lst in AREAS_RAW['prefs'].items():
+        for c, _ in lst:
+            if is23(p, c): continue
+            par = WARD_PARENT.get((p, c))
+            if not by_city.get((p, c)) and not (DIAL.get(f'{p}|{c}') or (par and DIAL.get(f'{p}|{par}'))): out.add(city_file(p, c))
+    for p, lst in PARENTS.items():
+        for name, _ in lst:
+            if not by_city.get((p, name)) and not DIAL.get(f'{p}|{name}'): out.add(city_file(p, name))
+    for p, c, t in STATIC_TOWNS:
+        days = by_town.get((p, c, t), [])
+        if len(days) <= 1 and (not days or days[0] < old_day): out.add(static_town_file(p, c, t))
+    for t in TOWN_LIST:
+        if not by_town.get(('東京都', t['ward'], t['base'])): out.add(t['file'])
+    return out
+
 def build(report=None):
     # og/（OGP画像）は og.js が作るので残す
     if DIST.exists():
@@ -1046,19 +1081,30 @@ def build(report=None):
     # 新しいサイトのうちは、Google に先に見てほしいページへ巡回を寄せる（SEO 担当の決定 2026-11-11）
     old_day = (datetime.datetime.now(JST).date() - datetime.timedelta(days=90)).isoformat()
     old_fire = {fire_href(r['fid']) for r in RECORDS if r['day'] < old_day}
-    (DIST / 'data' / '_sitemap_skip.json').write_text(json.dumps(sorted(old_fire), ensure_ascii=False), encoding='utf-8')
-    skip_sm = skip | old_fire
-    urls = [((f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip_sm]
-    # 1ファイル5万件までの決まりがあるので、4万件ずつに分けて索引（sitemap.xml）から指す
+    thin = thin_pages(old_day)
+    (DIST / 'data' / '_sitemap_skip.json').write_text(json.dumps(sorted(old_fire | thin), ensure_ascii=False), encoding='utf-8')
+    skip_sm = skip | old_fire | thin
+    urls = [(fn, (f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip_sm]
+    # 型ごとにファイルを分け、Search Console の「特定のサイトマップ」で型ごとの登録率を見られるようにする（SEO 担当の決定 2026-11-11）。
+    # 1ファイル5万件までの決まりがあるので、4万件を超えた型だけ -2 … と分ける。索引（sitemap.xml）の URL は変えない
     # priority・changefreq は Google が使わないので書かない。lastmod は「中身が実際に変わった日」（page_lastmod）
     CH = 40000
-    parts = [urls[i:i + CH] for i in range(0, len(urls), CH)] or [[]]
-    for i, part in enumerate(parts, 1):
-        (DIST / f'sitemap-{i}.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-            + ''.join(f'<url><loc>{u}</loc><lastmod>{d}</lastmod></url>\n' for u, d in part) + '</urlset>\n', encoding='utf-8')
+    groups = {k: [] for k in SITEMAP_KINDS}
+    for fn, u, d in urls: groups[sitemap_kind(fn)].append((u, d))
+    files = []
+    for k, lst in groups.items():
+        if not lst: continue
+        for i in range(0, len(lst), CH):
+            name = f'sitemap-{k}.xml' if i == 0 else f'sitemap-{k}-{i // CH + 1}.xml'
+            part = lst[i:i + CH]
+            (DIST / name).write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                + ''.join(f'<url><loc>{u}</loc><lastmod>{d}</lastmod></url>\n' for u, d in part) + '</urlset>\n', encoding='utf-8')
+            files.append((name, max(d for _, d in part)))
     (DIST / 'sitemap.xml').write_text('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + ''.join(f'<sitemap><loc>{SITE_URL}/sitemap-{i}.xml</loc><lastmod>{max((d for _, d in part), default=datetime.datetime.now(JST).date().isoformat())}</lastmod></sitemap>\n'
-                  for i, part in enumerate(parts, 1)) + '</sitemapindex>\n', encoding='utf-8')
+        + ''.join(f'<sitemap><loc>{SITE_URL}/{n}</loc><lastmod>{d}</lastmod></sitemap>\n' for n, d in files) + '</sitemapindex>\n', encoding='utf-8')
+    # IndexNow（公開のあと daily.yml が送る）：今日中身が変わった URL
+    today = datetime.datetime.now(JST).date().isoformat()
+    (DIST / 'data' / '_changed_today.json').write_text(json.dumps([u for _, u, d in urls if d == today], ensure_ascii=False), encoding='utf-8')
     # Web プッシュ通知: サービスワーカー（サイトの直下に置く）と、ホーム画面に追加するための manifest・アイコン
     (DIST / 'sw.js').write_text(SW_JS, encoding='utf-8')
     (DIST / 'manifest.webmanifest').write_text(json.dumps({'name': SITE_NAME + '｜近くの火事を町名で', 'short_name': SITE_NAME, 'start_url': '/', 'scope': '/', 'display': 'standalone',
