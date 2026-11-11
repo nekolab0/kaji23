@@ -6,7 +6,7 @@ on:
     - cron: '41 22 * * *'      # UTC 22:41 = 日本時間 7:41
   workflow_dispatch:
     inputs:
-      inspect: { description: 'URL検査の件数（空なら300）', required: false, default: '' }
+      inspect: { description: 'URL検査の件数（空なら1500）', required: false, default: '' }
 concurrency: { group: gsc, cancel-in-progress: false }
 permissions: { contents: write }
 jobs:

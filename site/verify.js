@@ -433,7 +433,8 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   const smIdx = fs.existsSync(path.join(DIST, 'sitemap.xml')) ? fs.readFileSync(path.join(DIST, 'sitemap.xml'), 'utf8') : '';
   if (!/<sitemapindex/.test(smIdx)) meta.push('サイトマップの索引がない');
   const smN = (sm.match(/<loc>/g) || []).length;
-  if (smN < allPages.length - 5 || /<loc>[^<]*[^\x21-\x7e][^<]*<\/loc>/.test(sm)) meta.push(`サイトマップ ${smN}件`);
+  const smSkip = fs.existsSync(path.join(DIST, 'data', '_sitemap_skip.json')) ? JSON.parse(fs.readFileSync(path.join(DIST, 'data', '_sitemap_skip.json'), 'utf8')).length : 0;   // 90日より前の火事のページ（build.py）
+  if (smN < allPages.length - smSkip - 5 || /<loc>[^<]*[^\x21-\x7e][^<]*<\/loc>/.test(sm)) meta.push(`サイトマップ ${smN}件`);
   if (!fs.existsSync(path.join(DIST, 'robots.txt'))) meta.push('robots.txtがない');
   add('R5 タイトル・見出し・説明文・OGP画像・正規URL・サイトマップ', !meta.length, meta.slice(0, 10).join(' / ') || `${allPages.length}ページすべてにあり、サイトマップ${smN}件`);
   add('R6 表示されている数字＝データ', !numbers.length, numbers.join(' / ') || '23区の統計と58署のカードすべて一致');

@@ -906,7 +906,10 @@ exec((SITE / 'mapview.py').read_text(encoding='utf-8'))   # 火事マップ（ma
 # サイトマップの lastmod：ページの中身が実際に変わった日を記録する（data/raw/sitemap_lastmod.json）
 # Google は lastmod が実際の更新日と一致しているサイトだけ信用するので、生成のたびに今日にはしない。
 # 生成のたびに変わるだけの文字（説明文の「【11/7 10:58時点】」、「最終収集 0.4時間前」）は比べる前に取り除く
-_VOLATILE = re.compile(r'【\d{1,2}/\d{1,2} \d{1,2}:\d{2}時点】|[\d.]+時間前')
+_VOLATILE = re.compile(r'【\d{1,2}/\d{1,2} \d{1,2}:\d{2}時点】|[\d.]+時間前|（\d{1,2}月\d{1,2}日 \d{1,2}:\d{2}(?:時点|取得)）|\d{1,2}月\d{1,2}日(?: \d{1,2}:\d{2})?時点')
+# 比べるのは題名・説明文・本文（<main>）だけ。共通のメニューやフッター（「11月11日 10:20取得」など）が変わっても更新日は動かさない
+# （2026-11-11：フッターの取得時刻のせいで、全ページの lastmod が毎日「今日」になっていた）
+_SIG_PARTS = re.compile(r'<title>.*?</title>|<meta name="description"[^>]*>|<main.*?</main>', re.S)
 
 def page_lastmod(pages):
     import hashlib
@@ -915,7 +918,7 @@ def page_lastmod(pages):
     today = datetime.datetime.now(JST).date().isoformat()
     new = {}
     for fn, h in pages.items():
-        sig = hashlib.sha1(_VOLATILE.sub('', h).encode('utf-8')).hexdigest()[:12]
+        sig = hashlib.sha1(_VOLATILE.sub('', ''.join(_SIG_PARTS.findall(h)) or h).encode('utf-8')).hexdigest()[:12]
         prev = old.get(fn)
         new[fn] = prev if prev and prev[0] == sig else [sig, today]
     path.write_text(json.dumps(new, ensure_ascii=False, separators=(',', ':'), sort_keys=True), encoding='utf-8')
@@ -1039,7 +1042,13 @@ def build(report=None):
     skip = {'fire.html', 'town.html', '404.html'}   # 中身が URL のパラメータで変わるページは載せない
     n_moved = moved_pages(pages)   # page_lastmod が前回のページ一覧を上書きする前に呼ぶ
     lastmod = page_lastmod({fn: h for fn, h in pages.items() if fn not in skip})
-    urls = [((f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip]
+    # 90日より前の火事のページは定型文が中心なので、サイトマップからは外す（ページは残し、町・市区町村のページからたどれる）。
+    # 新しいサイトのうちは、Google に先に見てほしいページへ巡回を寄せる（SEO 担当の決定 2026-11-11）
+    old_day = (datetime.datetime.now(JST).date() - datetime.timedelta(days=90)).isoformat()
+    old_fire = {fire_href(r['fid']) for r in RECORDS if r['day'] < old_day}
+    (DIST / 'data' / '_sitemap_skip.json').write_text(json.dumps(sorted(old_fire), ensure_ascii=False), encoding='utf-8')
+    skip_sm = skip | old_fire
+    urls = [((f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip_sm]
     # 1ファイル5万件までの決まりがあるので、4万件ずつに分けて索引（sitemap.xml）から指す
     # priority・changefreq は Google が使わないので書かない。lastmod は「中身が実際に変わった日」（page_lastmod）
     CH = 40000
