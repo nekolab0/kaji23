@@ -1,6 +1,6 @@
 {
- "ran_at": "2026-11-11 13:18（日本時間）",
- "data_fetched_at": "2026-11-11T03:57:13.115Z",
+ "ran_at": "2026-11-11 13:41（日本時間）",
+ "data_fetched_at": "2026-11-11T01:20:42.608Z",
  "checks": [
   {
    "name": "D1 区と消防署の構造",
@@ -150,13 +150,13 @@
    "name": "M2 消防本部の読み取り（5分ごと）",
    "ok": true,
    "level": "warn",
-   "detail": "読めている 78/79ページ、取り込み 41件"
+   "detail": "読めている 77/79ページ、取り込み 41件"
   },
   {
    "name": "M3 読み取れていない消防本部",
    "ok": false,
    "level": "warn",
-   "detail": "kyoto(HTTP 522)"
+   "detail": "kyoto(HTTP 522)、a-www-okunoto-fd-jp-saigai-noto-annai-php(HTTP 522)"
   },
   {
    "name": "M4 報道の収集の鮮度",
