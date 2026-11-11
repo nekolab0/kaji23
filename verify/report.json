@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-12 07:05（日本時間）",
+ "ran_at": "2026-11-12 07:31（日本時間）",
  "data_fetched_at": "2026-11-11T06:38:26.972Z",
  "checks": [
   {
@@ -156,7 +156,7 @@
    "name": "M3 読み取れていない消防本部",
    "ok": false,
    "level": "warn",
-   "detail": "kyoto(HTTP 522)、a-www-city-hanamaki-iwate-jp-syoubou-1018501-1020136-1018789-h(HTTP 530)"
+   "detail": "kyoto(HTTP 522)"
   },
   {
    "name": "M4 報道の収集の鮮度",
