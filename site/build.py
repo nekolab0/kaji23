@@ -906,7 +906,10 @@ exec((SITE / 'mapview.py').read_text(encoding='utf-8'))   # 火事マップ（ma
 # サイトマップの lastmod：ページの中身が実際に変わった日を記録する（data/raw/sitemap_lastmod.json）
 # Google は lastmod が実際の更新日と一致しているサイトだけ信用するので、生成のたびに今日にはしない。
 # 生成のたびに変わるだけの文字（説明文の「【11/7 10:58時点】」、「最終収集 0.4時間前」）は比べる前に取り除く
-_VOLATILE = re.compile(r'【\d{1,2}/\d{1,2} \d{1,2}:\d{2}時点】|[\d.]+時間前')
+_VOLATILE = re.compile(r'【\d{1,2}/\d{1,2} \d{1,2}:\d{2}時点】|[\d.]+時間前|（\d{1,2}月\d{1,2}日 \d{1,2}:\d{2}(?:時点|取得)）|\d{1,2}月\d{1,2}日(?: \d{1,2}:\d{2})?時点')
+# 比べるのは題名・説明文・本文（<main>）だけ。共通のメニューやフッター（「11月11日 10:20取得」など）が変わっても更新日は動かさない
+# （2026-11-11：フッターの取得時刻のせいで、全ページの lastmod が毎日「今日」になっていた）
+_SIG_PARTS = re.compile(r'<title>.*?</title>|<meta name="description"[^>]*>|<main.*?</main>', re.S)
 
 def page_lastmod(pages):
     import hashlib
@@ -915,7 +918,7 @@ def page_lastmod(pages):
     today = datetime.datetime.now(JST).date().isoformat()
     new = {}
     for fn, h in pages.items():
-        sig = hashlib.sha1(_VOLATILE.sub('', h).encode('utf-8')).hexdigest()[:12]
+        sig = hashlib.sha1(_VOLATILE.sub('', ''.join(_SIG_PARTS.findall(h)) or h).encode('utf-8')).hexdigest()[:12]
         prev = old.get(fn)
         new[fn] = prev if prev and prev[0] == sig else [sig, today]
     path.write_text(json.dumps(new, ensure_ascii=False, separators=(',', ':'), sort_keys=True), encoding='utf-8')
@@ -954,23 +957,45 @@ def moved_target(fn, pages):
             p, c, t = parts
             for cand in (town_href(p, c, t), city_file(p, c), pref_file(p)):
                 if cand.split('?')[0] in pages or cand.startswith('town.html'): return cand
-    return 'index.html'
+    return None   # 移動先が見つからない：移動ページは作らない（404）
 
 def moved_pages(pages):
+    """SEO 担当の決定（2026-11-11）：noindex は付けない（0秒の meta refresh は恒久的な移動として扱われ、noindex と食い違う）。
+    移動先が見つからないもの（トップに送るしかないもの）は移動ページを作らず 404 のままにする（ソフト404を避ける）。記録から1年で消す"""
     path = RAW / 'moved_pages.json'
-    moved = set(json.loads(path.read_text(encoding='utf-8'))) if path.exists() else set()
+    today = datetime.datetime.now(JST).date().isoformat()
+    moved = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+    if isinstance(moved, list): moved = {fn: today for fn in moved}   # 前の形式（ファイル名の一覧）
     old = RAW / 'sitemap_lastmod.json'
-    if old.exists(): moved |= {fn for fn in json.loads(old.read_text(encoding='utf-8')) if fn.startswith(('f-', 'm-'))}
-    moved -= set(pages)
-    path.write_text(json.dumps(sorted(moved), ensure_ascii=False, indent=0), encoding='utf-8')
+    if old.exists():
+        for fn in json.loads(old.read_text(encoding='utf-8')):
+            if fn.startswith(('f-', 'm-')): moved.setdefault(fn, today)
+    limit = (datetime.datetime.now(JST).date() - datetime.timedelta(days=365)).isoformat()
+    moved = {fn: d for fn, d in moved.items() if fn not in pages and d >= limit}
+    path.write_text(json.dumps(dict(sorted(moved.items())), ensure_ascii=False, indent=0), encoding='utf-8')
     n = 0
     for fn in moved:
-        to = esc(moved_target(fn, pages))
+        to = moved_target(fn, pages)
+        if not to: continue
+        to = esc(to)
         (DIST / fn).write_text(f'<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>ページが移動しました｜{SITE_NAME}</title>'
-            f'<meta name="robots" content="noindex"><link rel="canonical" href="{SITE_URL}/{to}"><meta http-equiv="refresh" content="0;url={to}">'
+            f'<link rel="canonical" href="{SITE_URL}/{to}"><meta http-equiv="refresh" content="0;url={to}">'
             f'</head><body><p>このページは移動しました。<a href="{to}">移動先のページ</a>をご覧ください。</p></body></html>', encoding='utf-8')
         n += 1
     return n
+
+def not_found_page():
+    """GitHub Pages が、ないページのかわりに出すページ（404.html）"""
+    body = '''<div class="wrap"><section class="hero"><h1>ページが見つかりません</h1>
+<p class="lead">お探しのページは、移動したか、なくなった可能性があります。火事の情報は、下のページから探せます。</p></section>
+<section class="section"><ul class="plain">
+<li><a href="index.html"><b>トップ（町名で検索・いまの火事）</b></a></li>
+<li><a href="map.html">火事マップ（全国）</a></li>
+<li><a href="index.html#regions">地域から探す（都道府県・市区町村・町）</a></li>
+<li><a href="guide.html">火事の調べ方・備え</a></li>
+</ul></section></div>'''
+    h = page('404', f'ページが見つかりません｜{SITE_NAME}', 'お探しのページは見つかりませんでした。町名の検索や火事マップから、火事の情報を探せます。', body)
+    return h.replace('<title>', '<meta name="robots" content="noindex">\n<title>', 1)
 
 def build(report=None):
     # og/（OGP画像）は og.js が作るので残す
@@ -994,6 +1019,7 @@ def build(report=None):
     for t in TOWN_LIST: pages[t['file']] = machi_page(t)
     pages.update(national_pages())
     pages.update(guide_pages())
+    pages['404.html'] = not_found_page()
     pages['map.html'], mapdata = map_page()
     (DIST / 'data' / 'map.js').write_text('window.KAJI_MAP = ' + json.dumps(mapdata, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')   # ファイルのままでも読めるよう script で
     geo_files(DIST)
@@ -1013,10 +1039,16 @@ def build(report=None):
                                                             'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news,
                                                             'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
     # 検索エンジン向け: サイトマップと robots.txt（独自ドメインに移すと robots.txt がドメインの直下に置かれて有効になる）
-    skip = {'fire.html', 'town.html'}   # 中身が URL のパラメータで変わるページは載せない
+    skip = {'fire.html', 'town.html', '404.html'}   # 中身が URL のパラメータで変わるページは載せない
     n_moved = moved_pages(pages)   # page_lastmod が前回のページ一覧を上書きする前に呼ぶ
     lastmod = page_lastmod({fn: h for fn, h in pages.items() if fn not in skip})
-    urls = [((f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip]
+    # 90日より前の火事のページは定型文が中心なので、サイトマップからは外す（ページは残し、町・市区町村のページからたどれる）。
+    # 新しいサイトのうちは、Google に先に見てほしいページへ巡回を寄せる（SEO 担当の決定 2026-11-11）
+    old_day = (datetime.datetime.now(JST).date() - datetime.timedelta(days=90)).isoformat()
+    old_fire = {fire_href(r['fid']) for r in RECORDS if r['day'] < old_day}
+    (DIST / 'data' / '_sitemap_skip.json').write_text(json.dumps(sorted(old_fire), ensure_ascii=False), encoding='utf-8')
+    skip_sm = skip | old_fire
+    urls = [((f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip_sm]
     # 1ファイル5万件までの決まりがあるので、4万件ずつに分けて索引（sitemap.xml）から指す
     # priority・changefreq は Google が使わないので書かない。lastmod は「中身が実際に変わった日」（page_lastmod）
     CH = 40000

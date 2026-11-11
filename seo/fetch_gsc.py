@@ -16,7 +16,7 @@ from google.auth.transport.requests import AuthorizedSession
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gsc', 'api')
 SITE_URL = (os.environ.get('SITE_URL') or 'https://kajisoku.jp').rstrip('/')
-INSPECT_PER_DAY = int(os.environ.get('INSPECT_PER_DAY') or 300)   # 手動実行で 0 を渡すとURL検査を飛ばす（ただし空は300）   # Google の上限は1日2,000件・1分600件
+INSPECT_PER_DAY = int(os.environ.get('INSPECT_PER_DAY') or 1500)   # 手動実行で 0 を渡すとURL検査を飛ばす（ただし空は1500）   # Google の上限は1日2,000件・1分600件
 API = 'https://searchconsole.googleapis.com'
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
 JST = dt.timezone(dt.timedelta(hours=9))
@@ -108,7 +108,20 @@ def inspect(s, site, today):
     alive = set(urls)
     known = {u: r for u, r in known.items() if u in alive}          # サイトマップから消えたURLは外す
     # まだ調べていないURLを先に、そのあと古い順。トップは毎回調べる
-    order = sorted(urls, key=lambda u: (u.rstrip('/') != SITE_URL, u in known, known.get(u, {}).get('checkedAt', '')))
+    # ページの型（読み物 g-・地図・都道府県 p-・市区町村 c-・町 m-・火事 f-・その他）ごとに順番に1件ずつ取り、
+    # どの型も毎日見本が調べられるようにする（ファイル名順だと c- だけで1日分を使い切っていた。2026-11-11）
+    def kind(u):
+        n = urllib.parse.unquote(u.rsplit('/', 1)[-1])
+        for k in ('g-', 'p-', 'c-', 'm-', 'f-'):
+            if n.startswith(k): return k
+        return 'other'
+    buckets = {}
+    for u in sorted(urls, key=lambda u: (u in known, known.get(u, {}).get('checkedAt', ''))):
+        buckets.setdefault(kind(u), []).append(u)
+    order = [u for u in urls if u.rstrip('/') == SITE_URL]
+    lists = [buckets[k] for k in ('other', 'g-', 'p-', 'c-', 'm-', 'f-') if k in buckets]
+    for i in range(max(map(len, lists), default=0)):
+        order += [l[i] for l in lists if i < len(l) and l[i].rstrip('/') != SITE_URL]
     done = 0
     for u in order[:max(INSPECT_PER_DAY, 0)]:
         r = s.post(f'{API}/v1/urlInspection/index:inspect', json={'inspectionUrl': u, 'siteUrl': site, 'languageCode': 'ja'})

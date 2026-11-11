@@ -114,3 +114,9 @@
 - 「住宅用火災警報器 交換時期」：上位は消防本部・市のお知らせや PDF とメーカーのページ。設置年を入れて計算する道具は見当たらなかった
 - 「糸魚川大火 原因」「酒田大火」「函館大火」：上位は内閣府・県・市・日本防火協会の報告書と、Wikipedia、報道
 - Google のサジェストは、作業環境のプロキシで止められ取得できなかった（2026-11-07）
+
+## リダイレクト（サーバー側の 301 が使えないとき）
+確認日 2026-11-11｜出典：[Redirects and Google Search](https://developers.google.com/search/docs/crawling-indexing/301-redirects)、[Site moves with URL changes](https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes)
+- 0秒の meta refresh は恒久的なリダイレクト、秒数つきは一時的なリダイレクトとして扱われる
+- リダイレクトはできるだけ長く、目安として1年以上残す
+- 多数の旧URLを、関係のない1つのURL（トップページなど）へ送らない。利用者が混乱し、ソフト404として扱われることがある。複数ページを1ページにまとめた場合は、そのページへ送ってよい
