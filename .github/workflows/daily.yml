@@ -49,8 +49,10 @@ jobs:
         id: mon
         run: |
           if [ -s verify/monitor_fail.txt ]; then { echo 'fail<<EOF'; cat verify/monitor_fail.txt; echo EOF; } >> "$GITHUB_OUTPUT"; fi
-      - name: 新しいページを検索エンジンに知らせる（IndexNow）
+      - name: 検索エンジンに知らせる URL をまとめる（IndexNow。送るのは公開のあと）
         run: node collector/indexnow.mjs || true
+      - uses: actions/upload-artifact@v7
+        with: { name: indexnow, path: indexnow/urls.json, if-no-files-found: ignore, retention-days: 1 }
       - name: データを保存
         # 作り直しの途中で main が進んでいる（PR のマージなど）と push が断られる。取り込み直して最大3回試し、
         # それでもだめならデータの保存だけ見送って公開は続ける（次の回で保存される）
@@ -89,6 +91,18 @@ jobs:
           else
             echo "::error::GitHub Pages の公開が3時間以上できていません"; exit 1
           fi
+
+  # 公開できたあとに、新しいページ・今日変わったページを IndexNow（Bing など）に知らせる。公開前に送ると Bing が 404 を取りに来る
+  indexnow:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        continue-on-error: true
+        with: { name: indexnow, path: indexnow }
+      - env: { SITE_URL: '${{ vars.SITE_URL }}' }
+        run: node collector/indexnow.mjs --send || true
 
   # 本番（受付サーバー・消防本部の読み取り・報道の収集）の監視。失敗するとメールが届くが、サイトの公開（deploy）は止めない
   monitor:
