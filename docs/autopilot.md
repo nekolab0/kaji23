@@ -8,6 +8,9 @@
 2. 次を読む：`CLAUDE.md` → `docs/STATUS.md` → `docs/goals.md` → `ops/metrics/latest.md` → `docs/experiments.md` → `docs/backlog.md`。
 3. `ops/metrics/latest.md` の日付が今日でなければ、`python3 ops/metrics.py` を自分で動かす（Search Console の取得が止まっていれば、それも報告に書く）。
 
+### 深く考える作業は Fable で
+運営者の希望（2026-11-12）で、スケジュールタスクは Claude Fable で動かす。データの分析・仮説出し・外の調査など、深い情報処理が要る作業は、Agent ツールのサブエージェントを `model: "fable"` で呼んでよい。
+
 ## 1. 自動で進めてよい範囲と、承認が要る範囲
 
 | 自動でマージしてよい | 承認が要る（PR を作り、タイトルの先頭に【承認待ち】を付けて止める） |
