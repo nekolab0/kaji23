@@ -10,7 +10,7 @@ on:
     - cron: '37 18 * * *'
   push:
     branches: [main]           # PR をマージしたらすぐ作り直して公開（受付サーバーと同じタイミングで反映）
-    paths-ignore: ['data/**', 'verify/**', 'seo/**', '**.md']
+    paths-ignore: ['data/**', 'verify/**', 'seo/**', 'ops/**', '**.md']
   workflow_dispatch:
     inputs:
       quick: { description: '報道だけ取り直す（受付サーバーから30分ごとに呼ばれる）', required: false, default: 'false' }
@@ -39,7 +39,7 @@ jobs:
       - name: 受付サーバーのテスト
         run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs && node --no-warnings worker/mail.test.mjs && node --no-warnings worker/xposts.test.mjs && node --no-warnings worker/phone.test.mjs && node --no-warnings worker/push.test.mjs
       - name: 生成・検査
-        env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}' }
+        env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}', CF_BEACON_TOKEN: '${{ vars.CF_BEACON_TOKEN }}' }
         run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh
       - name: 失敗したときに検査結果を残す（どの検査で落ちたかを Artifacts の verify-report で見られる）
         if: failure()

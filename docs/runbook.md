@@ -59,3 +59,15 @@ Cloudflare の「Workers & Pages」→ `kaji23-reports` →「Settings」→「V
 - GitHub や Search Console からエラーのメールが届いたら、メールか画面のスクリーンショットをチャットに送る。
 - サイトを前の状態に戻したいときは、原因になった PR のページで「Revert」を押し、できた PR をマージする。
 - 新しいチャットで作業を始めるときは、「`docs/STATUS.md` を読んでから進めて」と伝える（`CLAUDE.md` にも書いてある）。
+
+## 自動改善（`docs/autopilot.md`）
+- 毎日の改善と毎週のレポートは、Claude のスケジュールタスクが動かす。止めたいときは、Claude のアプリでスケジュールタスクを一時停止する。
+- 自動でマージされた変更を戻したいときは、その PR の画面の「Revert」を押すか、チャットで「#番号を戻して」と頼む。
+- 承認待ちの PR は、タイトルの先頭に【承認待ち】が付いている。マージすれば承認、閉じれば却下。理由をコメントに書くと、次の回から反映される。
+
+### アクセス解析（Cloudflare Web Analytics）の設定
+1. Cloudflare の「Analytics & Logs」→「Web Analytics」→「Add a site」で `kajisoku.jp` を追加する。
+2. 表示される JS スニペットの `"token": "…"` の値を、GitHub の Variable `CF_BEACON_TOKEN` に入れる（公開されても問題ない値）。次の生成から全ページに入る。
+3. 同じ画面のサイトタグを Variable `CF_SITE_TAG` に、Cloudflare のアカウント ID を Variable `CF_ACCOUNT_ID` に入れる。
+4. Cloudflare の「My Profile」→「API Tokens」→「Create Token」→「Custom token」で、権限を「Account ／ Account Analytics ／ Read」だけにしたトークンを作り、GitHub の **Secret** `CF_ANALYTICS_TOKEN` に入れる。
+5. 翌朝の `gsc` の回から、`ops/analytics/latest.json` に直近7日の PV・訪問が入る。

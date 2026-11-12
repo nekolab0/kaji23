@@ -27,6 +27,7 @@ TEL = {c['key']: c for c in contacts['items']}
 _np = RAW / 'news.json'
 news = json.load(open(_np, encoding='utf-8')) if _np.exists() else {'collectedAt': None, 'incidents': []}
 _wu = ROOT / 'worker' / 'url.txt'  # worker.yml が公開後に書く
+CF_BEACON = (os.environ.get('CF_BEACON_TOKEN') or '').strip()   # Cloudflare Web Analytics（Cookie なし）。GitHub の変数 CF_BEACON_TOKEN を入れると全ページに入る
 REPORTS_API = os.environ.get('REPORTS_API') or (_wu.read_text().strip() if _wu.exists() else '')
 
 # ---------- 区のマスタ（URL用のローマ字、全国地方公共団体コード、隣接区、タイル位置） ----------
@@ -323,6 +324,8 @@ def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=N
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Barlow+Condensed:wght@500;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
 <link rel="stylesheet" href="assets/site.css">'''
+    if CF_BEACON:
+        head += f'\n<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon=\'{{"token": "{esc(CF_BEACON)}"}}\'></script>'
     if ADS_CLIENT:
         head += f'\n<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={esc(ADS_CLIENT)}" crossorigin="anonymous"></script>'
     ld = {"@context": "https://schema.org", "@type": "WebPage", "name": title, "description": desc, "inLanguage": "ja",
@@ -876,7 +879,7 @@ def policy_page():
 <h3>4. 第三者への提供</h3>
 <p>法令に基づく場合を除き、集めた情報を第三者に提供しません。本サイトはGitHub（ページの配信）とCloudflare（報告・口コミの受付）を利用しており、各社のサーバーにアクセスの記録が残ることがあります。</p>
 <h3>5. 外部サービス・広告</h3>
-<p>本サイトは{"" if ADS_CLIENT else "今後、"}第三者配信の広告サービス「Google AdSense」を利用{"しています" if ADS_CLIENT else "する予定です"}。Google などの第三者配信事業者は、Cookie を使って、利用者が本サイトや他のサイトに過去にアクセスした情報に基づいて広告を配信することがあります。Google が広告 Cookie を使うことで、Google やそのパートナーは本サイトや他のサイトへのアクセス情報に基づいて適切な広告を表示できます。利用者は <a href="https://adssettings.google.com/" rel="noopener" target="_blank">Google の広告設定</a> でパーソナライズ広告を無効にできます。また <a href="https://www.aboutads.info/choices/" rel="noopener" target="_blank">www.aboutads.info</a> で、第三者配信事業者の Cookie を無効にできます。詳しくは <a href="https://policies.google.com/technologies/ads?hl=ja" rel="noopener" target="_blank">Google の広告に関するポリシー</a> をご覧ください。広告はページの区切りの間にだけ表示し、画面を覆うポップアップ型の広告は使いません。アクセス解析は現在使っていません。</p>
+<p>本サイトは{"" if ADS_CLIENT else "今後、"}第三者配信の広告サービス「Google AdSense」を利用{"しています" if ADS_CLIENT else "する予定です"}。Google などの第三者配信事業者は、Cookie を使って、利用者が本サイトや他のサイトに過去にアクセスした情報に基づいて広告を配信することがあります。Google が広告 Cookie を使うことで、Google やそのパートナーは本サイトや他のサイトへのアクセス情報に基づいて適切な広告を表示できます。利用者は <a href="https://adssettings.google.com/" rel="noopener" target="_blank">Google の広告設定</a> でパーソナライズ広告を無効にできます。また <a href="https://www.aboutads.info/choices/" rel="noopener" target="_blank">www.aboutads.info</a> で、第三者配信事業者の Cookie を無効にできます。詳しくは <a href="https://policies.google.com/technologies/ads?hl=ja" rel="noopener" target="_blank">Google の広告に関するポリシー</a> をご覧ください。広告はページの区切りの間にだけ表示し、画面を覆うポップアップ型の広告は使いません。{"アクセス解析には Cloudflare Web Analytics を使っています。Cookie を使わず、個人を特定する情報は集めません。" if CF_BEACON else "アクセス解析は現在使っていません。"}</p>
 <h3>6. 外部サイトへのリンク</h3>
 <p>報道記事、消防本部の公開ページ、X・Yahoo!リアルタイム検索などへのリンクがあります。リンク先での情報の扱いは各サイトの方針によります。</p></section>
 <section class="section" id="terms" aria-labelledby="tm"><h2 id="tm">利用規約</h2>
@@ -923,6 +926,22 @@ def page_lastmod(pages):
         new[fn] = prev if prev and prev[0] == sig else [sig, today]
     path.write_text(json.dumps(new, ensure_ascii=False, separators=(',', ':'), sort_keys=True), encoding='utf-8')
     return {fn: v[1] for fn, v in new.items()}
+
+# 有事の速さ（docs/goals.md の D）：火事のページが最初に生成された時刻と、情報源の時刻（報道の配信・消防の発表）を残す。
+# 値は [最初に生成した時刻(UTC), 情報源の時刻(UTC), 火事の日]。ファイルがない最初の回は、既存のページの生成時刻を「不明」（空）にする
+def fire_first_seen(pages):
+    path = RAW / 'fire_first_seen.json'
+    boot = not path.exists()
+    seen = {} if boot else json.loads(path.read_text(encoding='utf-8'))
+    now = '' if boot else datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%MZ')
+    for r in RECORDS:
+        fn = fire_href(r['fid'])
+        if fn in seen or fn not in pages: continue
+        ts = [t for t in ((r['x'] or {}).get('first'), (r.get('official') or {}).get('at')) if t]
+        seen[fn] = [now, (min(ts)[:16] + 'Z') if ts else '', r['day']]
+    limit = (datetime.datetime.now(JST).date() - datetime.timedelta(days=120)).isoformat()
+    seen = {k: v for k, v in seen.items() if v[2] >= limit}
+    path.write_text(json.dumps(seen, ensure_ascii=False, separators=(',', ':'), sort_keys=True), encoding='utf-8')
 
 # 消えたページの引っ越し先（Search Console の「見つかりませんでした（404）」対策）
 # 報道の火事のページ（f-…）は、あとから町名がわかる・同じ火事の記事がまとまるなどで ID が変わり、前の URL が消える。
@@ -1077,6 +1096,7 @@ def build(report=None):
     skip = {'fire.html', 'town.html', '404.html'}   # 中身が URL のパラメータで変わるページは載せない
     n_moved = moved_pages(pages)   # page_lastmod が前回のページ一覧を上書きする前に呼ぶ
     lastmod = page_lastmod({fn: h for fn, h in pages.items() if fn not in skip})
+    fire_first_seen(pages)
     # 90日より前の火事のページは定型文が中心なので、サイトマップからは外す（ページは残し、町・市区町村のページからたどれる）。
     # 新しいサイトのうちは、Google に先に見てほしいページへ巡回を寄せる（SEO 担当の決定 2026-11-11）
     old_day = (datetime.datetime.now(JST).date() - datetime.timedelta(days=90)).isoformat()

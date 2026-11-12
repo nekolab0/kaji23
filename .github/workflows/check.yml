@@ -1,0 +1,33 @@
+# PR の検査：生成と検査（verify.js）だけを行う。公開もデータの保存もしない。
+# 自動改善（docs/autopilot.md）は、この検査が通った PR だけをマージする
+name: check
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore: ['data/**', 'verify/**', 'seo/**', 'ops/**', '**.md']
+  workflow_dispatch:
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+permissions: { contents: read }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22 }
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.12' }
+      - run: npm ci && npm i -g playwright@1.47.2 && npx playwright install --with-deps chromium
+      - run: sudo apt-get install -y fonts-noto-cjk
+      - name: 受付サーバーのテスト
+        run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs && node --no-warnings worker/mail.test.mjs && node --no-warnings worker/xposts.test.mjs && node --no-warnings worker/phone.test.mjs && node --no-warnings worker/push.test.mjs
+      - name: 生成・検査
+        env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}', CF_BEACON_TOKEN: '${{ vars.CF_BEACON_TOKEN }}' }
+        run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh
+      - name: 失敗したときに検査結果を残す
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with: { name: verify-report, path: verify/report.json, if-no-files-found: ignore, retention-days: 14 }
