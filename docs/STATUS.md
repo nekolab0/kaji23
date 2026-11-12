@@ -1,6 +1,6 @@
 # 火事速（kajisoku.jp）の現在の状況
 
-最終更新：2026-11-12（引き継ぎ用に作成）
+最終更新：2026-11-12（自動改善の仕組みを追加）
 
 作業を始める前にここを読み、作業の最後に同じ PR で更新する。
 確認できていないことは「不明」と書く。API キーやトークンは名前だけを書き、値は書かない。
@@ -45,11 +45,19 @@
 | `daily.yml`（報道だけ） | GitHub Actions の schedule と、受付サーバーからの呼び出し（`kickBuild`） | 毎時 UTC :07・:37。UTC 17:37・18:07（日本時間 2:37・3:07）は外している | 報道の取り直し → 生成 → 検査 → 公開。1回 約25分 |
 | `daily.yml`（push） | GitHub Actions | `main` に push したとき（`data/`・`verify/`・`seo/`・`.md` だけの変更は除く） | 生成 → 検査 → 公開 |
 | `gsc.yml` | GitHub Actions | 毎日 UTC 22:41（日本時間 7:41） | Search Console のデータを `seo/gsc/api/` に保存。URL 検査は1日1,500件 |
+| `check.yml` | GitHub Actions | PR を作ったとき（`.md`・`docs/`・`ops/`・`data/` だけの変更は除く） | 生成と検査だけ（公開しない）。自動改善はこれが通った PR だけをマージする |
 | `probe.yml` | GitHub Actions | `probe/` で始まるブランチに push したとき | 調査用。本番には影響しない |
 | 受付サーバーの cron | Cloudflare Workers | 毎分 ／ 毎日 UTC 4:17 | 出動情報の読み取り・プッシュ通知・電話・X ／ 古い報告の明細の削除 |
 
 - `daily.yml` の公開のあとに `indexnow` ジョブが走り、新しいページと今日変わったページを IndexNow（Bing など）へ送る。2026-11-11 23:38 UTC の回で 398件を送り、応答 200 を確認した。
 - 2026-11-11 の `daily.yml` には失敗した回がある。確認できた原因は GitHub 側の一時的な不調（Ubuntu のパッケージ取得の失敗、成果物の保存の失敗、起動の失敗）で、次の回は成功している。
+
+### 自動改善（2026-11-12〜）
+- 手順は `docs/autopilot.md`、目標は `docs/goals.md`。今の段階は **1. インデックス**（`ops/metrics/latest.md`）。
+- スケジュールタスク：毎日の改善（1日1回）と、毎週月曜の「外を見る」＋週次レポート（`ops/reports/`）。
+- 数字のまとめ：`gsc.yml` の回で `ops/metrics.py` が `ops/metrics/` を更新する。
+- 有事の速さ：`data/raw/fire_first_seen.json` に、火事のページができた時刻を記録し始めた（2026-11-12 より前のページは「不明」）。
+- アクセス解析（Cloudflare Web Analytics）：仕組みは入れたが、変数・Secret が未登録のため**まだ動いていない**。
 
 ## 2. Google への登録の状況（最優先の課題）
 - 2026-11-11 時点で、登録されているのはトップ1ページだけ。「検出 - インデックス未登録」が 8,927件。
@@ -90,6 +98,7 @@
 | X API のトークン（Cloudflare の Secret `X_BEARER`）の登録 | **不明** |
 | 火災メールの登録の続き：海津・江南（すぐメールのフォーム）、勝山（QR コード）のやり直し、那須（nasu-119）の退会の確認 | 未完了（2026-11-11 時点）。登録済みの自治体の一覧は**不明**（`worker/src/mail.js` に送信元ドメインの対応表がある） |
 | 残っているブランチを消してよいかの判断 | 未 |
+| Cloudflare Web Analytics の設定（`docs/runbook.md` の「アクセス解析」。変数 `CF_BEACON_TOKEN`・`CF_SITE_TAG`・`CF_ACCOUNT_ID`、Secret `CF_ANALYTICS_TOKEN`） | 未（2026-11-12 に依頼） |
 
 登録済みと確認できているもの（値は書かない）：
 - GitHub の Secret `GSC_KEY`（`gsc.yml` が毎日成功しているため）

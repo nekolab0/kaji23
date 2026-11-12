@@ -1,0 +1,16 @@
+{
+  "note": "自動改善の目標（docs/goals.md の機械可読版）。数字を変えるのは運営者の承認が必要",
+  "north_star": "月間PV（広告収益）",
+  "stages": [
+    {"id": 1, "name": "インデックス", "metric": "indexed", "gate": 1000, "unit": "ページ"},
+    {"id": 2, "name": "検索流入", "metric": "clicks_per_day_7d", "gate": 100, "unit": "クリック/日"},
+    {"id": 3, "name": "回遊", "metric": "pages_per_visit_7d", "gate": 1.8, "unit": "ページ/訪問"},
+    {"id": 4, "name": "収益", "metric": "rpm", "gate": null, "unit": "円/1,000PV"}
+  ],
+  "speed": {"metric": "publish_minutes_median_7d", "target": 30, "unit": "分"},
+  "guards": {
+    "verify_ok": "検査（verify/report.json）の error 級がすべて合格",
+    "fires_per_day_7d": "掲載件数（報道＋消防の発表）の7日平均が、前の7日より20%以上減らない",
+    "complaints": "誤った情報・削除依頼が0件（docs/STATUS.md に記録があれば止める）"
+  }
+}
