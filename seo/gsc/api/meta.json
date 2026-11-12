@@ -1,21 +1,21 @@
 {
- "fetchedAt": "2026-11-11T11:45+09:00",
+ "fetchedAt": "2026-11-12T15:01+09:00",
  "property": "sc-domain:kajisoku.jp",
  "range28d": [
-  "2026-10-13",
-  "2026-11-09"
+  "2026-10-14",
+  "2026-11-10"
  ],
- "sitemapUrls": 9596,
- "inspectedUrls": 1794,
+ "sitemapUrls": 4068,
+ "inspectedUrls": 2579,
  "coverage": {
   "送信して登録されました": 1,
-  "URL が Google に認識されていません": 1793
+  "URL が Google に認識されていません": 2578
  },
  "submittedSitemaps": [
   {
    "path": "https://kajisoku.jp/sitemap.xml",
-   "lastSubmitted": "2026-11-05T04:53:54.235Z",
-   "lastDownloaded": "2026-11-07T06:01:33.749Z",
+   "lastSubmitted": "2026-11-11T04:50:18.126Z",
+   "lastDownloaded": "2026-11-11T04:50:19.393Z",
    "isPending": false,
    "errors": "0",
    "warnings": "0",
