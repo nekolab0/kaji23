@@ -199,9 +199,10 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
   for (const width of [375, 1280]) {
     const wctx = await mkctx(width);
     const page = await wctx.newPage();
-    page.on('console', m => { if (m.type() === 'error' && !/cyberjapandata/.test((m.location() || {}).url || '') && !/fonts\.g/.test(m.text()) && !/ERR_FAILED/.test(m.text())) consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${m.text()}`); });
+    page.on('console', m => { if (m.type() === 'error' && !/cyberjapandata/.test((m.location() || {}).url || '') && !/cloudflareinsights/.test(m.text() + ((m.location() || {}).url || '')) && !/fonts\.g/.test(m.text()) && !/ERR_FAILED/.test(m.text())) consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${m.text()}`); });
     page.on('pageerror', e => consoleErr.push(`${width}px ${decodeURIComponent(page.url().split('/').pop())}: ${e.message}`));
     page.on('requestfailed', r => { const ft = (r.failure() && r.failure().errorText) || ''; if (/\/api\//.test(r.url()) && /ERR_ABORTED/.test(ft)) return; if (/cyberjapandata\.gsi\.go\.jp/.test(r.url())) return;   // 前者：次のページへ移るときに打ち切られた受付サーバーへの問い合わせ。後者：火事マップの地図タイル（国土地理院の配信の都合）。どちらも表示の不具合ではない
+    if (/cloudflareinsights\.com/.test(r.url())) return;   // アクセス解析（Cloudflare Web Analytics）の送信。検査では file:// から開くので必ず失敗する。表示の不具合ではない
     if (!/fonts\.g|x\.com|twitter|yahoo|google|workers\.dev/.test(r.url())) reqFail.push(`${r.url()} ${r.failure() && r.failure().errorText}`); });
     for (const f of pages) {
       await page.goto('file://' + path.join(DIST, f.split('?')[0]) + (f.includes('?') ? '?' + f.split('?')[1].split('&').map(kv => kv.split('=').map(encodeURIComponent).join('=')).join('&') : ''), { waitUntil: 'load' });

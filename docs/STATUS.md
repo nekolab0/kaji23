@@ -57,7 +57,7 @@
 - スケジュールタスク：毎日の改善（1日1回）と、毎週月曜の「外を見る」＋週次レポート（`ops/reports/`）。
 - 数字のまとめ：`gsc.yml` の回で `ops/metrics.py` が `ops/metrics/` を更新する。
 - 有事の速さ：`data/raw/fire_first_seen.json` に、火事のページができた時刻を記録し始めた（2026-11-12 より前のページは「不明」）。
-- アクセス解析（Cloudflare Web Analytics）：仕組みは入れたが、変数・Secret が未登録のため**まだ動いていない**。
+- アクセス解析（Cloudflare Web Analytics）：2026-11-12 に変数3つ（`CF_BEACON_TOKEN`・`CF_SITE_TAG`・`CF_ACCOUNT_ID`）と Secret `CF_ANALYTICS_TOKEN` を登録し、Cloudflare 側は「JS スニペットを自分で入れる」方式にした。API からの取得は動作を確認済み（その時点では PV 0）。検査（`verify.js`）は file:// で開くため計測の送信が必ず失敗するので、`cloudflareinsights.com` への送信は検査の対象外にした。
 
 ## 2. Google への登録の状況（最優先の課題）
 - 2026-11-11 時点で、登録されているのはトップ1ページだけ。「検出 - インデックス未登録」が 8,927件。
@@ -98,7 +98,7 @@
 | X API のトークン（Cloudflare の Secret `X_BEARER`）の登録 | **不明** |
 | 火災メールの登録の続き：海津・江南（すぐメールのフォーム）、勝山（QR コード）のやり直し、那須（nasu-119）の退会の確認 | 未完了（2026-11-11 時点）。登録済みの自治体の一覧は**不明**（`worker/src/mail.js` に送信元ドメインの対応表がある） |
 | 残っているブランチを消してよいかの判断 | 未 |
-| Cloudflare Web Analytics の設定（`docs/runbook.md` の「アクセス解析」。変数 `CF_BEACON_TOKEN`・`CF_SITE_TAG`・`CF_ACCOUNT_ID`、Secret `CF_ANALYTICS_TOKEN`） | 未（2026-11-12 に依頼） |
+| Cloudflare Web Analytics の設定 | 済（2026-11-12） |
 
 登録済みと確認できているもの（値は書かない）：
 - GitHub の Secret `GSC_KEY`（`gsc.yml` が毎日成功しているため）
