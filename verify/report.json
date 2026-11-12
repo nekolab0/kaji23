@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-12 10:06（日本時間）",
+ "ran_at": "2026-11-12 10:26（日本時間）",
  "data_fetched_at": "2026-11-11T06:38:26.972Z",
  "checks": [
   {
@@ -156,13 +156,13 @@
    "name": "M3 読み取れていない消防本部",
    "ok": false,
    "level": "warn",
-   "detail": "kyoto(HTTP 522)、a-www-okunoto-fd-jp-saigai-wajima-annai-php(HTTP 522)"
+   "detail": "kyoto(HTTP 522)"
   },
   {
    "name": "M4 報道の収集の鮮度",
    "ok": true,
    "level": "error",
-   "detail": "最終収集 0.4時間前（30分ごとに収集）"
+   "detail": "最終収集 0.3時間前（30分ごとに収集）"
   },
   {
    "name": "L1 公式ページとの再照合",
