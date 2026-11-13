@@ -1,0 +1,12 @@
+[
+ {"key":"truck","q":"消防車 ポンプ車","n":8},
+ {"key":"truck2","q":"fire engine Japan","n":6},
+ {"key":"ladder","q":"はしご車","n":4},
+ {"key":"lights","q":"fire engine warning light Japan","n":4},
+ {"key":"smoke","q":"smoke from fire city","n":6},
+ {"key":"phone","q":"smartphone hand call","n":4},
+ {"key":"cig","q":"cigarette ashtray","n":4},
+ {"key":"bonfire","q":"bonfire","n":4},
+ {"key":"stove","q":"gas stove flame","n":4},
+ {"key":"alarm","q":"smoke detector ceiling","n":3}
+]
