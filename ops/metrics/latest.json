@@ -2,60 +2,60 @@
  "date": "2026-11-13",
  "indexed": 1,
  "inspected": 2598,
- "sitemap_urls": 4084,
- "gsc_fetched_at": "2026-11-12T18:12+09:00",
+ "sitemap_urls": 4138,
+ "gsc_fetched_at": "2026-11-13T09:16+09:00",
  "index_by_kind": {
   "main": {
-   "sitemap": null,
+   "sitemap": 39,
    "inspected": 39,
    "indexed": 1,
    "crawled": 1,
    "known": 1
   },
   "dial": {
-   "sitemap": null,
+   "sitemap": 47,
    "inspected": 47,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "pref": {
-   "sitemap": null,
+   "sitemap": 47,
    "inspected": 47,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "city": {
-   "sitemap": null,
+   "sitemap": 1537,
    "inspected": 1537,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "town": {
-   "sitemap": null,
+   "sitemap": 1044,
    "inspected": 464,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "fire": {
-   "sitemap": null,
+   "sitemap": 1424,
    "inspected": 464,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   }
  },
- "sitemap_children_downloaded": null,
+ "sitemap_children_downloaded": {},
  "clicks_7d": 5,
  "impressions_7d": 130,
  "clicks_per_day_7d": 0.7,
  "gsc_last_day": "2026-11-10",
- "pageviews_7d": null,
- "visits_7d": null,
- "pages_per_visit_7d": null,
+ "pageviews_7d": 2,
+ "visits_7d": 2,
+ "pages_per_visit_7d": 1.0,
  "rpm": null,
  "publish_samples_7d": 30,
  "publish_minutes_median_7d": 232,
