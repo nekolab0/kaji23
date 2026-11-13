@@ -100,7 +100,7 @@
 | Twilio の契約と、Cloudflare の Secret `TWILIO_SID`・`TWILIO_TOKEN`・`TWILIO_FROM` の登録 | 未登録（2026-11-11 時点）。登録するまで自動電話は動かない |
 | X API のトークン（Cloudflare の Secret `X_BEARER`）の登録 | **不明** |
 | 火災メールの登録の続き：海津・江南（すぐメールのフォーム）、勝山（QR コード）のやり直し、那須（nasu-119）の退会の確認 | **Muse に依頼（2026-11-13）**。作業の一覧は `ops/tasks/fire-mail-2026-11-13.csv`。結果は**不明**。登録済みの自治体の一覧も**不明**（`worker/src/mail.js` に送信元ドメインの対応表がある） |
-| 残っているブランチを消してよいかの判断 | **済（2026-11-13 に許可）**。`main`・`backup-23ku` 以外を削除した |
+| 残っているブランチの削除 | 2026-11-13 に削除の許可をもらった。ただし AI の作業環境からはブランチを消せない（GitHub への書き込みのうち削除が断られる）ので、**運営者の手で消す**：https://github.com/nekolab0/kaji23/branches の各行のごみ箱のボタン。`main`・`backup-23ku` は残す。今後のために、Settings → General の「Automatically delete head branches」を入れると、マージ後のブランチが自動で消える |
 | Cloudflare Web Analytics の設定 | 済（2026-11-12） |
 
 登録済みと確認できているもの（値は書かない）：
