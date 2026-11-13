@@ -1,9 +1,54 @@
 {
- "date": "2026-11-12",
+ "date": "2026-11-13",
  "indexed": 1,
  "inspected": 2598,
  "sitemap_urls": 4084,
  "gsc_fetched_at": "2026-11-12T18:12+09:00",
+ "index_by_kind": {
+  "main": {
+   "sitemap": null,
+   "inspected": 39,
+   "indexed": 1,
+   "crawled": 1,
+   "known": 1
+  },
+  "dial": {
+   "sitemap": null,
+   "inspected": 47,
+   "indexed": 0,
+   "crawled": 0,
+   "known": 0
+  },
+  "pref": {
+   "sitemap": null,
+   "inspected": 47,
+   "indexed": 0,
+   "crawled": 0,
+   "known": 0
+  },
+  "city": {
+   "sitemap": null,
+   "inspected": 1537,
+   "indexed": 0,
+   "crawled": 0,
+   "known": 0
+  },
+  "town": {
+   "sitemap": null,
+   "inspected": 464,
+   "indexed": 0,
+   "crawled": 0,
+   "known": 0
+  },
+  "fire": {
+   "sitemap": null,
+   "inspected": 464,
+   "indexed": 0,
+   "crawled": 0,
+   "known": 0
+  }
+ },
+ "sitemap_children_downloaded": null,
  "clicks_7d": 5,
  "impressions_7d": 130,
  "clicks_per_day_7d": 0.7,
@@ -12,12 +57,12 @@
  "visits_7d": null,
  "pages_per_visit_7d": null,
  "rpm": null,
- "publish_samples_7d": 0,
- "publish_minutes_median_7d": null,
- "publish_minutes_p90_7d": null,
- "publish_within_30m_7d": null,
- "fires_per_day_7d": 87.4,
- "fires_per_day_prev7d": 30.4,
+ "publish_samples_7d": 30,
+ "publish_minutes_median_7d": 232,
+ "publish_minutes_p90_7d": 1334,
+ "publish_within_30m_7d": 0.03,
+ "fires_per_day_7d": 86.9,
+ "fires_per_day_prev7d": 38.1,
  "verify_ok": true,
  "verify_failed": [],
  "stage": 1,

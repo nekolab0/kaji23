@@ -69,13 +69,25 @@ def write_rows(name, dims, rows):
 
 
 def sitemaps_status(s, site):
-    """Search Console に登録されたサイトマップの読み込み状況"""
-    r = s.get(f'{API}/webmasters/v3/sites/{urllib.parse.quote(site, safe="")}/sitemaps'); r.raise_for_status()
+    """Search Console に登録されたサイトマップの読み込み状況。索引（sitemap.xml）なら、子サイトマップ（型ごと）の状況も取る"""
+    base = f'{API}/webmasters/v3/sites/{urllib.parse.quote(site, safe="")}/sitemaps'
+    def row(x):
+        sub = sum(int(c.get('submitted', 0)) for c in x.get('contents', []))
+        return {'path': x.get('path'), 'lastSubmitted': x.get('lastSubmitted'), 'lastDownloaded': x.get('lastDownloaded'),
+                'isPending': x.get('isPending'), 'errors': x.get('errors'), 'warnings': x.get('warnings'), 'submittedUrls': sub}
+    r = s.get(base); r.raise_for_status()
     out = []
     for x in r.json().get('sitemap', []):
-        sub = sum(int(c.get('submitted', 0)) for c in x.get('contents', []))
-        out.append({'path': x.get('path'), 'lastSubmitted': x.get('lastSubmitted'), 'lastDownloaded': x.get('lastDownloaded'),
-                    'isPending': x.get('isPending'), 'errors': x.get('errors'), 'warnings': x.get('warnings'), 'submittedUrls': sub})
+        o = row(x)
+        if x.get('isSitemapsIndex'):
+            # 子の状況が取れなくても、ほかの取得は止めない（Google が子をまだ読んでいなければ空で返る）
+            try:
+                c = s.get(base, params={'sitemapIndex': x.get('path')})
+                o['children'] = [row(y) for y in c.json().get('sitemap', [])] if c.ok else None
+                if not c.ok: print(f'子サイトマップの状況を取れませんでした {c.status_code}')
+            except Exception as e:
+                print(f'子サイトマップの状況を取れませんでした {e}'); o['children'] = None
+        out.append(o)
     print(f'登録サイトマップ：{len(out)}件')
     return out
 
@@ -95,6 +107,17 @@ def sitemap_urls():
         else:
             urls += locs
     return urls
+
+
+def sitemap_kind(u):
+    """サイトマップの型（site/build.py の sitemap_kind と同じ分け方）"""
+    n = urllib.parse.unquote(u.rsplit('/', 1)[-1])
+    if n.startswith('f-'): return 'fire'
+    if n.startswith('m-'): return 'town'
+    if n.startswith('c-'): return 'city'
+    if n.startswith('p-'): return 'pref'
+    if n.startswith('dial-') and n != 'dial-list.html': return 'dial'
+    return 'main'
 
 
 def inspect(s, site, today):
@@ -148,7 +171,9 @@ def inspect(s, site, today):
         for k, v in sorted(counts.items(), key=lambda kv: -kv[1]):
             w.writerow([k, v])
     print(f'URL検査：今回{done}件、記録{len(known)}件 / サイトマップ{len(urls)}件')
-    return len(urls), len(known), counts
+    by_kind = {}
+    for u in urls: by_kind[sitemap_kind(u)] = by_kind.get(sitemap_kind(u), 0) + 1
+    return len(urls), len(known), counts, by_kind
 
 
 def main():
@@ -166,11 +191,11 @@ def main():
     write_rows('pages_28d.csv', ['page'], query(s, site, start28, end, ['page']))
     write_rows('query_page_28d.csv', ['query', 'page'], query(s, site, start28, end, ['query', 'page']))
     sm = sitemaps_status(s, site)
-    total, checked, counts = inspect(s, site, today.isoformat())
+    total, checked, counts, by_kind = inspect(s, site, today.isoformat())
 
     with open(os.path.join(OUT, 'meta.json'), 'w', encoding='utf-8') as f:
         json.dump({'fetchedAt': dt.datetime.now(JST).isoformat(timespec='minutes'), 'property': site,
-                   'range28d': [start28, end], 'sitemapUrls': total, 'inspectedUrls': checked,
+                   'range28d': [start28, end], 'sitemapUrls': total, 'sitemapUrlsByKind': by_kind, 'inspectedUrls': checked,
                    'coverage': counts, 'submittedSitemaps': sm}, f, ensure_ascii=False, indent=1)
 
 

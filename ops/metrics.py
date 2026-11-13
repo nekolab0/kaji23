@@ -5,7 +5,7 @@
           ops/analytics/latest.json（Cloudflare Web Analytics。なければ回遊は「不明」）
 書くもの：ops/metrics/latest.json・latest.md（今日の数字と今の段階）、ops/metrics/history.csv（1日1行）
 """
-import csv, datetime, json, statistics
+import csv, datetime, json, re, statistics
 from collections import Counter
 from pathlib import Path
 
@@ -37,6 +37,37 @@ m['indexed'] = sum(v for k, v in cov.items() if '登録されました' in k or 
 m['inspected'] = meta.get('inspectedUrls')
 m['sitemap_urls'] = meta.get('sitemapUrls')
 m['gsc_fetched_at'] = meta.get('fetchedAt')
+
+# ---- 1b. 型ごとの登録（どの型が詰まっているかを見る。型はサイトマップの分け方と同じ）
+import urllib.parse
+KINDS = [('main', 'トップ・読み物・一覧'), ('dial', '案内ダイヤル'), ('pref', '都道府県'), ('city', '市区町村'), ('town', '町'), ('fire', '火事')]
+def kind_of(u):
+    n = urllib.parse.unquote(u.rsplit('/', 1)[-1])
+    if n.startswith('f-'): return 'fire'
+    if n.startswith('m-'): return 'town'
+    if n.startswith('c-'): return 'city'
+    if n.startswith('p-'): return 'pref'
+    if n.startswith('dial-') and n != 'dial-list.html': return 'dial'
+    return 'main'
+def is_indexed(state):
+    return '登録されました' in state or ('登録済み' in state and '未登録' not in state)
+by_kind = {k: {'sitemap': (meta.get('sitemapUrlsByKind') or {}).get(k), 'inspected': 0, 'indexed': 0, 'crawled': 0, 'known': 0} for k, _ in KINDS}
+p = ROOT / 'seo/gsc/api/inspection.csv'
+if p.exists():
+    for r in csv.DictReader(p.open(encoding='utf-8')):
+        b = by_kind[kind_of(r['url'])]
+        st = r.get('coverageState') or ''
+        b['inspected'] += 1
+        b['indexed'] += is_indexed(st)
+        b['crawled'] += bool(r.get('lastCrawlTime'))           # Google が1回でも読みに来た
+        b['known'] += bool(st) and '認識されていません' not in st   # 登録・検出・クロール済みなど、Google が URL を知っている
+m['index_by_kind'] = by_kind
+# 型ごとのサイトマップを Google が読んだか（索引の子。まだ取れていなければ None）
+kids = None
+for x in meta.get('submittedSitemaps') or []:
+    if x.get('children') is not None:
+        kids = {re.sub(r'^.*/sitemap-|\.xml$', '', c.get('path') or ''): (c.get('lastDownloaded') or '')[:10] for c in x['children']}
+m['sitemap_children_downloaded'] = kids
 
 # ---- 2. 検索流入（Search Console は2日ほど遅れる。データのある直近7日）
 rows = []
@@ -129,7 +160,14 @@ md = f"""# 今日の数字（{m['date']}）
 | 検査 | {'合格' if m['verify_ok'] else '不合格' if m['verify_ok'] is False else '不明'} |
 
 守る数字の警告：{'、'.join(g) if g else 'なし'}
-"""
+
+## 型ごとの登録（URL 検査）
+「知っている」は、登録・検出・クロール済みなど、Google が URL を知っている数。「読みに来た」は、クロールの日付がある数。
+
+| 型 | サイトマップ | 調べた | 知っている | 読みに来た | 登録 | サイトマップを Google が読んだ日 |
+|---|---|---|---|---|---|---|
+""" + ''.join(f"| {name} | {f(b['sitemap'])} | {b['inspected']} | {b['known']} | {b['crawled']} | {b['indexed']} | {'不明' if kids is None else (kids.get(k) or 'まだ')} |\n"
+              for k, name in KINDS for b in [by_kind[k]])
 (OUT / 'latest.md').write_text(md, encoding='utf-8')
 
 # 1日1行（同じ日は上書き）
