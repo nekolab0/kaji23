@@ -1,29 +1,67 @@
 {
- "fetchedAt": "2026-11-13T05:31+00:00",
+ "fetchedAt": "2026-11-14T05:21+00:00",
  "range": [
-  "2026-11-06",
-  "2026-11-12"
+  "2026-11-07",
+  "2026-11-13"
  ],
- "pageviews_7d": 2,
- "visits_7d": 2,
+ "pageviews_7d": 30,
+ "visits_7d": 14,
  "daily": [
   {
    "date": "2026-11-12",
    "pageviews": 2,
    "visits": 2
+  },
+  {
+   "date": "2026-11-13",
+   "pageviews": 28,
+   "visits": 12
   }
  ],
  "top_paths": [
   {
+   "path": "/fire.html",
+   "pageviews": 14,
+   "visits": 8
+  },
+  {
+   "path": "/index.html",
+   "pageviews": 6,
+   "visits": 0
+  },
+  {
    "path": "/",
+   "pageviews": 6,
+   "visits": 6
+  },
+  {
+   "path": "/p-%E6%96%B0%E6%BD%9F%E7%9C%8C.html",
    "pageviews": 2,
-   "visits": 2
+   "visits": 0
+  },
+  {
+   "path": "/p-%E5%AE%AE%E5%9F%8E%E7%9C%8C.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
+   "path": "/town.html",
+   "pageviews": 1,
+   "visits": 0
   }
  ],
  "top_referers": [
   {
+   "host": "kajisoku.jp",
+   "pageviews": 16
+  },
+  {
+   "host": "t.co",
+   "pageviews": 8
+  },
+  {
    "host": "",
-   "pageviews": 2
+   "pageviews": 6
   }
  ]
 }

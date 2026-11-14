@@ -1,9 +1,9 @@
 {
  "date": "2026-11-14",
  "indexed": 1,
- "inspected": 3509,
- "sitemap_urls": 4148,
- "gsc_fetched_at": "2026-11-13T14:31+09:00",
+ "inspected": 4073,
+ "sitemap_urls": 4120,
+ "gsc_fetched_at": "2026-11-14T14:21+09:00",
  "index_by_kind": {
   "main": {
    "sitemap": 39,
@@ -27,22 +27,22 @@
    "known": 0
   },
   "city": {
-   "sitemap": 1537,
-   "inspected": 1537,
+   "sitemap": 1539,
+   "inspected": 1539,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "town": {
-   "sitemap": 1046,
-   "inspected": 920,
+   "sitemap": 1069,
+   "inspected": 1069,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "fire": {
-   "sitemap": 1432,
-   "inspected": 919,
+   "sitemap": 1379,
+   "inspected": 1332,
    "indexed": 0,
    "crawled": 0,
    "known": 0
@@ -53,15 +53,15 @@
  "impressions_7d": 130,
  "clicks_per_day_7d": 0.7,
  "gsc_last_day": "2026-11-10",
- "pageviews_7d": 2,
- "visits_7d": 2,
- "pages_per_visit_7d": 1.0,
+ "pageviews_7d": 30,
+ "visits_7d": 14,
+ "pages_per_visit_7d": 2.14,
  "rpm": null,
- "publish_samples_7d": 104,
- "publish_minutes_median_7d": 69,
+ "publish_samples_7d": 107,
+ "publish_minutes_median_7d": 70,
  "publish_minutes_p90_7d": 1203,
- "publish_within_30m_7d": 0.24,
- "fires_per_day_7d": 74.9,
+ "publish_within_30m_7d": 0.23,
+ "fires_per_day_7d": 75.4,
  "fires_per_day_prev7d": 45.9,
  "verify_ok": true,
  "verify_failed": [],
