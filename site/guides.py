@@ -111,6 +111,7 @@ def _own_times():
     except (OSError, ValueError, KeyError): return []
     out = []
     for x in F.values():
+        if x[2] in NOT_A_FIRE_TOWN: continue   # 火事ではない取り込み（nation.py）
         try: out.append(datetime.datetime.fromisoformat(x[5].replace('Z', '+00:00')).astimezone(JST))
         except (TypeError, ValueError, IndexError): pass
     return out

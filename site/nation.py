@@ -37,6 +37,9 @@ for aid, x in NEWS_BY_ID.items():   # 保存前の最新分も
 # 消防本部の発表（受付サーバーが集めたもの）。同じ日・同じ町の報道があれば、報道のページに発表を添える
 _op = RAW / 'official_archive.json'
 OFFICIAL = json.load(open(_op, encoding='utf-8'))['fires'] if _op.exists() else {}
+# 火事ではないのに取り込まれた発表（町名の欄でわかるもの）。記録は消さず、ページ・件数・統計に使わない
+#  「過去」… 茨城県の出動情報ページのリンク「過去の火災・事故発生情報」を、毎日0時に13市町の火事として読んでいた（2026-11-05〜14・130件）
+NOT_A_FIRE_TOWN = {'過去'}
 _news_key = {(r['pref'], r['city'], r['town'], r['day']): r for r in RECORDS}
 _news_city_day = {}
 for r in RECORDS: _news_city_day.setdefault((r['pref'], r['city'], r['day']), []).append(r)
@@ -57,7 +60,7 @@ def norm_town(pref, city, t):
 _off_seen = set()
 for oid, v in sorted(OFFICIAL.items(), key=lambda kv: (kv[0].startswith('o-b-'), kv[0])):   # 受付サーバーの分（火事のページがある）を先に
     pref, city, town, day, kind, at, sname, surl, status = (list(v) + [''] * 9)[:9]
-    if status == '誤報': continue
+    if status == '誤報' or v[2] in NOT_A_FIRE_TOWN: continue
     town = norm_town(pref, city, town)
     dk = (pref, city, town, day) if town else (pref, city, (at or day)[:16])
     if dk in _off_seen: continue   # さかのぼって取り込んだ分と、受付サーバーの分の重なり

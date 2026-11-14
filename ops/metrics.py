@@ -94,9 +94,11 @@ m['rpm'] = None   # AdSense の数字はまだ取っていない
 # ---- D. 有事の速さ（情報源の時刻 → 火事のページが最初に生成されるまで）
 seen = load('data/raw/fire_first_seen.json', {})
 week = set(days_back(7))
+not_fire = {f'f-{k}.html' for k, v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).items() if v[2] == '過去'}
 mins = []
 for fn, (first, src, day) in seen.items():
     if day not in week or not first or not src: continue
+    if fn in not_fire: continue   # 火事ではない取り込み（site/nation.py の NOT_A_FIRE_TOWN）のページは数えない
     a = datetime.datetime.fromisoformat(src.replace('Z', '+00:00'))
     b = datetime.datetime.fromisoformat(first.replace('Z', '+00:00'))
     d = (b - a).total_seconds() / 60
@@ -109,7 +111,8 @@ m['publish_within_30m_7d'] = round(sum(1 for x in mins if x <= 30) / len(mins), 
 # ---- 守る数字：掲載件数（報道＋消防の発表）
 per_day = Counter()
 for v in (load('data/raw/news_archive.json', {}) or {}).get('fires', {}).values(): per_day[v[3]] += 1
-for v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).values(): per_day[v[3]] += 1
+for v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).values():
+    if v[2] != '過去': per_day[v[3]] += 1   # 「過去」は火事ではない取り込み（site/nation.py の NOT_A_FIRE_TOWN）
 m['fires_per_day_7d'] = round(sum(per_day[d] for d in days_back(7)) / 7, 1)
 m['fires_per_day_prev7d'] = round(sum(per_day[d] for d in days_back(7, today - datetime.timedelta(days=8))) / 7, 1)
 
