@@ -65,5 +65,11 @@ const mu = parseSource('<p>11月2日13時40分ころ、南魚沼市蛭窪に建�
 ok('「南魚沼市蛭窪に建物火災のため」の「に」は町名に含めない', mu.length === 1 && mu[0].town === '蛭窪', JSON.stringify(mu));
 const hk = parseSource('<p>彦根市消防本部から 11月02日 10:20 彦根市消防本部管内で火災が発生しました。</p>', { id: 't-hk', name: 'x', pref: '滋賀県', type: 'sentence' }, now);
 ok('町名が読めなければ市区町村までにする', hk.length === 1 && hk[0].city === '彦根市' && hk[0].town === '', JSON.stringify(hk));
+// 茨城県の出動情報（いま出動中だけを載せるページ）: 一覧へのリンク「過去の火災・事故発生情報」を火事にしない
+const ib = { id: 't-oarai', name: '大洗町の消防（出動情報）', pref: '茨城県', city: '大洗町', type: 'sentence', current: true };
+const ib0 = parseSource('<h1>現在の火災・事故発生情報</h1><p>現在、大洗町内で災害は発生しておりません。</p><p><a href="annai_list.html">過去の火災・事故発生情報</a></p><p>過去の火災・事故発生情報はこちら</p>', ib, now);
+ok('「過去の火災・事故発生情報」（リンク）は火事にしない', ib0.length === 0 && fireKind('過去の火災・事故発生情報') === null, JSON.stringify(ib0));
+const ib1 = parseSource('<p>磯浜町付近で建物火災が発生し、消防車が出動しています。</p><p><a href="annai_list.html">過去の火災・事故発生情報</a></p>', ib, now);
+ok('いま出動中のページ（時刻なし）の火事は、これまでどおり読む', ib1.length === 1 && ib1[0].city === '大洗町' && ib1[0].town === '磯浜町' && ib1[0].kind === '建物火災', JSON.stringify(ib1));
 results.forEach(r => console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? ' — ' + r.detail : ''}`));
 process.exit(results.some(r => !r.ok) ? 1 : 0);

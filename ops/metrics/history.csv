@@ -1,3 +1,4 @@
 date,stage,indexed,inspected,clicks_7d,impressions_7d,pageviews_7d,visits_7d,pages_per_visit_7d,publish_minutes_median_7d,publish_within_30m_7d,fires_per_day_7d,verify_ok
 2026-11-12,1,1,2598,5,130,,,,,,87.4,True
 2026-11-13,1,1,3509,5,130,2,2,1.0,232,0.03,87.6,True
+2026-11-14,1,1,3509,5,130,2,2,1.0,69,0.24,74.9,True
