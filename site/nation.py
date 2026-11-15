@@ -279,6 +279,7 @@ def pref_page(p):
   <h2 id="news">{esc(p)}で報道された火事</h2>
   {news_list_jp(news_in(pref=p), empty=f'直近30日に、{p}の火事の報道は見つかっていません。', show_pref=False)}
 </section>
+{pref_official_recent(p)}
 {extra}
 <section class="section" aria-labelledby="cities">
   <h2 id="cities">{esc(p)}の市区町村</h2>
@@ -430,6 +431,22 @@ def record_list(rs, show_city=True):
         lis.append(f'<li class="news-item"><div class="row">{name}{tag}</div>'
                    f'<span class="small muted">{jday(r["day"])}（{rec_src(r)}）</span></li>')
     return f'<ul class="news">{"".join(lis)}</ul>'
+def pref_official_recent(p, days=7):
+    """都道府県ページ：直近7日の、消防の発表だけでわかった火事（報道された火事は上の一覧にある）。
+    新しい火事のページへ、トップから2クリックで届くようにする（自動改善 E004）"""
+    since = (datetime.datetime.now(JST) - datetime.timedelta(days=days)).date().isoformat()
+    rs = [r for r in records_in(p) if r['day'] >= since and has_page(r) and not r['x']]
+    if not rs: return ''
+    return (f'<section class="section" aria-labelledby="ofc"><h2 id="ofc">{esc(p)}で消防の発表があった火事（直近{days}日・{len(rs)}件）</h2>'
+            + record_list(rs).replace('<ul class="news">', '<ul class="news" data-collapse="5">', 1)
+            + '<p class="small muted">各消防本部の出動情報・火災メールで発表された火事です。報道されない小さな火事も含みます。</p></section>')
+def older_records(rs):
+    """市区町村ページ：「最近の火事」20件より前の火事のページへのリンク（閉じた状態で置く）。
+    記録の多い市で、古い火事のページがどこからもリンクされなくなるのを防ぐ（自動改善 E004）"""
+    rs = [r for r in rs if has_page(r)][:300]   # ページを重くしすぎないための上限
+    if not rs: return ''
+    links = ''.join(f'<a href="{esc(fire_href(r["fid"]))}">{esc(r["town"] or r["city"])}<span class="cnt">{jmd(r["day"])}</span></a>' for r in rs)
+    return f'<details class="towns"><summary>それより前の火事（{len(rs)}件）</summary><div class="town-grid">{links}</div></details>'
 def area_crumbs(p, c, t=None):
     par = WARD_PARENT.get((p, c))
     items = [(p, pref_file(p))] + ([(par, city_file(p, par))] if par else []) + [(c[len(par):] if par else c, city_file(p, c))]
@@ -547,7 +564,7 @@ def city_records(p, c):
     return (f'<section class="section" aria-labelledby="rec"><h2 id="rec">{esc(c)}の火事の記録（{len(rs)}件）</h2>'
             f'<p class="small">{yrs}</p>' + (f'<p class="small">{kd}</p>' if kd else '')
             + (f'<h3 style="font-size:15px">火事の記録が多い町</h3><div class="town-grid">{tw}</div>' if tw else '')
-            + f'<h3 style="font-size:15px">最近の火事</h3>{record_list(rs[:20])}'
+            + f'<h3 style="font-size:15px">最近の火事</h3>{record_list(rs[:20])}{older_records(rs[20:]) if CODE_OF.get((p, c)) else ''}'   # 政令市のページでは出さない（区のページにある）
             f'<p class="small muted">当サイトが報道・消防本部の発表・自治体のオープンデータから記録した火事です（{SITE_NAME}の収録分。すべての火事ではありません）。</p></section>')
 
 def static_pages():
