@@ -1,11 +1,11 @@
 {
- "fetchedAt": "2026-11-14T05:21+00:00",
+ "fetchedAt": "2026-11-15T04:47+00:00",
  "range": [
-  "2026-11-07",
-  "2026-11-13"
+  "2026-11-08",
+  "2026-11-14"
  ],
- "pageviews_7d": 30,
- "visits_7d": 14,
+ "pageviews_7d": 33,
+ "visits_7d": 17,
  "daily": [
   {
    "date": "2026-11-12",
@@ -16,6 +16,11 @@
    "date": "2026-11-13",
    "pageviews": 28,
    "visits": 12
+  },
+  {
+   "date": "2026-11-14",
+   "pageviews": 3,
+   "visits": 3
   }
  ],
  "top_paths": [
@@ -25,19 +30,19 @@
    "visits": 8
   },
   {
+   "path": "/",
+   "pageviews": 8,
+   "visits": 8
+  },
+  {
    "path": "/index.html",
    "pageviews": 6,
    "visits": 0
   },
   {
-   "path": "/",
-   "pageviews": 6,
-   "visits": 6
-  },
-  {
    "path": "/p-%E6%96%B0%E6%BD%9F%E7%9C%8C.html",
-   "pageviews": 2,
-   "visits": 0
+   "pageviews": 3,
+   "visits": 1
   },
   {
    "path": "/p-%E5%AE%AE%E5%9F%8E%E7%9C%8C.html",
@@ -56,12 +61,12 @@
    "pageviews": 16
   },
   {
-   "host": "t.co",
-   "pageviews": 8
+   "host": "",
+   "pageviews": 9
   },
   {
-   "host": "",
-   "pageviews": 6
+   "host": "t.co",
+   "pageviews": 8
   }
  ]
 }
