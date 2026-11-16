@@ -929,6 +929,36 @@ def page_lastmod(pages):
 
 # 有事の速さ（docs/goals.md の D）：火事のページが最初に生成された時刻と、情報源の時刻（報道の配信・消防の発表）を残す。
 # 値は [最初に生成した時刻(UTC), 情報源の時刻(UTC), 火事の日]。ファイルがない最初の回は、既存のページの生成時刻を「不明」（空）にする
+# ファイル名が変わった火事（あとから町名がわかった・消防の発表のページが報道のページにまとまった）は、前のページの時刻を引き継ぐ。
+# 前のページの値には4つ目（引き継ぎ先のファイル名）を足し、ops/metrics.py が同じ火事を2回数えないようにする（2026-11-16・実験 E005）
+FIRST_SEEN_SRC_GAP_MIN = 6 * 60   # 情報源の時刻がこれより離れていれば、同じ市・同じ日でも別の火事として引き継がない
+def _first_seen_inherit(seen, pages):
+    def t(s): return datetime.datetime.fromisoformat(s.replace('Z', '+00:00'))
+    since = (datetime.datetime.now(JST).date() - datetime.timedelta(days=30)).isoformat()
+    n = 0
+    for old in sorted(seen):
+        v = seen[old]
+        if old in pages or len(v) > 3 or not v[0] or not v[1] or v[2] < since: continue
+        to = moved_target(old, pages)
+        w = seen.get(to) if to else None
+        if not w or not to.startswith('f-') or w[2] != v[2] or not w[1]: continue
+        if abs((t(w[1]) - t(v[1])).total_seconds()) / 60 > FIRST_SEEN_SRC_GAP_MIN: continue
+        if not w[0] or v[0] < w[0]: w[0] = v[0]
+        seen[old] = v[:3] + [to]
+        n += 1
+    # 町名があとからわかると、市までのページ（…-x-日付）と町名つきのページの両方が残る。同じ市・同じ日・同じ情報源時刻なら同じ火事として、
+    # 先にできたページの時刻だけを数える（あとからできたページに4つ目を足す）
+    groups = {}
+    for fn, v in seen.items():
+        if fn.startswith('f-n-') and len(v) == 3 and v[0] and v[1] and v[2] >= since:
+            groups.setdefault(('-'.join(fn.split('-')[:4]), v[1], v[2]), []).append(fn)
+    for fns in groups.values():
+        fns.sort(key=lambda f: (seen[f][0], f))
+        for later in fns[1:]:
+            seen[later] = seen[later][:3] + [fns[0]]
+            n += 1
+    return n
+
 def fire_first_seen(pages):
     path = RAW / 'fire_first_seen.json'
     boot = not path.exists()
@@ -939,6 +969,8 @@ def fire_first_seen(pages):
         if fn in seen or fn not in pages: continue
         ts = [t for t in ((r['x'] or {}).get('first'), (r.get('official') or {}).get('at')) if t]
         seen[fn] = [now, (min(ts)[:16] + 'Z') if ts else '', r['day']]
+    n = _first_seen_inherit(seen, pages)
+    if n: print(f'掲載時刻の引き継ぎ：{n}件')
     limit = (datetime.datetime.now(JST).date() - datetime.timedelta(days=120)).isoformat()
     seen = {k: v for k, v in seen.items() if v[2] >= limit}
     path.write_text(json.dumps(seen, ensure_ascii=False, separators=(',', ':'), sort_keys=True), encoding='utf-8')
