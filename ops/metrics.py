@@ -68,6 +68,10 @@ for x in meta.get('submittedSitemaps') or []:
     if x.get('children') is not None:
         kids = {re.sub(r'^.*/sitemap-|\.xml$', '', c.get('path') or ''): (c.get('lastDownloaded') or '')[:10] for c in x['children']}
 m['sitemap_children_downloaded'] = kids
+# 索引（sitemap.xml）そのものを Google が読んだ日（子の記録が空でも、索引は読まれていることがある）
+idx = [x for x in meta.get('submittedSitemaps') or [] if (x.get('path') or '').endswith('/sitemap.xml')]
+m['sitemap_index_downloaded'] = ((idx[0].get('lastDownloaded') or '')[:10] or None) if idx else None
+m['sitemap_index_submitted_urls'] = idx[0].get('submittedUrls') if idx else None
 
 # ---- 2. 検索流入（Search Console は2日ほど遅れる。データのある直近7日）
 rows = []
@@ -96,7 +100,9 @@ seen = load('data/raw/fire_first_seen.json', {})
 week = set(days_back(7))
 not_fire = {f'f-{k}.html' for k, v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).items() if v[2] == '過去'}
 mins = []
-for fn, (first, src, day) in seen.items():
+for fn, v in seen.items():
+    first, src, day = v[:3]
+    if len(v) > 3: continue   # ファイル名が変わった火事の前のページ（時刻は引き継ぎ先のページで数える。site/build.py の _first_seen_inherit）
     if day not in week or not first or not src: continue
     if fn in not_fire: continue   # 火事ではない取り込み（site/nation.py の NOT_A_FIRE_TOWN）のページは数えない
     a = datetime.datetime.fromisoformat(src.replace('Z', '+00:00'))
@@ -171,6 +177,7 @@ md = f"""# 今日の数字（{m['date']}）
 |---|---|---|---|---|---|---|
 """ + ''.join(f"| {name} | {f(b['sitemap'])} | {b['inspected']} | {b['known']} | {b['crawled']} | {b['indexed']} | {'不明' if kids is None else (kids.get(k) or 'まだ')} |\n"
               for k, name in KINDS for b in [by_kind[k]])
+md += f"\n索引（sitemap.xml）を Google が読んだ日：{m['sitemap_index_downloaded'] or 'まだ'}（Google が数えた URL：{f(m['sitemap_index_submitted_urls'])}。いまのサイトマップは {f(m['sitemap_urls'])}件）\n"
 (OUT / 'latest.md').write_text(md, encoding='utf-8')
 
 # 1日1行（同じ日は上書き）
