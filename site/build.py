@@ -1166,7 +1166,10 @@ def build(report=None):
     # IndexNow（Bing など）の確認用の鍵ファイル
     _ik = (SITE / 'indexnow_key.txt').read_text().strip()
     (DIST / f'{_ik}.txt').write_text(_ik, encoding='utf-8')
-    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nDisallow: /data/_guides.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
+    # 索引に加えて、型ごとのサイトマップも1本ずつ書く。Google が索引を読んでも子を読みに来ないため（実験 E006・2026-11-17）。
+    # robots.txt のサイトマップの行は何本でも書け、索引と個別の両方を知らせてよい（seo/knowledge.md の11章）
+    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nDisallow: /data/_guides.json\nSitemap: {SITE_URL}/sitemap.xml\n'
+        + ''.join(f'Sitemap: {SITE_URL}/{n}\n' for n, _ in files), encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:
         (DIST / 'ads.txt').write_text(f"google.com, {ADS_CLIENT.replace('ca-pub-', 'pub-')}, DIRECT, f08c47fec0942fa0\n", encoding='utf-8')
