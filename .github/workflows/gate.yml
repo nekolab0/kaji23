@@ -1,0 +1,25 @@
+# マージの見張り：main に入った PR が、check に合格していたかを確かめる。
+# 本当は GitHub のルールセットで「合格しないとマージできない」壁にしたかったが、個人のリポジトリでは
+# GitHub Actions（データ・Search Console の保存で main に直接 push している）を例外にできず、入れると保存が止まる（2026-11-17）。
+# そのため、壁の代わりに、すり抜けたらすぐ気づける見張りにした。不合格のまま入った PR があると、この回が失敗して GitHub からメールが届く
+name: gate
+on:
+  push:
+    branches: [main]
+permissions: { contents: read, pull-requests: read, checks: read }
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - env: { GH_TOKEN: '${{ github.token }}', REPO: '${{ github.repository }}', SHA: '${{ github.sha }}' }
+        run: |
+          prs=$(gh api "repos/$REPO/commits/$SHA/pulls" -q '[.[] | select(.merged_at != null)] | .[].number')
+          if [ -z "$prs" ]; then echo "PR からのマージではない（データの保存など）ので見張りの対象外"; exit 0; fi
+          bad=0
+          for n in $prs; do
+            head=$(gh api "repos/$REPO/pulls/$n" -q .head.sha)
+            c=$(gh api "repos/$REPO/commits/$head/check-runs" -q '[.check_runs[] | select(.name == "check") | .conclusion] | first // "なし"')
+            echo "PR #$n の check：$c"
+            if [ "$c" != "success" ]; then echo "::error::PR #$n は check に合格しないまま main に入った（結果：$c）。docs/autopilot.md の手順違反。元に戻すか、check を通して確かめる"; bad=1; fi
+          done
+          exit $bad
