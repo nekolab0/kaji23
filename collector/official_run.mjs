@@ -41,4 +41,15 @@ if (process.argv[1] && process.argv[1].endsWith('official_run.mjs')) {
     console.log('消防本部の発表を取得できませんでした（前回までの記録で生成します）: ' + e.message);
     if (!fs.existsSync(file)) fs.writeFileSync(file, JSON.stringify(arc));
   }
+  // 出動情報ページごとの読み取り状況を残す（verify/sources_status.json。ops/metrics.py が「読めていない収集元」を数える）。
+  // 作業環境からは本番に接続できないので、GitHub Actions の回で記録しておく
+  try {
+    const r = await fetch(`${API}/api/sources`, { headers: { 'User-Agent': 'kaji23-build' }, signal: AbortSignal.timeout(30000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    const out = { at: new Date().toISOString(), sources: (j.sources || []).map(s => ({ id: s.id, status: s.status || null, fails: s.fails || 0, last_ok: s.last_ok || null })),
+      mails: (j.mails || []).map(m => ({ id: m.id, last_ok: m.last_ok || null, items: m.items || 0 })) };
+    fs.writeFileSync(path.join(ROOT, 'verify', 'sources_status.json'), JSON.stringify(out, null, 1));
+    console.log(`読み取り状況: 出動情報 ${out.sources.length}ページ（読めていない ${out.sources.filter(s => s.status && s.status !== 'ok').length}）・火災メール ${out.mails.length}種`);
+  } catch (e) { console.log('読み取り状況を取得できませんでした: ' + e.message); }
 }

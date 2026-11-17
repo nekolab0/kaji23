@@ -6,7 +6,7 @@
 書くもの：ops/metrics/latest.json・latest.md（今日の数字と今の段階）、ops/metrics/history.csv（1日1行）
 """
 import csv, datetime, json, re, statistics
-from collections import Counter
+from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -122,6 +122,24 @@ for v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).val
 m['fires_per_day_7d'] = round(sum(per_day[d] for d in days_back(7)) / 7, 1)
 m['fires_per_day_prev7d'] = round(sum(per_day[d] for d in days_back(7, today - datetime.timedelta(days=8))) / 7, 1)
 
+# ---- 守る数字：読み誤りの疑い（2026-11-14 の茨城の件を、次からは数字で気づけるようにした）
+# 同じ市区町村・同じ町名・同じ時刻（分まで）の発表が、直近14日のうち3日以上あるのは、
+# 火事ではなくページの決まった文言（「過去の火災・事故発生情報」など）を毎日読んでいる疑いが強い
+_rep = defaultdict(set)
+_d14 = set(days_back(14))
+for v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).values():
+    if v[2] in ('過去',) or v[3] not in _d14 or not v[5]: continue   # 「過去」は対処済み（site/nation.py の NOT_A_FIRE_TOWN）
+    _rep[(v[0], v[1], v[2] or '', v[5][11:16])].add(v[3])
+m['misread_suspects'] = sorted(f"{k[0]}{k[1]} {k[2] or '（町名なし）'} 毎日{k[3]}UTC（{len(d)}日）" for k, d in _rep.items() if len(d) >= 3)
+
+# ---- 収集元の読み取り状況（verify/sources_status.json。collector/official_run.mjs が毎回の生成で記録）
+_ss = load('verify/sources_status.json', {}) or {}
+_src = _ss.get('sources', [])
+m['sources_status_at'] = _ss.get('at')
+m['sources_total'] = len(_src) or None
+m['sources_failing'] = sorted(f"{x['id']}（{x['status']}・{x['fails']}回続けて）" for x in _src if x.get('status') and x['status'] != 'ok') if _src else None
+m['fire_mail_senders'] = len(_ss.get('mails', [])) if _ss else None
+
 # ---- 守る数字：検査
 rep = load('verify/report.json', {})
 bad = [c['name'] for c in rep.get('checks', []) if c.get('level') == 'error' and not c.get('ok')]
@@ -147,6 +165,8 @@ if m['fires_per_day_prev7d'] and m['fires_per_day_7d'] < m['fires_per_day_prev7d
     g.append(f"掲載件数が減った（{m['fires_per_day_prev7d']}→{m['fires_per_day_7d']}件/日）")
 if m['gsc_fetched_at'] and m['gsc_fetched_at'][:10] < (today - datetime.timedelta(days=2)).isoformat():
     g.append(f"Search Console の取得が止まっている可能性（最終 {m['gsc_fetched_at']}）")
+if m['misread_suspects']:
+    g.append(f"読み誤りの疑い {len(m['misread_suspects'])}件（同じ町・同じ時刻の発表が毎日続く）：" + '・'.join(m['misread_suspects'][:3]))
 m['guard_alerts'] = g
 
 OUT.mkdir(parents=True, exist_ok=True)
@@ -167,8 +187,10 @@ md = f"""# 今日の数字（{m['date']}）
 | 掲載までの分数（中央値・90%） | {f(m['publish_minutes_median_7d'], '分')}・{f(m['publish_minutes_p90_7d'], '分')}（30分以内 {f(m['publish_within_30m_7d'])}、{m['publish_samples_7d']}件） |
 | 掲載件数（7日平均） | {m['fires_per_day_7d']}件/日（前の7日 {m['fires_per_day_prev7d']}） |
 | 検査 | {'合格' if m['verify_ok'] else '不合格' if m['verify_ok'] is False else '不明'} |
+| 出動情報ページの読み取り | {f'{m["sources_total"] - len(m["sources_failing"])}/{m["sources_total"]} ページが読めている（{m["sources_status_at"]}）' if m['sources_total'] else '不明（verify/sources_status.json がまだない）'} |
 
 守る数字の警告：{'、'.join(g) if g else 'なし'}
+{('' if not m['sources_failing'] else chr(10) + '読めていない出動情報ページ：' + '、'.join(m['sources_failing'][:15]) + chr(10))}
 
 ## 型ごとの登録（URL 検査）
 「知っている」は、登録・検出・クロール済みなど、Google が URL を知っている数。「読みに来た」は、クロールの日付がある数。
