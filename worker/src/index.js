@@ -126,6 +126,7 @@ async function setup(env) {
   await run('CREATE INDEX IF NOT EXISTS idx_off_at ON official(at)');
   await run(`CREATE TABLE IF NOT EXISTS sources (id TEXT PRIMARY KEY, last_try TEXT, last_ok TEXT, status TEXT, items INTEGER, robots TEXT, robots_at TEXT)`);
   try { await run('ALTER TABLE sources ADD COLUMN sample TEXT'); } catch (e) {}   // 読み取りの確認用: 火災・出動を含む行の見本
+  try { await run('ALTER TABLE sources ADD COLUMN fails INTEGER NOT NULL DEFAULT 0'); } catch (e) {}   // 続けて失敗した回数（読めないページの間引き用。pollSources）
   for (const col of ['official INTEGER NOT NULL DEFAULT 0', 'official_kind TEXT', 'official_src TEXT']) { try { await run(`ALTER TABLE incidents ADD COLUMN ${col}`); } catch (e) {} }
   await run('CREATE TABLE IF NOT EXISTS contact (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL, at TEXT NOT NULL, who TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0)');
   if (env.SALT) return env.SALT;
@@ -302,7 +303,7 @@ export async function handle(request, env, now = new Date()) {
     const mails = results.filter(r => /^mail-/.test(r.id)).map(r => ({ id: r.id, name: '消防メール（' + r.id.slice(5) + '）', last_ok: r.last_ok, items: r.items, ...(dbg ? { sample: r.sample } : {}) }));
     let samples = [];
     if (dbg) { try { samples = (await DB.prepare('SELECT at, src, subject, text, added FROM mail_samples ORDER BY id DESC LIMIT 50').all()).results; } catch (e) {} }
-    return json(env, { generatedAt: iso, mails, ...(dbg ? { mailSamples: samples } : {}), sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items, ...(dbg ? { sample: st[s.id].sample } : {}) } : {}) })) });
+    return json(env, { generatedAt: iso, mails, ...(dbg ? { mailSamples: samples } : {}), sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items, fails: st[s.id].fails || 0, ...(dbg ? { sample: st[s.id].sample } : {}) } : {}) })) });
   }
 
   // 消防本部の発表の記録（サイトの生成時に読み、火事のページ・町のページ・件数に使う）。場所は町名まで
@@ -409,13 +410,24 @@ export async function ingestOfficial(env, items, now = new Date()) {
   return added;
 }
 
+// 続けて失敗しているページを、今回読むかどうか（3回目までは毎回。そのあとは30分→1時間→…→最長6時間あける）
+export function sourceDue(s, now) {
+  const f = (s && s.fails) || 0;
+  if (f < 3 || !s.last_try) return true;
+  const wait = Math.min(30 * 60e3 * 2 ** (f - 3), 6 * 3600e3);
+  return now - new Date(s.last_try) >= wait;
+}
+
 // 1回の実行で読むページ数を絞り、古い順に回す（各ページはおよそ5〜10分に1回）
 export async function pollSources(env, now = new Date(), fetcher = fetch, perRun = 8) {
   await setup(env);
   const DB = env.DB;
   const { results } = await DB.prepare('SELECT * FROM sources').all();
   const st = Object.fromEntries(results.map(r => [r.id, r]));
-  const due = SOURCES.slice().sort((a, b) => String((st[a.id] || {}).last_try || '').localeCompare(String((st[b.id] || {}).last_try || ''))).slice(0, perRun);
+  // 続けて読めないページ（HTTP 522・robots.txt で禁止など）は間引き、空いた枠を読めるページに回す（有事の速さ）。
+  // 3回続けて失敗したら、次は30分あけ、失敗するたびに倍（最長6時間）。1回でも読めたら元に戻る
+  const due = SOURCES.filter(src => sourceDue(st[src.id], now))
+    .sort((a, b) => String((st[a.id] || {}).last_try || '').localeCompare(String((st[b.id] || {}).last_try || ''))).slice(0, perRun);
   const report = [];
   for (const src of due) {
     const s = st[src.id] || {};
@@ -442,11 +454,12 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
           await ingestOfficial(env, found, now);
         }
       }
-      await DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, robots, robots_at, sample) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = COALESCE(excluded.last_ok, sources.last_ok), status = excluded.status, items = excluded.items, robots = excluded.robots, robots_at = excluded.robots_at, sample = COALESCE(excluded.sample, sources.sample)')
-        .bind(src.id, now.toISOString(), status === 'ok' ? now.toISOString() : null, status, items, robots || '', robotsAt, sample).run();
+      const fails = status === 'ok' ? 0 : (s.fails || 0) + 1;
+      await DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, robots, robots_at, sample, fails) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = COALESCE(excluded.last_ok, sources.last_ok), status = excluded.status, items = excluded.items, robots = excluded.robots, robots_at = excluded.robots_at, sample = COALESCE(excluded.sample, sources.sample), fails = excluded.fails')
+        .bind(src.id, now.toISOString(), status === 'ok' ? now.toISOString() : null, status, items, robots || '', robotsAt, sample, fails).run();
     } catch (e) {
       status = 'エラー: ' + String(e && e.message || e).slice(0, 80);
-      await DB.prepare('INSERT INTO sources (id, last_try, status, items) VALUES (?, ?, ?, 0) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, status = excluded.status, items = 0').bind(src.id, now.toISOString(), status).run();
+      await DB.prepare('INSERT INTO sources (id, last_try, status, items, fails) VALUES (?, ?, ?, 0, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, status = excluded.status, items = 0, fails = excluded.fails').bind(src.id, now.toISOString(), status, (s.fails || 0) + 1).run();
     }
     report.push({ id: src.id, status, items });
   }

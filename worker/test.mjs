@@ -1,7 +1,7 @@
 // D1 を Node の組み込み SQLite で代用して、受付サーバーの動作を確認する
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
-import { handle, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild } from './src/index.js';
+import { handle, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue } from './src/index.js';
 export function makeEnv() {
   const db = new DatabaseSync(':memory:');
   const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
@@ -122,6 +122,16 @@ if (isMain) {
     ok('出動情報: 火事のページに消防の発表と出典', inc.official.length === 1 && inc.official[0].name.includes('札幌市消防局') && inc.incident.official.kind === '火災', JSON.stringify(inc.official));
     const live = await (await handle(req('GET', '/api/live?hours=48'), m.env, pnow)).json();
     ok('出動情報: いまの火事の一覧に出る', live.incidents.filter(x => x.official).length === 2);
+    // 読めないページの間引き: 3回続けて失敗したら30分あけ、失敗するたびに倍（最長6時間）。読めたら元に戻る
+    { const t0 = new Date('2026-11-03T00:00:00Z'), at = ms => new Date(+t0 + ms);
+      ok('間引き: 失敗2回までは毎回読む', sourceDue({ fails: 2, last_try: t0.toISOString() }, at(60e3)));
+      ok('間引き: 3回失敗したら29分後は読まない', !sourceDue({ fails: 3, last_try: t0.toISOString() }, at(29 * 60e3)));
+      ok('間引き: 3回失敗したら30分後に読む', sourceDue({ fails: 3, last_try: t0.toISOString() }, at(30 * 60e3)));
+      ok('間引き: 4回なら1時間あける', !sourceDue({ fails: 4, last_try: t0.toISOString() }, at(59 * 60e3)) && sourceDue({ fails: 4, last_try: t0.toISOString() }, at(60 * 60e3)));
+      ok('間引き: どれだけ失敗しても6時間で読む', sourceDue({ fails: 40, last_try: t0.toISOString() }, at(6 * 3600e3)));
+      ok('間引き: 記録がなければ読む', sourceDue(undefined, t0)); }
+    { const ky0 = m.db.prepare("SELECT fails FROM sources WHERE id='kyoto'").get(), sp0 = m.db.prepare("SELECT fails FROM sources WHERE id='sapporo'").get();
+      ok('間引き: 読めないページは失敗の回数が増え、読めたページは0', ky0 && ky0.fails >= 1 && sp0 && sp0.fails === 0, JSON.stringify([ky0, sp0])); }
     const srcs = await (await handle(req('GET', '/api/sources'), m.env, pnow)).json();
     ok('出動情報: 読み取り状況を確認できる', srcs.sources.find(x => x.id === 'sapporo').status === 'ok');
     const nf = await handle(req('GET', '/api/incident?id=nothere&soft=1'), m.env, pnow); const nfj = await nf.json();
