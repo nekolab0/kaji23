@@ -1,0 +1,776 @@
+{
+ "at": "2026-11-17T14:52:46.555Z",
+ "sources": [
+  {
+   "id": "sapporo",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:50:40.565Z"
+  },
+  {
+   "id": "kyoto",
+   "status": "HTTP 522",
+   "fails": 1,
+   "last_ok": null
+  },
+  {
+   "id": "okayama",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:44:39.621Z"
+  },
+  {
+   "id": "chikugo-kurume",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:45:39.688Z"
+  },
+  {
+   "id": "chikugo-omuta",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:46:40.685Z"
+  },
+  {
+   "id": "chikugo-yame",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:47:41.047Z"
+  },
+  {
+   "id": "chikugo-chikugo",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:48:41.258Z"
+  },
+  {
+   "id": "chikugo-miyama",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:49:40.409Z"
+  },
+  {
+   "id": "chikugo-asakura",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:51:46.014Z"
+  },
+  {
+   "id": "sendai",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:51:46.014Z"
+  },
+  {
+   "id": "nagano",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:48:41.258Z"
+  },
+  {
+   "id": "chigasaki",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:42:42.292Z"
+  },
+  {
+   "id": "k-maebashi",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:49:40.409Z"
+  },
+  {
+   "id": "k-ota",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:50:40.565Z"
+  },
+  {
+   "id": "k-uwajima",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:50:40.565Z"
+  },
+  {
+   "id": "k-aridagawa",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:43:44.147Z"
+  },
+  {
+   "id": "minamiuonuma",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:43:44.147Z"
+  },
+  {
+   "id": "a-www-nakashibetsu-jp-kurashi-bohanbosai-shobo-kasaikyujo-5987",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:44:39.621Z"
+  },
+  {
+   "id": "a-www-city-hanamaki-iwate-jp-syoubou-1018501-1020136-1018789-h",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:45:39.688Z"
+  },
+  {
+   "id": "a-km-fire-jp-category-saigai",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:46:40.685Z"
+  },
+  {
+   "id": "a-www-shobo-koriyama-fukushima-jp-saigai-index-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:47:41.047Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-mito-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:47:41.047Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-tuchiura-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:48:41.258Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-ishioka-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:48:41.258Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-chikusei-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:49:40.409Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-ibarakiseinan-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:50:40.565Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-joso-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:51:46.014Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-hitachiota-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:42:42.292Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-takahagi-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:42:42.292Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-kitaibaraki-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:43:44.147Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-kasama-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:44:39.621Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-toride-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:44:39.621Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-kashima-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:44:39.621Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-rokkou-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:44:39.621Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-hitachiomiya-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:45:39.688Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-naka-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:45:39.688Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-kasumigaura-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:46:40.685Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-omitama-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:46:40.685Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-oarai-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:47:41.047Z"
+  },
+  {
+   "id": "a-www-ibaraki-sirei-jp-saigai-daigo-annai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:47:41.047Z"
+  },
+  {
+   "id": "a-www-city-nikko-lg-jp-cgi-bin-smart-alert-php-2-detail-134697",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:48:41.258Z"
+  },
+  {
+   "id": "a-www-seibu-saitama119-jp-disaster-hiki-saigai-pc",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:48:41.258Z"
+  },
+  {
+   "id": "a-www-seibu-saitama119-jp-disaster-sakatsuru-saigai-pc",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:49:40.409Z"
+  },
+  {
+   "id": "a-www-seibu-saitama119-jp-disaster-nishiiruma-saigai-pc",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:49:40.409Z"
+  },
+  {
+   "id": "a-mama-city-ichikawa-chiba-jp-saigai",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:50:40.565Z"
+  },
+  {
+   "id": "a-niigata119-city-niigata-lg-jp",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:51:46.014Z"
+  },
+  {
+   "id": "a-www-nagaoka-fd-com-fire-saigai-saigaipc-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:42:42.292Z"
+  },
+  {
+   "id": "a-www-city-uonuma-lg-jp-site-shoubou-honbu-1044806-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:43:44.147Z"
+  },
+  {
+   "id": "a-www-okunoto-fd-jp-saigai-wajima-annai-php",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:45:39.688Z"
+  },
+  {
+   "id": "a-www-okunoto-fd-jp-saigai-noto-annai-php",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:45:39.688Z"
+  },
+  {
+   "id": "a-www-m-kouiki119-jp-wp-content-themes-mks-modules-jian-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:50:40.565Z"
+  },
+  {
+   "id": "a-www-syobo-city-kasugai-aichi-jp-syobo-real-kasai-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:51:46.014Z"
+  },
+  {
+   "id": "a-www-kinutoh-jp",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:51:46.014Z"
+  },
+  {
+   "id": "a-www-kinutoh-jp-hekinan",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:42:42.292Z"
+  },
+  {
+   "id": "a-www-kinutoh-jp-kariya",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:42:42.292Z"
+  },
+  {
+   "id": "a-www-kinutoh-jp-anjo",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:43:44.147Z"
+  },
+  {
+   "id": "a-www-kinutoh-jp-chiryu",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:43:44.147Z"
+  },
+  {
+   "id": "a-www-kinutoh-jp-takahama",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:44:39.621Z"
+  },
+  {
+   "id": "a-www-city-kameyama-mie-jp-shobo-article-2015041300017",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:45:39.688Z"
+  },
+  {
+   "id": "a-nara119-jp-fire-saigai-saigaipcnara-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:46:40.685Z"
+  },
+  {
+   "id": "a-nara119-jp-fire-saigai-saigaipcikoma-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:46:40.685Z"
+  },
+  {
+   "id": "a-www-east-tottori-tottori-jp-fire-saigai-saigaipc-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:46:40.685Z"
+  },
+  {
+   "id": "a-www-city-soja-okayama-jp-shobotsushin",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:46:40.685Z"
+  },
+  {
+   "id": "a-enewp9840101-kir-jp",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:47:41.047Z"
+  },
+  {
+   "id": "a-www-center-chikugo119-jp-fire-saigai-yanagawapcsel-html",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:48:41.258Z"
+  },
+  {
+   "id": "a-119-city-nagasaki-nagasaki-jp-saigai",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:49:40.409Z"
+  },
+  {
+   "id": "a-www-nagasaki-kenoukumiai-jp-syoubou-fireinfo",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:49:40.409Z"
+  },
+  {
+   "id": "a-www-fire-miyazaki-jp-kpc-htm",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:49:40.409Z"
+  },
+  {
+   "id": "a-nagoya-fd-site2-ktaiwork-jp-cat-2",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:50:40.565Z"
+  },
+  {
+   "id": "a-kagoshima-city-fd-site-ktaiwork-jp-cat-2",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:50:40.565Z"
+  },
+  {
+   "id": "a-fukuyama-fd-site2-ktaiwork-jp",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:51:46.014Z"
+  },
+  {
+   "id": "a-kohoku-fd-site-ktaiwork-jp",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:51:46.014Z"
+  },
+  {
+   "id": "a-kashiwa-city-site2-ktaiwork-jp-cat-3",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:42:42.292Z"
+  },
+  {
+   "id": "a-hadano-city-site-ktaiwork-jp-cat-5",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:43:44.147Z"
+  },
+  {
+   "id": "a-ueda-city-site-ktaiwork-jp-cat-6",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:44:39.621Z"
+  },
+  {
+   "id": "a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:45:39.688Z"
+  },
+  {
+   "id": "a-aizuwakamatsu-fd-site2-ktaiwork-jp",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:47:41.047Z"
+  },
+  {
+   "id": "a-miyazaki-pref-site-ktaiwork-jp-category-e6-b6-88-e9-98-b2",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:47:41.047Z"
+  },
+  {
+   "id": "a-hikone-city-site-ktaiwork-jp",
+   "status": "ok",
+   "fails": 0,
+   "last_ok": "2026-11-17T14:48:41.258Z"
+  }
+ ],
+ "mails": [
+  {
+   "id": "mail-google.com",
+   "last_ok": "2026-11-05T04:24:26.870Z",
+   "items": 0
+  },
+  {
+   "id": "mail-raiden2.ktaiwork.jp",
+   "last_ok": "2026-11-05T09:37:45.583Z",
+   "items": 0
+  },
+  {
+   "id": "mail-nasu-119.mailio.jp",
+   "last_ok": "2026-11-16T06:40:28.728Z",
+   "items": 0
+  },
+  {
+   "id": "mail-raiden.ktaiwork.jp",
+   "last_ok": "2026-11-16T05:50:19.001Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.saitama.lg.jp",
+   "last_ok": "2026-11-14T04:57:07.972Z",
+   "items": 12
+  },
+  {
+   "id": "mail-city.kumamoto.lg.jp",
+   "last_ok": "2026-11-17T13:31:18.481Z",
+   "items": 10
+  },
+  {
+   "id": "mail-city.yamagata-yamagata.lg.jp",
+   "last_ok": "2026-11-17T14:11:22.245Z",
+   "items": 5
+  },
+  {
+   "id": "mail-sg-p.jp",
+   "last_ok": "2026-11-17T07:13:24.883Z",
+   "items": 0
+  },
+  {
+   "id": "mail-fukushima.fukushima-fd.jp",
+   "last_ok": "2026-11-05T07:54:05.652Z",
+   "items": 0
+  },
+  {
+   "id": "mail-ashikaga-city.mailio.jp",
+   "last_ok": "2026-11-16T02:22:44.192Z",
+   "items": 0
+  },
+  {
+   "id": "mail-sano-city.mailio.jp",
+   "last_ok": "2026-11-11T02:00:25.932Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.kawaguchi.lg.jp",
+   "last_ok": "2026-11-16T05:32:27.287Z",
+   "items": 0
+  },
+  {
+   "id": "mail-sasebo-shimin.mailio.jp",
+   "last_ok": "2026-11-05T08:01:13.436Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.ohtawara.tochigi.jp",
+   "last_ok": "2026-11-16T01:02:09.725Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.takashima.lg.jp",
+   "last_ok": "2026-11-16T10:26:32.139Z",
+   "items": 0
+  },
+  {
+   "id": "mail-noc119-fd.mailio.jp",
+   "last_ok": "2026-11-05T09:07:42.869Z",
+   "items": 0
+  },
+  {
+   "id": "mail-himeji-fd.mailio.jp",
+   "last_ok": "2026-11-05T09:08:23.840Z",
+   "items": 0
+  },
+  {
+   "id": "mail-ibara.mailio.jp",
+   "last_ok": "2026-11-05T09:35:58.006Z",
+   "items": 0
+  },
+  {
+   "id": "mail-tokushima-fd.mailio.jp",
+   "last_ok": "2026-11-05T09:12:06.921Z",
+   "items": 0
+  },
+  {
+   "id": "mail-town.manazuru.kanagawa.jp",
+   "last_ok": "2026-11-17T06:41:55.751Z",
+   "items": 0
+  },
+  {
+   "id": "mail-town.iwaizumi.lg.jp",
+   "last_ok": "2026-11-11T02:02:19.677Z",
+   "items": 0
+  },
+  {
+   "id": "mail-sugumail.com",
+   "last_ok": "2026-11-12T05:51:02.665Z",
+   "items": 0
+  },
+  {
+   "id": "mail-sg-m.jp",
+   "last_ok": "2026-11-16T02:52:13.218Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.atami.lg.jp",
+   "last_ok": "2026-11-15T00:00:22.390Z",
+   "items": 0
+  },
+  {
+   "id": "mail-town.hinode.tokyo.jp",
+   "last_ok": "2026-11-16T01:36:02.986Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.omachi.nagano.jp",
+   "last_ok": "2026-11-06T01:06:28.682Z",
+   "items": 0
+  },
+  {
+   "id": "mail-citymail.city.koshigaya.saitama.jp",
+   "last_ok": "2026-11-17T04:59:11.280Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.narashino.lg.jp",
+   "last_ok": "2026-11-11T01:01:36.523Z",
+   "items": 0
+  },
+  {
+   "id": "mail-town.arita.saga.jp",
+   "last_ok": "2026-11-13T06:13:09.211Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.takasaki.gunma.jp",
+   "last_ok": "2026-11-13T21:53:32.303Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.soma.fukushima.jp",
+   "last_ok": "2026-11-11T02:12:04.220Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.murakami.lg.jp",
+   "last_ok": "2026-11-16T08:30:55.439Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.myoko.niigata.jp",
+   "last_ok": "2026-11-06T05:18:08.969Z",
+   "items": 1
+  },
+  {
+   "id": "mail-city.midori.gunma.jp",
+   "last_ok": "2026-11-17T10:13:31.769Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.funabashi.lg.jp",
+   "last_ok": "2026-11-17T07:48:18.970Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.ayabe.lg.jp",
+   "last_ok": "2026-11-14T10:39:26.330Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.hanyu.lg.jp",
+   "last_ok": "2026-11-14T23:00:24.008Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.ito.shizuoka.jp",
+   "last_ok": "2026-11-17T06:03:11.205Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.okaya.lg.jp",
+   "last_ok": "2026-11-15T07:32:59.201Z",
+   "items": 0
+  },
+  {
+   "id": "mail-hotline.city.iwata.shizuoka.jp",
+   "last_ok": "2026-11-15T23:32:30.848Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.kakegawa.shizuoka.jp",
+   "last_ok": "2026-11-17T02:36:30.719Z",
+   "items": 0
+  },
+  {
+   "id": "mail-mgz.city.mizunami.gifu.jp",
+   "last_ok": "2026-11-11T01:20:54.722Z",
+   "items": 0
+  },
+  {
+   "id": "mail-mobile.city.kakamigahara.gifu.jp",
+   "last_ok": "2026-11-14T22:30:38.113Z",
+   "items": 0
+  },
+  {
+   "id": "mail-town.shimosuwa.lg.jp",
+   "last_ok": "2026-11-15T06:00:37.367Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.tomioka.lg.jp",
+   "last_ok": "2026-11-08T00:00:42.027Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.musashimurayama.lg.jp",
+   "last_ok": "2026-11-08T02:00:21.003Z",
+   "items": 0
+  },
+  {
+   "id": "mail-mail.city.noda.chiba.jp",
+   "last_ok": "2026-11-11T02:02:23.384Z",
+   "items": 0
+  },
+  {
+   "id": "mail-mail.city.nasushiobara.lg.jp",
+   "last_ok": "2026-11-16T06:40:33.408Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.gotemba.lg.jp",
+   "last_ok": "2026-11-11T02:06:03.931Z",
+   "items": 0
+  },
+  {
+   "id": "mail-bousai.city.ise.mie.jp",
+   "last_ok": "2026-11-10T02:01:14.393Z",
+   "items": 0
+  },
+  {
+   "id": "mail-oyama-anshin.jp",
+   "last_ok": "2026-11-11T02:15:40.832Z",
+   "items": 0
+  },
+  {
+   "id": "mail-fureai.city.kiryu.gunma.jp",
+   "last_ok": "2026-11-17T10:13:30.959Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.mihara.hiroshima.jp",
+   "last_ok": "2026-11-11T02:14:32.948Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.shiraoka.lg.jp",
+   "last_ok": "2026-11-15T01:00:17.541Z",
+   "items": 0
+  },
+  {
+   "id": "mail-mds.city.ogaki.lg.jp",
+   "last_ok": "2026-11-14T01:47:19.564Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.inagi.lg.jp",
+   "last_ok": "2026-11-11T02:06:26.257Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.kuki.lg.jp",
+   "last_ok": "2026-11-17T07:30:39.752Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.numata.gunma.jp",
+   "last_ok": "2026-11-13T03:01:43.571Z",
+   "items": 0
+  },
+  {
+   "id": "mail-city.kawagoe.lg.jp",
+   "last_ok": "2026-11-17T08:02:04.802Z",
+   "items": 0
+  }
+ ]
+}
