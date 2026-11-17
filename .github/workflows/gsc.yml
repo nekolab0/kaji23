@@ -35,9 +35,11 @@ jobs:
         continue-on-error: true
         run: python3 ops/metrics.py
       - name: 保存
-        # 30分ごとのデータ保存と重なると push が断られるので、取り込み直して最大5回試す
+        # 30分ごとのデータ保存と重なると push が断られるので、取り込み直して最大5回試す。
+        # 同じ日に ops/metrics/ を手で更新した PR が先に入っていると食い違う（2026-11-16 はこれで保存できなかった）。
+        # ここで保存するのは機械が作り直すファイルだけなので、食い違ったらこの回の取得結果を採る（-X theirs。daily.yml と同じ）
         run: |
           git config user.name kaji23-bot && git config user.email bot@users.noreply.github.com
           git add seo/gsc/api ops/metrics; if [ -d ops/analytics ]; then git add ops/analytics; fi; git commit -m "gsc: $(date -u +%F)" || exit 0
-          for i in 1 2 3 4 5; do git push && exit 0; git pull --rebase -q || git rebase --abort; sleep 10; done
+          for i in 1 2 3 4 5; do git push && exit 0; git pull --rebase -X theirs -q || git rebase --abort; sleep 10; done
           echo "::warning::Search Console データの保存に失敗しました"; exit 1
