@@ -1136,6 +1136,17 @@ def build(report=None):
     thin = thin_pages(old_day)
     (DIST / 'data' / '_sitemap_skip.json').write_text(json.dumps(sorted(old_fire | thin), ensure_ascii=False), encoding='utf-8')
     skip_sm = skip | old_fire | thin
+    # サイトマップから外したページ（定型文が中心）には noindex を付ける（2026-11-18・実験 E009）。
+    # Google はサイト全体の品質の見え方でクロールの量を決め、低いとサイトマップをしばらく読まない（Mueller 氏 2026-10-01、seo/knowledge.md 12章）。
+    # 公開中の約9,600ページのうち約5,300ページが定型文中心で、ここが品質の見え方を下げている見立て。ページと内部リンクは残す（follow）。
+    # 新しい火事・報告が入れば thin から外れ、noindex も自動で外れる
+    n_noindex = 0
+    for fn in sorted((old_fire | thin) & set(pages)):
+        h = pages[fn]
+        if '<meta name="robots" content="max-image-preview:large">' not in h: continue
+        (DIST / fn).write_text(h.replace('<meta name="robots" content="max-image-preview:large">', '<meta name="robots" content="noindex, follow">', 1), encoding='utf-8')
+        n_noindex += 1
+    (DIST / 'data' / '_noindex_count.json').write_text(json.dumps({'noindex': n_noindex, 'pages': len(pages)}), encoding='utf-8')
     urls = [(fn, (f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip_sm]
     # 型ごとにファイルを分け、Search Console の「特定のサイトマップ」で型ごとの登録率を見られるようにする（SEO 担当の決定 2026-11-11）。
     # 1ファイル5万件までの決まりがあるので、4万件を超えた型だけ -2 … と分ける。索引（sitemap.xml）の URL は変えない
