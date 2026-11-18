@@ -135,7 +135,10 @@ function extractFireNewsJP(items, geo, opts = {}) {
     x.confidence = x.sources.length >= 2 || x.town ? 'high' : 'low';
     x.id = `${x.pref}-${x.city}-${x.town || 'x'}-${x.first.slice(0, 10)}`;
   });
-  return incidents.reverse();
+  incidents.reverse();
+  // 取り出した記事（link・公開時刻）。news_run.mjs が「一度見た記事」の記録（data/raw/news_links.json）に使う。JSON には出ない
+  Object.defineProperty(incidents, 'articles', { value: out.map(n => [n.link, n.pub]) });
+  return incidents;
 }
 // 「市・町・村」を省いた市町村名を探す。前は区切り（文頭・記号・空白）、後ろは助詞・記号・「市」「駅」・文末のときだけ
 function shortHit(title, geo, prefHit) {
@@ -167,4 +170,32 @@ function parseRSS(xml) {
   }
   return out;
 }
-if (typeof module !== 'undefined') module.exports = { buildGeo, extractFireNewsJP, parseRSS };
+// 一度見た記事の公開時刻を、最初に見た時刻に戻す（2026-11-18）。
+// Google ニュースの RSS は、同じ記事（同じ link）の pubDate を、記事が更新されると新しい時刻に変えて返すことがある。
+// そのままだと、数日前の火事が「今日の火事」として別のページ・別の件数になっていた（11/9〜11/17 で約35件。例：豊後高田市の 11/8 の記事が 11/11・11/12・11/16 に再び出た）。
+// known は「link のキー → 最初に見た公開時刻（ISO）」。同じ記事なら古いほうの時刻を使うので、48時間より前の記事は取り込みの対象から外れ、
+// 48時間以内なら元の火事（同じ id）にまとまる。戻した件数を返す
+function newsLinkKey(link) {
+  const s = String(link || '').replace(/[?#].*$/, '');
+  let h1 = 0x811c9dc5, h2 = 0x01000193;   // FNV 系の簡単なハッシュ2本（64bit 相当）。記録のファイルを小さくするため link そのものは保存しない
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619) >>> 0; h2 = Math.imul(h2 ^ c, 2246822519) >>> 0; }
+  return h1.toString(36) + h2.toString(36);
+}
+function pinKnownPubDates(items, known) {
+  let n = 0;
+  for (const it of items) {
+    const was = known[newsLinkKey(it.link)];
+    if (!was) continue;
+    const pub = new Date(it.pubDate);
+    if (!isNaN(pub) && pub - new Date(was) > 60e3) { it.pubDate = new Date(was).toUTCString(); n++; }
+  }
+  return n;
+}
+// 記録に足す（古いほうの時刻を残す）。keepDays より前の記録は消す
+function rememberNews(known, pairs, now = new Date(), keepDays = 30) {
+  for (const [link, pub] of pairs) { const k = newsLinkKey(link); if (!known[k] || pub < known[k]) known[k] = pub; }
+  const cut = new Date(+new Date(now) - keepDays * 864e5).toISOString();
+  for (const k of Object.keys(known)) if (known[k] < cut) delete known[k];
+  return known;
+}
+if (typeof module !== 'undefined') module.exports = { buildGeo, extractFireNewsJP, parseRSS, newsLinkKey, pinKnownPubDates, rememberNews };

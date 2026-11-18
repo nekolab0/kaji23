@@ -132,6 +132,15 @@ for v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).val
     _rep[(v[0], v[1], v[2] or '', v[5][11:16])].add(v[3])
 m['misread_suspects'] = sorted(f"{k[0]}{k[1]} {k[2] or '（町名なし）'} 毎日{k[3]}UTC（{len(d)}日）" for k, d in _rep.items() if len(d) >= 3)
 
+# ---- 守る数字：同じ記事が別の日の火事になっている（2026-11-18 に直した型。collector/news_jp.js の pinKnownPubDates）
+# Google ニュースの RSS は、更新された記事の公開時刻を新しくして返すことがあり、数日前の火事が「今日の火事」として二重に載っていた。
+# 直した日（11/19）より後の日付の火事で、同じ記事（link）が別の日の火事にも使われていたら警告に出す
+_by_link = defaultdict(set)
+for x in (load('data/raw/news.json', {}) or {}).get('incidents', []):
+    for s_ in x.get('sources', []): _by_link[s_['link']].add(x['id'])
+m['news_reused_articles'] = sorted({max(ids) for ids in _by_link.values()
+    if len({i[-10:] for i in ids}) > 1 and max(i[-10:] for i in ids) >= '2026-11-19'})
+
 # ---- 収集元の読み取り状況（verify/sources_status.json。collector/official_run.mjs が毎回の生成で記録）
 _ss = load('verify/sources_status.json', {}) or {}
 _src = _ss.get('sources', [])
@@ -167,6 +176,8 @@ if m['gsc_fetched_at'] and m['gsc_fetched_at'][:10] < (today - datetime.timedelt
     g.append(f"Search Console の取得が止まっている可能性（最終 {m['gsc_fetched_at']}）")
 if m['misread_suspects']:
     g.append(f"読み誤りの疑い {len(m['misread_suspects'])}件（同じ町・同じ時刻の発表が毎日続く）：" + '・'.join(m['misread_suspects'][:3]))
+if m['news_reused_articles']:
+    g.append(f"同じ記事が別の日の火事になっている {len(m['news_reused_articles'])}件（更新された古い記事を新しい火事として取り込んだ疑い）：" + '・'.join(m['news_reused_articles'][:3]))
 m['guard_alerts'] = g
 
 OUT.mkdir(parents=True, exist_ok=True)
