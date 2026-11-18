@@ -1,7 +1,8 @@
-date,stage,indexed,inspected,clicks_7d,impressions_7d,pageviews_7d,visits_7d,pages_per_visit_7d,publish_minutes_median_7d,publish_within_30m_7d,fires_per_day_7d,verify_ok
-2026-11-12,1,1,2598,5,130,,,,,,87.4,True
-2026-11-13,1,1,3509,5,130,2,2,1.0,232,0.03,87.6,True
-2026-11-14,1,1,4073,5,130,30,14,2.14,70,0.23,75.4,True
-2026-11-15,1,1,4179,1,12,33,17,1.94,69,0.25,74.3,True
-2026-11-16,1,1,4179,1,12,33,17,1.94,68,0.24,69.7,True
-2026-11-17,1,1,4309,0,5,97,68,1.43,70,0.22,66.9,True
+date,stage,indexed,inspected,clicks_7d,impressions_7d,pageviews_7d,visits_7d,pages_per_visit_7d,publish_minutes_median_7d,publish_within_30m_7d,fires_per_day_7d,verify_ok,news_over_6h_7d
+2026-11-12,1,1,2598,5,130,,,,,,87.4,True,
+2026-11-13,1,1,3509,5,130,2,2,1.0,232,0.03,87.6,True,
+2026-11-14,1,1,4073,5,130,30,14,2.14,70,0.23,75.4,True,
+2026-11-15,1,1,4179,1,12,33,17,1.94,69,0.25,74.3,True,
+2026-11-16,1,1,4179,1,12,33,17,1.94,68,0.24,69.7,True,
+2026-11-17,1,1,4309,0,5,97,68,1.43,70,0.22,66.9,True,
+2026-11-18,1,1,4354,0,4,128,97,1.32,70,0.23,62.3,False,0.3

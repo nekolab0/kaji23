@@ -1,9 +1,9 @@
 {
- "date": "2026-11-17",
+ "date": "2026-11-18",
  "indexed": 1,
- "inspected": 4309,
- "sitemap_urls": 4309,
- "gsc_fetched_at": "2026-11-17T16:25+09:00",
+ "inspected": 4354,
+ "sitemap_urls": 4354,
+ "gsc_fetched_at": "2026-11-18T15:31+09:00",
  "index_by_kind": {
   "main": {
    "sitemap": 39,
@@ -27,22 +27,22 @@
    "known": 0
   },
   "city": {
-   "sitemap": 1548,
-   "inspected": 1548,
+   "sitemap": 1550,
+   "inspected": 1550,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "town": {
-   "sitemap": 1101,
-   "inspected": 1101,
+   "sitemap": 1109,
+   "inspected": 1109,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "fire": {
-   "sitemap": 1527,
-   "inspected": 1527,
+   "sitemap": 1562,
+   "inspected": 1562,
    "indexed": 0,
    "crawled": 0,
    "known": 0
@@ -52,25 +52,39 @@
  "sitemap_index_downloaded": "2026-11-13",
  "sitemap_index_submitted_urls": 9170,
  "clicks_7d": 0,
- "impressions_7d": 5,
+ "impressions_7d": 4,
  "clicks_per_day_7d": 0.0,
- "gsc_last_day": "2026-11-14",
- "pageviews_7d": 97,
- "visits_7d": 68,
- "pages_per_visit_7d": 1.43,
+ "gsc_last_day": "2026-11-15",
+ "pageviews_7d": 128,
+ "visits_7d": 97,
+ "pages_per_visit_7d": 1.32,
  "rpm": null,
- "publish_samples_7d": 269,
+ "publish_samples_7d": 310,
+ "news_samples_7d": 231,
+ "news_over_6h_7d": 0.3,
  "publish_minutes_median_7d": 70,
- "publish_minutes_p90_7d": 1150,
- "publish_within_30m_7d": 0.22,
- "fires_per_day_7d": 66.9,
- "fires_per_day_prev7d": 69.1,
- "verify_ok": true,
- "verify_failed": [],
+ "publish_minutes_p90_7d": 1126,
+ "publish_within_30m_7d": 0.23,
+ "fires_per_day_7d": 62.3,
+ "fires_per_day_prev7d": 74.3,
+ "misread_suspects": [],
+ "news_reused_articles": [],
+ "sources_status_at": "2026-11-18T03:11:49.703Z",
+ "sources_total": 79,
+ "sources_failing": [
+  "kyoto（HTTP 522・7回続けて）"
+ ],
+ "fire_mail_senders": 59,
+ "verify_ok": false,
+ "verify_failed": [
+  "M2 消防本部の読み取り（5分ごと）"
+ ],
  "stage": 1,
  "stage_name": "インデックス",
  "stage_metric": "indexed",
  "stage_value": 1,
  "stage_gate": 1000,
- "guard_alerts": []
+ "guard_alerts": [
+  "検査に不合格：M2 消防本部の読み取り（5分ごと）"
+ ]
 }
