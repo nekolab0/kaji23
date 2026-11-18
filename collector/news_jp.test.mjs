@@ -1,7 +1,7 @@
 // 全国の報道抽出のテスト（見出しは検査用に作った架空のもの）
 import { createRequire } from 'node:module'; import fs from 'node:fs';
 const require = createRequire(import.meta.url);
-const { buildGeo, extractFireNewsJP } = require('./news_jp.js');
+const { buildGeo, extractFireNewsJP, pinKnownPubDates, rememberNews } = require('./news_jp.js');
 const areas = JSON.parse(fs.readFileSync(new URL('../data/raw/areas.json', import.meta.url)));
 const towns = JSON.parse(fs.readFileSync(new URL('../data/raw/towns_jp.json', import.meta.url))).towns;
 const geo = buildGeo(areas, towns);
@@ -41,5 +41,25 @@ const merged = extractFireNewsJP([
   { title: '名古屋市中区栄で建物火災', link: 'https://a', pubDate: t(3), source: '中京テレビ' },
   { title: '名古屋・中区栄のビル火災 けが人なし', link: 'https://b', pubDate: t(2), source: 'NHK' }], geo, { now });
 if (merged.length === 1 && merged[0].sources.length === 2 && merged[0].town === '栄') ok++; else fails.push('同じ火事がまとまらない ' + JSON.stringify(merged.map(m => [m.city, m.town, m.sources.length])));
-console.log(`${ok}/${cases.length + 1} 合格`); fails.forEach(f => console.log('FAIL ' + f));
+// 更新された古い記事（同じ link・新しい pubDate）を、今日の火事にしない（2026-11-18。豊後高田市の 11/8 の記事が 11/16 に再び出た型）
+let extra = 0;
+{
+  const known = rememberNews({}, [['https://news.google.com/rss/articles/OLD?oc=5', new Date(Date.parse(now) - 8 * 864e5).toISOString()],
+    ['https://news.google.com/rss/articles/NEW2?oc=5', new Date(Date.parse(now) - 5 * 36e5).toISOString()]], new Date(now));
+  const its = [{ title: '大分県豊後高田市で住宅全焼', link: 'https://news.google.com/rss/articles/OLD?oc=5', pubDate: t(1), source: 'A' },
+    { title: '名古屋市中区栄で建物火災', link: 'https://news.google.com/rss/articles/NEW2?oc=5', pubDate: t(1), source: 'B' },
+    { title: '札幌市北区で住宅火災', link: 'https://news.google.com/rss/articles/FRESH?oc=5', pubDate: t(1), source: 'C' }];
+  const n = pinKnownPubDates(its, known);
+  const r = extractFireNewsJP(its, geo, { now, maxAgeHours: 48 });
+  const ids = r.map(x => x.city + ':' + (Date.parse(now) - Date.parse(x.first)) / 36e5).sort();
+  extra++;
+  if (n === 2 && JSON.stringify(ids) === JSON.stringify(['名古屋市中区:5', '札幌市北区:1'])) ok++; else fails.push('更新された古い記事の扱い ' + n + ' ' + JSON.stringify(ids));
+  rememberNews(known, r.articles, new Date(now));
+  extra++;
+  if (Object.keys(known).length === 3 && JSON.parse(JSON.stringify(r)).articles === undefined && r.articles.length === 2) ok++; else fails.push('記事の記録 ' + Object.keys(known).length);
+  rememberNews(known, [], new Date(Date.parse(now) + 25 * 864e5));   // 30日より前の記録は消える
+  extra++;
+  if (Object.keys(known).length === 2) ok++; else fails.push('古い記録の削除 ' + Object.keys(known).length);
+}
+console.log(`${ok}/${cases.length + 1 + extra} 合格`); fails.forEach(f => console.log('FAIL ' + f));
 process.exit(fails.length ? 1 : 0);
