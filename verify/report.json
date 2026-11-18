@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-19 05:36（日本時間）",
+ "ran_at": "2026-11-19 06:17（日本時間）",
  "data_fetched_at": "2026-11-18T02:36:02.540Z",
  "checks": [
   {
@@ -156,7 +156,7 @@
    "name": "M3 読み取れていない消防本部",
    "ok": false,
    "level": "warn",
-   "detail": "kyoto(HTTP 522)、a-www-kinutoh-jp-hekinan(HTTP 530)"
+   "detail": "kyoto(HTTP 522)、a-www-shobo-koriyama-fukushima-jp-saigai-index-html(HTTP 522)"
   },
   {
    "name": "M4 報道の収集の鮮度",
