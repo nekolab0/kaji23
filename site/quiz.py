@@ -1,6 +1,6 @@
 # 火事・防災クイズ（quiz.html）
 # build.py の名前空間で exec される（page・esc・SITE_NAME・SITE_URL・bc_ld・photo などを使う）
-# 1回5問を問題集からランダムに出す。結果は X・LINE で共有できる。問題を足すときは QUIZ に1行足すだけ。
+# 1回5問を問題集からランダムに出し、選択肢の並びも毎回入れ替える（2択はそのまま）。結果は X・LINE で共有できる。問題を足すときは QUIZ に1行足すだけ。
 # 事実は出典つきで書く（出典は QUIZ_SRC の番号）。煽る書き方・怖がらせる書き方はしない。
 
 QUIZ_UPDATED = '2026-11-18'
@@ -104,21 +104,23 @@ def quiz_pages():
   var URL_ = {_json.dumps(SITE_URL + '/quiz.html')};
   var box = document.getElementById('qz-box'), set = [], i = 0, score = 0;
   function e(s){{return String(s).replace(/[&<>"]/g,function(c){{return {{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c];}});}}
-  function pick(){{ var a = Q.map(function(_, k){{return k;}}); for (var k = a.length - 1; k > 0; k--) {{ var j = Math.floor(Math.random() * (k + 1)); var t = a[k]; a[k] = a[j]; a[j] = t; }} return a.slice(0, 5); }}
+  function shuf(a){{ for (var k = a.length - 1; k > 0; k--) {{ var j = Math.floor(Math.random() * (k + 1)); var t = a[k]; a[k] = a[j]; a[j] = t; }} return a; }}
+  function pick(){{ return shuf(Q.map(function(_, k){{return k;}})).slice(0, 5); }}
   function start(){{ set = pick(); i = 0; score = 0; show(); }}
   function show(){{
     var q = Q[set[i]];
     box.innerHTML = '<div class="qz-card"><p class="qz-n">第' + (i + 1) + '問 ／ 5問</p><p class="qz-q">' + e(q.q) + '</p>' +
-      q.c.map(function(c, k){{return '<button type="button" class="qz-c" data-k="' + k + '">' + e(c) + '</button>';}}).join('') + '<div id="qz-res"></div></div>';
+      (q.c.length === 2 ? [0, 1] : shuf(q.c.map(function(_, k){{return k;}}))).map(function(k){{return '<button type="button" class="qz-c" data-k="' + k + '">' + e(q.c[k]) + '</button>';}}).join('') + '<div id="qz-res"></div></div>';
     Array.prototype.forEach.call(box.querySelectorAll('.qz-c'), function(b){{ b.addEventListener('click', function(){{ answer(+b.getAttribute('data-k')); }}); }});
     var cd = box.querySelector('.qz-card'); if (i > 0 && cd) cd.scrollIntoView({{block: 'start'}});
   }}
   function answer(k){{
     var q = Q[set[i]], ok = k === q.a; if (ok) score++;
-    Array.prototype.forEach.call(box.querySelectorAll('.qz-c'), function(b, n){{ b.disabled = true; if (n === q.a) b.classList.add('ok'); else if (n === k) b.classList.add('ng'); }});
+    Array.prototype.forEach.call(box.querySelectorAll('.qz-c'), function(b){{ var n = +b.getAttribute('data-k'); b.disabled = true; if (n === q.a) b.classList.add('ok'); else if (n === k) b.classList.add('ng'); }});
     document.getElementById('qz-res').innerHTML = '<div class="qz-r"><p><b>' + (ok ? '正解！' : '残念…正解は「' + e(q.c[q.a]) + '」') + '</b></p><p>' + e(q.e) + '</p>' +
-      '<p class="small muted">出典：' + e(q.s) + (q.g ? '　<a href="g-' + e(q.g) + '.html">関連の記事</a>' : '') + '</p>' +
+      '<p class="small muted">出典：' + e(q.s) + (q.g ? '　<a class="qz-rel">関連の記事</a>' : '') + '</p>' +
       '<p><button type="button" class="btn" id="qz-next">' + (i < 4 ? '次の問題へ' : '結果を見る') + '</button></p></div>';
+    var rl = box.querySelector('.qz-rel'); if (rl) rl.href = 'g-' + q.g + '.html';   // リンク検査が JS の文字列を拾わないよう、href はあとから入れる
     document.getElementById('qz-next').addEventListener('click', function(){{ i++; if (i < 5) show(); else done(); }});
   }}
   function done(){{
@@ -128,8 +130,9 @@ def quiz_pages():
     var x = 'https://x.com/intent/post?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(su);
     var line = 'https://social-plugins.line.me/lineit/share?url=' + encodeURIComponent(su);
     box.innerHTML = '<div class="qz-card"><p class="qz-n">結果</p><p class="qz-score">5問中 ' + score + '問 正解</p><p>' + msg + '</p>' +
-      '<div class="qz-share"><a class="btn" href="' + x + '" target="_blank" rel="noopener">X で結果をシェア</a><a class="btn" href="' + line + '" target="_blank" rel="noopener">LINE で送る</a></div>' +
+      '<div class="qz-share"><a class="btn" id="qz-x" target="_blank" rel="noopener">X で結果をシェア</a><a class="btn" id="qz-line" target="_blank" rel="noopener">LINE で送る</a></div>' +
       '<p><button type="button" class="btn" id="qz-again">別の5問で もう一度</button></p></div>';
+    document.getElementById('qz-x').href = x; document.getElementById('qz-line').href = line;
     document.getElementById('qz-again').addEventListener('click', start);
   }}
   document.getElementById('qz-start').addEventListener('click', start);
