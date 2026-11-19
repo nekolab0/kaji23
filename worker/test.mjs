@@ -1,7 +1,7 @@
 // D1 を Node の組み込み SQLite で代用して、受付サーバーの動作を確認する
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
-import { handle, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue } from './src/index.js';
+import { handle, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue, sourceWaitMs } from './src/index.js';
 export function makeEnv() {
   const db = new DatabaseSync(':memory:');
   const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
@@ -129,7 +129,11 @@ if (isMain) {
       ok('間引き: 3回失敗したら30分後に読む', sourceDue({ fails: 3, last_try: t0.toISOString() }, at(30 * 60e3)));
       ok('間引き: 4回なら1時間あける', !sourceDue({ fails: 4, last_try: t0.toISOString() }, at(59 * 60e3)) && sourceDue({ fails: 4, last_try: t0.toISOString() }, at(60 * 60e3)));
       ok('間引き: どれだけ失敗しても6時間で読む', sourceDue({ fails: 40, last_try: t0.toISOString() }, at(6 * 3600e3)));
-      ok('間引き: 記録がなければ読む', sourceDue(undefined, t0)); }
+      ok('間引き: 記録がなければ読む', sourceDue(undefined, t0));
+      // 本番の監視（site/verify.js の M2）は「2時間＋sourceWaitMs」を過ぎたら止まっているとみなす。
+      // 間引きで読む前に監視が error にならないこと（2026-11-18：kyoto だけで monitor が毎回失敗した）
+      ok('間引き: 監視の「止まっている」より先に必ず読む', [0, 2, 3, 4, 5, 6, 7, 8, 12, 40].every(f => { const s = { fails: f, last_try: t0.toISOString() }; return sourceDue(s, at(2 * 3600e3 + sourceWaitMs(s))); }));
+      ok('間引き: 6時間より長くはあけない', sourceWaitMs({ fails: 99 }) === 6 * 3600e3 && sourceWaitMs({ fails: 2 }) === 0); }
     { const ky0 = m.db.prepare("SELECT fails FROM sources WHERE id='kyoto'").get(), sp0 = m.db.prepare("SELECT fails FROM sources WHERE id='sapporo'").get();
       ok('間引き: 読めないページは失敗の回数が増え、読めたページは0', ky0 && ky0.fails >= 1 && sp0 && sp0.fails === 0, JSON.stringify([ky0, sp0])); }
     const srcs = await (await handle(req('GET', '/api/sources'), m.env, pnow)).json();

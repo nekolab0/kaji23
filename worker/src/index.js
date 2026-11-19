@@ -410,12 +410,17 @@ export async function ingestOfficial(env, items, now = new Date()) {
   return added;
 }
 
-// 続けて失敗しているページを、今回読むかどうか（3回目までは毎回。そのあとは30分→1時間→…→最長6時間あける）
-export function sourceDue(s, now) {
+// 続けて失敗しているページを、次に読むまであける時間（3回目までは0。そのあとは30分→1時間→…→最長6時間）
+// 本番の監視（site/verify.js の M2）も、この時間を足して「止まっている」を判定する（2026-11-19）
+export function sourceWaitMs(s) {
   const f = (s && s.fails) || 0;
-  if (f < 3 || !s.last_try) return true;
-  const wait = Math.min(30 * 60e3 * 2 ** (f - 3), 6 * 3600e3);
-  return now - new Date(s.last_try) >= wait;
+  return f < 3 ? 0 : Math.min(30 * 60e3 * 2 ** (f - 3), 6 * 3600e3);
+}
+
+// 続けて失敗しているページを、今回読むかどうか
+export function sourceDue(s, now) {
+  if (!s || !s.last_try) return true;
+  return now - new Date(s.last_try) >= sourceWaitMs(s);
 }
 
 // 1回の実行で読むページ数を絞り、古い順に回す（各ページはおよそ5〜10分に1回）
