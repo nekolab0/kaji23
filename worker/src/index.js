@@ -419,7 +419,7 @@ export function sourceWaitMs(s) {
 
 // 続けて失敗しているページを、今回読むかどうか
 export function sourceDue(s, now) {
-  if (!s || !s.last_try) return true;
+  if (!s || !s.last_try || ((s.fails || 0) < 3)) return true;   // 3回目までは時刻を見ずに毎回読む（時刻が壊れていても止まらない）
   return now - new Date(s.last_try) >= sourceWaitMs(s);
 }
 

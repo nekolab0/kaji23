@@ -133,6 +133,7 @@ if (isMain) {
       // 本番の監視（site/verify.js の M2）は「2時間＋sourceWaitMs」を過ぎたら止まっているとみなす。
       // 間引きで読む前に監視が error にならないこと（2026-11-18：kyoto だけで monitor が毎回失敗した）
       ok('間引き: 監視の「止まっている」より先に必ず読む', [0, 2, 3, 4, 5, 6, 7, 8, 12, 40].every(f => { const s = { fails: f, last_try: t0.toISOString() }; return sourceDue(s, at(2 * 3600e3 + sourceWaitMs(s))); }));
+      ok('間引き: 失敗3回未満なら、時刻が未来・壊れていても読む', sourceDue({ fails: 2, last_try: at(3600e3).toISOString() }, t0) && sourceDue({ fails: 0, last_try: 'garbage' }, t0) && sourceDue({ last_try: 'garbage' }, t0));
       ok('間引き: 6時間より長くはあけない', sourceWaitMs({ fails: 99 }) === 6 * 3600e3 && sourceWaitMs({ fails: 2 }) === 0); }
     { const ky0 = m.db.prepare("SELECT fails FROM sources WHERE id='kyoto'").get(), sp0 = m.db.prepare("SELECT fails FROM sources WHERE id='sapporo'").get();
       ok('間引き: 読めないページは失敗の回数が増え、読めたページは0', ky0 && ky0.fails >= 1 && sp0 && sp0.fails === 0, JSON.stringify([ky0, sp0])); }
