@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-19 21:08（日本時間）",
+ "ran_at": "2026-11-19 22:05（日本時間）",
  "data_fetched_at": "2026-11-19T02:44:38.138Z",
  "checks": [
   {
@@ -150,13 +150,13 @@
    "name": "M2 消防本部の読み取り（5分ごと）",
    "ok": true,
    "level": "warn",
-   "detail": "読めている 75/79ページ、取り込み 14件／間引き中：kyoto、k-ota、a-hadano-city-site-ktaiwork-jp-cat-5、a-miyazaki-pref-site-ktaiwork-jp-category-e6-b6-88-e9-98-b2"
+   "detail": "読めている 78/79ページ、取り込み 16件／間引き中：kyoto"
   },
   {
    "name": "M3 読み取れていない消防本部",
    "ok": false,
    "level": "warn",
-   "detail": "kyoto(HTTP 522)、k-ota(HTTP 500)、a-hadano-city-site-ktaiwork-jp-cat-5(HTTP 500)、a-miyazaki-pref-site-ktaiwork-jp-category-e6-b6-88-e9-98-b2(HTTP 500)"
+   "detail": "kyoto(HTTP 522)"
   },
   {
    "name": "M4 報道の収集の鮮度",
