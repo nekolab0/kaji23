@@ -1,5 +1,5 @@
 {
- "ran_at": "2026-11-19 20:13（日本時間）",
+ "ran_at": "2026-11-19 20:44（日本時間）",
  "data_fetched_at": "2026-11-19T02:44:38.138Z",
  "checks": [
   {
@@ -72,7 +72,7 @@
    "name": "N1 報道された火事のデータ",
    "ok": true,
    "level": "error",
-   "detail": "797件。市区町村・町名は全国の一覧と一致、報道元リンクはhttps、30日以内、重複なし"
+   "detail": "798件。市区町村・町名は全国の一覧と一致、報道元リンクはhttps、30日以内、重複なし"
   },
   {
    "name": "W1 サイレン報告の受付サーバー",
@@ -84,7 +84,7 @@
    "name": "R1 コンソールエラー・スクリプトエラー",
    "ok": true,
    "level": "error",
-   "detail": "5664ページ×2画面幅でエラーなし（町ページは2699町から見本）"
+   "detail": "5666ページ×2画面幅でエラーなし（町ページは2700町から見本）"
   },
   {
    "name": "R2 読み込み失敗",
@@ -102,13 +102,13 @@
    "name": "R4 サイト内リンク・ページ内リンク",
    "ok": true,
    "level": "error",
-   "detail": "10115ページすべてのリンク先とアンカーが存在"
+   "detail": "10118ページすべてのリンク先とアンカーが存在"
   },
   {
    "name": "R5 タイトル・見出し・説明文・OGP画像・正規URL・サイトマップ",
    "ok": true,
    "level": "error",
-   "detail": "10115ページすべてにあり、サイトマップ4437件"
+   "detail": "10118ページすべてにあり、サイトマップ4440件"
   },
   {
    "name": "R6 表示されている数字＝データ",
@@ -132,7 +132,7 @@
    "name": "R10 報道された火事の表示",
    "ok": true,
    "level": "error",
-   "detail": "区ページの件数がデータと一致（計797件）、町ページにも振り分け、見出し文・配慮の要る語は表示なし"
+   "detail": "区ページの件数がデータと一致（計798件）、町ページにも振り分け、見出し文・配慮の要る語は表示なし"
   },
   {
    "name": "R11 報告・火事のページ・口コミ・共有",
@@ -150,7 +150,7 @@
    "name": "M2 消防本部の読み取り（5分ごと）",
    "ok": true,
    "level": "warn",
-   "detail": "読めている 72/79ページ、取り込み 14件／間引き中：kyoto、k-ota、a-kohoku-fd-site-ktaiwork-jp、a-hadano-city-site-ktaiwork-jp-cat-5、a-miyazaki-pref-site-ktaiwork-jp-category-e6-b6-88-e9-98-b2"
+   "detail": "読めている 72/79ページ、取り込み 14件／間引き中：kyoto、k-ota、k-aridagawa、a-kohoku-fd-site-ktaiwork-jp、a-hadano-city-site-ktaiwork-jp-cat-5、a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8、a-miyazaki-pref-site-ktaiwork-jp-category-e6-b6-88-e9-98-b2"
   },
   {
    "name": "M3 読み取れていない消防本部",
@@ -162,7 +162,7 @@
    "name": "M4 報道の収集の鮮度",
    "ok": true,
    "level": "error",
-   "detail": "最終収集 0.6時間前（30分ごとに収集）"
+   "detail": "最終収集 0.4時間前（30分ごとに収集）"
   },
   {
    "name": "L1 公式ページとの再照合",
