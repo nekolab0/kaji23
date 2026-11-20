@@ -7,7 +7,8 @@ const UA = 'kaji23-bot/1.0 (+https://kajisoku.jp/about.html; fire dispatch info 
 const urls = JSON.parse(fs.readFileSync(new URL('../verify/probe_pages_in.json', import.meta.url), 'utf8'));
 const out = [];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-for (const u of urls) {
+for (const it of urls) {
+  const u = typeof it === 'string' ? it : it.url;
   const o = { url: u };
   try {
     const origin = new URL(u).origin;
@@ -23,6 +24,9 @@ for (const u of urls) {
       .filter(([h, t]) => /火災|出動|災害|速報|info|saigai|kasai|fire|list/i.test(h + t)).slice(0, 40);
     o.tables = (html.match(/<table[\s\S]*?<\/table>/gi) || []).slice(0, 2).map(t => t.replace(/\s+/g, ' ').slice(0, 1500));
     try { o.parsed = parseSource(html, { id: 'p', name: 'p', url: u, pref: '', type: 'sentence' }, new Date(), { hours: 24 * 31 }).length; } catch (e) { o.parsed = 'err'; }
+    if (typeof it === 'object') { try { const r2 = parseSource(html, { name: 'p', ...it }, new Date(), { hours: 24 * 31 }); o.parsedOwn = r2.length; o.parsedOwnItems = r2.slice(0, 5); } catch (e) { o.parsedOwn = 'err ' + String(e.message).slice(0, 80); } }
+    o.articles = (html.match(/<article\b/gi) || []).length;
+    const ai = html.search(/<article\b/i); o.head = html.slice(ai >= 0 ? ai : Math.max(0, html.search(/<body/i)), (ai >= 0 ? ai : Math.max(0, html.search(/<body/i))) + 3000);
   } catch (e) { o.status = 'error ' + String(e.message).slice(0, 60); }
   out.push(o); await sleep(1500);
 }

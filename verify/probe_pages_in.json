@@ -1,12 +1,55 @@
-["https://www.nishinomiya-bousai.jp/firedept/",
- "https://www.city.higashiosaka.lg.jp/saigai/saigai.html",
- "https://www.city.kashiwazaki.lg.jp/cgi-bin/smart_alert.php/1/list",
- "https://www.city.yamaguchi.lg.jp/bosai-s/",
- "https://www.city.akita.lg.jp/bosai-kinkyu/kasai/",
- "https://www.city.minamiuonuma.niigata.jp/shoubouhonbu/docs/disaster_info.html",
- "http://www.chigasaki-samukawa119.info/chigasaki-saigai/",
- "https://www.fd-takatsuki.jp/119/",
- "https://www.city.fukushima.fukushima.jp/bosai-anzen/shobo/1/",
- "https://www.nagasaki-kenoukumiai.jp/syoubou/fireinfo/",
- "https://www.city.nemuro.hokkaido.jp/lifeinfo/kakuka/syoubou/shoubousho/kyuukyuutushin/oshirase/605.html",
- "https://www.hokutou-119.jp/"]
+[
+ {
+  "url": "http://www.seibu-saitama119.jp/disaster/hiki/saigai/pc/",
+  "type": "sentence",
+  "pref": "埼玉県",
+  "id": "a-www-seibu-saitama119-jp-disaster-hiki-saigai-pc"
+ },
+ {
+  "url": "https://www.nagasaki-kenoukumiai.jp/syoubou/fireinfo/",
+  "type": "sentence",
+  "pref": "長崎県",
+  "id": "a-www-nagasaki-kenoukumiai-jp-syoubou-fireinfo"
+ },
+ {
+  "url": "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+  "type": "wp",
+  "pref": "鹿児島県",
+  "city": "鹿児島市",
+  "id": "a-kagoshima-city-fd-site-ktaiwork-jp-cat-2"
+ },
+ {
+  "url": "https://fukuyama-fd.site2.ktaiwork.jp/",
+  "type": "wp",
+  "pref": "広島県",
+  "city": "福山市",
+  "id": "a-fukuyama-fd-site2-ktaiwork-jp"
+ },
+ {
+  "url": "http://kohoku-fd.site.ktaiwork.jp/",
+  "type": "wp",
+  "pref": "滋賀県",
+  "id": "a-kohoku-fd-site-ktaiwork-jp"
+ },
+ {
+  "url": "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+  "type": "wp",
+  "pref": "千葉県",
+  "city": "柏市",
+  "id": "a-kashiwa-city-site2-ktaiwork-jp-cat-3"
+ },
+ {
+  "url": "https://ueda-city.site.ktaiwork.jp/?cat=6",
+  "type": "wp",
+  "pref": "長野県",
+  "city": "上田市",
+  "id": "a-ueda-city-site-ktaiwork-jp-cat-6"
+ },
+ {
+  "url": "https://joetsu-city.site.ktaiwork.jp/category/%E7%81%AB%E7%81%BD%E6%83%85%E5%A0%B1/",
+  "type": "wp",
+  "pref": "新潟県",
+  "city": "上越市",
+  "id": "a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8"
+ }
+]
