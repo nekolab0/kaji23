@@ -1,5 +1,5 @@
 {
- "date": "2026-11-18",
+ "date": "2026-11-20",
  "indexed": 1,
  "inspected": 4354,
  "sitemap_urls": 4354,
@@ -59,32 +59,31 @@
  "visits_7d": 97,
  "pages_per_visit_7d": 1.32,
  "rpm": null,
- "publish_samples_7d": 310,
- "news_samples_7d": 231,
- "news_over_6h_7d": 0.3,
- "publish_minutes_median_7d": 70,
- "publish_minutes_p90_7d": 1126,
- "publish_within_30m_7d": 0.23,
- "fires_per_day_7d": 62.3,
- "fires_per_day_prev7d": 74.3,
+ "publish_samples_7d": 365,
+ "news_samples_7d": 260,
+ "news_over_6h_7d": 0.25,
+ "publish_minutes_median_7d": 62,
+ "publish_minutes_p90_7d": 1046,
+ "publish_within_30m_7d": 0.24,
+ "fires_per_day_7d": 56.4,
+ "fires_per_day_prev7d": 75.4,
  "misread_suspects": [],
  "news_reused_articles": [],
- "sources_status_at": "2026-11-18T03:11:49.703Z",
+ "sources_status_at": "2026-11-19T23:34:40.924Z",
  "sources_total": 79,
  "sources_failing": [
-  "kyoto（HTTP 522・7回続けて）"
+  "a-www-city-nikko-lg-jp-cgi-bin-smart-alert-php-2-detail-134697（HTTP 502・7回続けて）",
+  "kyoto（HTTP 522・15回続けて）"
  ],
  "fire_mail_senders": 59,
- "verify_ok": false,
- "verify_failed": [
-  "M2 消防本部の読み取り（5分ごと）"
- ],
+ "verify_ok": true,
+ "verify_failed": [],
  "stage": 1,
  "stage_name": "インデックス",
  "stage_metric": "indexed",
  "stage_value": 1,
  "stage_gate": 1000,
  "guard_alerts": [
-  "検査に不合格：M2 消防本部の読み取り（5分ごと）"
+  "掲載件数が減った（75.4→56.4件/日）"
  ]
 }
