@@ -1,0 +1,1140 @@
+[
+ {
+  "url": "http://www.seibu-saitama119.jp/disaster/hiki/saigai/pc/",
+  "status": 200,
+  "final": "http://www.seibu-saitama119.jp/disaster/hiki/saigai/pc/",
+  "size": 3150,
+  "lines": [
+   "2026年11月20日 09時06分現在",
+   "11月20日07時06分頃、東松山市神明町2丁目地内で危険排除が発生し、消防車が出動しています。"
+  ],
+  "links": [],
+  "tables": [
+   "<table border=\"0\" width=\"970\"> <tr> <td nowrap>&nbsp;</td> <td nowrap align=\"right\" valign=\"top\"> <b><font class=\"TIME\">2026年11月20日 09時06分現在</font></b> </td> </tr> </table>",
+   "<table border=\"0\" width=\"800\" height=\"56\" cellpadding=\"0\" cellspacing=\"0\"> <tr> <td nowrap bgcolor=\"#FFCC66\" width=\"20\" height=\"12\">&nbsp;</td> <td nowrap bgcolor=\"#FF6666\" width=\"20\" height=\"12\">&nbsp;</td> <td align=\"center\" rowspan=\"2\" width=\"750\"> <span class=\"TITLE\" style=\"font-size: 22pt;\">現在の災害発生状況をお知らせしております</span> </td> <td nowrap bgcolor=\"#FFFFCC\" width=\"20\" height=\"12\">&nbsp;</td> <td nowrap bgcolor=\"#FF6666\" width=\"20\" height=\"12\">&nbsp;</td> </tr> <tr> <td nowrap bgcolor=\"#FF6666\" width=\"20\" height=\"12\">&nbsp;</td> <td nowrap bgcolor=\"#FFFFCC\" width=\"20\" height=\"12\">&nbsp;</td> <td nowrap bgcolor=\"#FF6666\" width=\"20\" height=\"12\">&nbsp;</td> <td nowrap bgcolor=\"#FFCC66\" width=\"20\" height=\"12\">&nbsp;</td> </tr> </table>"
+  ],
+  "parsed": 0,
+  "parsedOwn": 0,
+  "parsedOwnItems": [],
+  "articles": 0,
+  "head": "<body>\r\n\r\n<!-- 見出し部 -->\r\n<table border=\"0\" width=\"970\">\r\n<tr>\r\n\t<td nowrap>&nbsp;</td>\r\n\t<td nowrap align=\"right\" valign=\"top\">\r\n\t\t<b><font class=\"TIME\">2026年11月20日 09時06分現在</font></b>\r\n\t</td>\r\n</tr>\r\n</table>\r\n\r\n<!-- 通常・災害時のヘッダータイトル部 -->\r\n<p>\r\n<div align=\"center\">\r\n<table border=\"0\" width=\"800\" height=\"56\" cellpadding=\"0\" cellspacing=\"0\">\r\n<tr>\r\n\t<td nowrap bgcolor=\"#FFCC66\" width=\"20\" height=\"12\">&nbsp;</td>\r\n\t<td nowrap bgcolor=\"#FF6666\" width=\"20\" height=\"12\">&nbsp;</td>\r\n\t<td align=\"center\" rowspan=\"2\" width=\"750\">\r\n\t\t<span class=\"TITLE\" style=\"font-size: 22pt;\">現在の災害発生状況をお知らせしております</span>\r\n\t</td>\r\n\t<td nowrap bgcolor=\"#FFFFCC\" width=\"20\" height=\"12\">&nbsp;</td>\r\n\t<td nowrap bgcolor=\"#FF6666\" width=\"20\" height=\"12\">&nbsp;</td>\r\n</tr>\r\n<tr>\r\n\t<td nowrap bgcolor=\"#FF6666\" width=\"20\" height=\"12\">&nbsp;</td>\r\n\t<td nowrap bgcolor=\"#FFFFCC\" width=\"20\" height=\"12\">&nbsp;</td>\r\n\t<td nowrap bgcolor=\"#FF6666\" width=\"20\" height=\"12\">&nbsp;</td>\r\n\t<td nowrap bgcolor=\"#FFCC66\" width=\"20\" height=\"12\">&nbsp;</td>\r\n</tr>\r\n</table>\r\n</div>\r\n\r\n</p>\r\n\r\n<br>\r\n\r\n<!-- 平常時文言・災害時情報一覧表示部 --->\r\n<p>\r\n<div align=\"center\">\r\n<table border=\"0\" width=\"860\" cellpadding=\"0\" cellspacing=\"0\" class=\"SGINFO\">\r\n<tr height=\"100\">\r\n <td width=\"50\" nowrap valign=\"top\" align=\"center\">\r\n  <span style=\"color: steelblue; font-size: 18pt;\">●</span>\r\n </td>\r\n <td width=\"830\" align=\"left\" valign=\"top\" style=\"font-size: 18pt;\">１１月２０日０７時０６分頃、東松山市神明町２丁目地内で危険排除が発生し、消防車が出動しています。</td>\r\n</tr>\r\n\r\n<tr height=\"50\">\r\n <td width=\"55\" nowrap>&nbsp;</td>\r\n</tr>\r\n\r\n<tr height=\"50\">\r\n <td width=\"55\" nowrap>&nbsp;</td>\r\n</tr>\r\n\r\n<tr height=\"50\">\r\n <td width=\"55\" nowrap>&nbsp;</td>\r\n</tr>\r\n\r\n<tr height=\"50\">\r\n <td width=\"55\" nowrap>&nbsp;</td>\r\n</tr>\r\n\r\n\r\n</table>\r\n</div>\r\n</p>\r\n\r\n\r\n<!-- テレホンガイド案内 -->\r\n<!-- <p>\r\n<div align=\"center\">\r\n<table border=\"0\" width=\"470\">\r\n<tr>\r\n\t<td align=\"center\">\r\n\t\t<font class=\"FOOT\">『火を消して　不安を消して　つなぐ未来』<br>2023年度全国統一防火標語</font>\r\n\t</td>\r\n</tr>\r\n</table>\r\n</div>\r\n</p>\r\n -->\r\n\r\n<!-- 戻るボタン -->\r\n<!-- 戻るところないので削除 -->\r\n<!--\r\n<p>\r\n<div align=\"center\">\r\n\t<a href=\"/\"><span style=\"font-size: 12pt; font-weight: bold;\">[戻る]</span></a>\r\n</div>\r\n</p>\r\n-->\r\n\r\n\r\n</body>\r\n</html>\r\n"
+ },
+ {
+  "url": "https://www.nagasaki-kenoukumiai.jp/syoubou/fireinfo/",
+  "status": 200,
+  "final": "https://www.nagasaki-kenoukumiai.jp/syoubou/fireinfo/",
+  "size": 1456,
+  "lines": [
+   "火災発生情報",
+   "【災害案内テレフォンサービス】 （令和5年4月1日から）",
+   "現在の県央地域広域市町村圏組合消防本部管内の火災発生情報を掲載しています。",
+   "現在、火災情報はありません。"
+  ],
+  "links": [
+   [
+    "https://cous.mail-dpt.jp/kenou119/mailinfo.php",
+    "メールサービス配信情報（過去のお知らせを含む）はこちら"
+   ]
+  ],
+  "tables": [
+   "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"650\"> <tr> <td colspan=\"3\"> <img src=\"kasaisaigai_top.gif\" border=\"0\"></td> </tr> <tr> <td colspan=\"3\" align=\"right\"> <p><font color=\"#ff0000\" style=\"font-weight:bold;\">【災害案内テレフォンサービス】</font> （令和5年4月1日から）</font></p> <p>諫早署管内・大村署管内・小浜署管内 ０５０－５５３０－６７３７</p> </td> </tr> <tr> <td colspan=\"3\"> <p>現在の県央地域広域市町村圏組合消防本部管内の火災発生情報を掲載しています。</p> <p>最新の情報は情報の更新をクリックしてください。</p> <button type=\"button\" onclick=\"window.location.reload(true);\"> <span>情報の更新</span> </button> <a href=\"https://cous.mail-dpt.jp/kenou119/mailinfo.php\">メールサービス配信情報（過去のお知らせを含む）はこちら</a> </td> </tr> </table>",
+   "<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"650\"> <tr><td colspan=\"3\" style=\"text-align:center;color:red;font-size:16pt;\" nowrap>現在、火災情報はありません。</td></tr></table>"
+  ],
+  "parsed": 0,
+  "parsedOwn": 0,
+  "parsedOwnItems": [],
+  "articles": 0,
+  "head": "<body bgcolor=\"#ffffff\" style=\"margin:0\">\n<div id=\"site-box\">\n\t<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"650\">\n\t\t<tr>\n\t\t\t<td colspan=\"3\">\n\t\t\t<img src=\"kasaisaigai_top.gif\" border=\"0\"></td>\n\t\t</tr>\n\t\t<tr>\n\t\t\t<td colspan=\"3\" align=\"right\">\n\t\t\t\t<p><font color=\"#ff0000\" style=\"font-weight:bold;\">【災害案内テレフォンサービス】</font>　（令和5年4月1日から）</font></p>\n\t\t\t<p>諫早署管内・大村署管内・小浜署管内　０５０－５５３０－６７３７</p>\n\t\t\t</td>\n\t\t</tr>\n\t\t<tr>\n\t\t\t<td colspan=\"3\">\n\t\t\t\t<p>現在の県央地域広域市町村圏組合消防本部管内の火災発生情報を掲載しています。</p>\n\t\t\t\t<p>最新の情報は情報の更新をクリックしてください。</p>\n\t\t\t\t<button type=\"button\" onclick=\"window.location.reload(true);\">\n\t<span>情報の更新</span>\n</button>\n<a href=\"https://cous.mail-dpt.jp/kenou119/mailinfo.php\">メールサービス配信情報（過去のお知らせを含む）はこちら</a>\n\t\t\t</td>\n\t\t</tr>\n\t</table>\n<br>\n<table border=\"0\" cellpadding=\"0\" cellspacing=\"0\" width=\"650\">    <tr><td colspan=\"3\" style=\"text-align:center;color:red;font-size:16pt;\" nowrap>現在、火災情報はありません。</td></tr></table>\n</div>\n</body>\n</html>"
+ },
+ {
+  "url": "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+  "status": 200,
+  "final": "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+  "size": 37992,
+  "lines": [
+   "火災情報 | 鹿児島市 安心ネットワーク119",
+   "「火災情報」カテゴリーアーカイブ",
+   "投稿日時: 2026年11月10日 投稿者: kagoshimacityfduser",
+   "11月10日22時05分頃、平之町9番地のエレガンス平之町付近で発生した建物火災は、消防隊の活動を終了しました。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月10日 投稿者: kagoshimacityfduser",
+   "11月10日22時05分頃、平之町9番地のエレガンス平之町付近で建物火災が発生し、消防隊が出動しております。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月10日 投稿者: kagoshimacityfduser",
+   "11月10日06時02分頃、谷山中央4丁目4817番地の特別養護老人ホーム ぶれーす谷山付近で発生した建物火災は、消防隊の活動を終了しました。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月10日 投稿者: kagoshimacityfduser",
+   "11月10日06時02分頃、谷山中央4丁目4817番地の特別養護老人ホーム ぶれーす谷山付近で建物火災が発生し、消防隊が出動しております。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月9日 投稿者: kagoshimacityfduser",
+   "11月09日15時59分頃、指宿スカイライン上り 滝之下トンネルの指宿スカイライン下り 滝之下トンネル付近で発生した車両火災は、消防隊の活動を終了しました。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月9日 投稿者: kagoshimacityfduser",
+   "11月09日15時59分頃、指宿スカイライン上り 滝之下トンネルの指宿スカイライン下り 滝之下トンネル付近で車両火災が発生し、消防隊が出動しております。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月7日 投稿者: kagoshimacityfduser",
+   "11月07日14時49分頃、喜入前之浜町7165番地の大王橋付近で発生した枯草火災は、消防隊の活動を終了しました。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月7日 投稿者: kagoshimacityfduser",
+   "11月07日13時26分頃、犬迫町3983番地の荒磯三文字バス停付近で発生した枯草火災は、消防隊の活動を終了しました。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月7日 投稿者: kagoshimacityfduser",
+   "11月07日14時49分頃、喜入前之浜町7165番地の大王橋付近で枯草火災が発生し、消防隊が出動しております。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月7日 投稿者: kagoshimacityfduser",
+   "11月07日13時26分頃、犬迫町3983番地の荒磯三文字バス停付近で枯草火災が発生し、消防隊が出動しております。",
+   "カテゴリー: 火災情報",
+   "火災情報"
+  ],
+  "links": [
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6784",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6782",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6780",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6778",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6776",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6774",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6772",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6770",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6768",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6766",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6796",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6794",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6792",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6790",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?p=6788",
+    "災害情報"
+   ],
+   [
+    "https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ]
+  ],
+  "tables": [],
+  "parsed": 0,
+  "parsedOwn": 5,
+  "parsedOwnItems": [
+   {
+    "kind": "建物火災",
+    "city": "鹿児島市",
+    "town": "平之町",
+    "at": "2026-11-10T13:05:00.000Z",
+    "status": null,
+    "pref": "鹿児島県",
+    "source": "a-kagoshima-city-fd-site-ktaiwork-jp-cat-2"
+   },
+   {
+    "kind": "建物火災",
+    "city": "鹿児島市",
+    "town": "谷山中央4丁目",
+    "at": "2026-11-09T21:02:00.000Z",
+    "status": null,
+    "pref": "鹿児島県",
+    "source": "a-kagoshima-city-fd-site-ktaiwork-jp-cat-2"
+   },
+   {
+    "kind": "車両火災",
+    "city": "鹿児島市",
+    "town": "指宿スカイライン上り",
+    "at": "2026-11-09T06:59:00.000Z",
+    "status": null,
+    "pref": "鹿児島県",
+    "source": "a-kagoshima-city-fd-site-ktaiwork-jp-cat-2"
+   },
+   {
+    "kind": "枯草火災",
+    "city": "鹿児島市",
+    "town": "喜入前之浜町",
+    "at": "2026-11-07T05:49:00.000Z",
+    "status": null,
+    "pref": "鹿児島県",
+    "source": "a-kagoshima-city-fd-site-ktaiwork-jp-cat-2"
+   },
+   {
+    "kind": "枯草火災",
+    "city": "鹿児島市",
+    "town": "犬迫町",
+    "at": "2026-11-07T04:26:00.000Z",
+    "status": null,
+    "pref": "鹿児島県",
+    "source": "a-kagoshima-city-fd-site-ktaiwork-jp-cat-2"
+   }
+  ],
+  "articles": 10,
+  "head": "<article id=\"post-6784\" class=\"post-6784 post type-post status-publish format-standard hentry category-2\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://kagoshima-city-fd.site.ktaiwork.jp/?p=6784\" rel=\"bookmark\">災害情報</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://kagoshima-city-fd.site.ktaiwork.jp/?p=6784\" title=\"22:41\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-10T22:41:33+09:00\">2026年11月10日</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://kagoshima-city-fd.site.ktaiwork.jp/?author=245\" title=\"kagoshimacityfduser の投稿をすべて表示\" rel=\"author\">kagoshimacityfduser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-cat-page addthis_tool\" data-url=\"https://kagoshima-city-fd.site.ktaiwork.jp/?p=6784\"></div><p>11月10日22時05分頃、平之町9番地のエレガンス平之町付近で発生した建物火災は、消防隊の活動を終了しました。</p>\n<!-- AddThis Advanced Settings above via filter on the_content --><!-- AddThis Advanced Settings below via filter on the_content --><!-- AddThis Advanced Settings generic via filter on the_content --><!-- AddThis Share Buttons above via filter on the_content --><!-- AddThis Share Buttons below via filter on the_content --><div class=\"at-below-post-cat-page addthis_tool\" data-url=\"https://kagoshima-city-fd.site.ktaiwork.jp/?p=6784\"></div><!-- AddThis Share Buttons generic via filter on the_content -->\t\t\t\t\t</div><!-- .entry-content -->\n\t\t\n\t\t<footer class=\"entry-meta\">\n\t\t\t\n\t\t\t\t\t\t\t\t\t\t<span class=\"cat-links\">\n\t\t\t\t\t<span class=\"entry-utility-prep entry-utility-prep-cat-links\">カテゴリー:</span> <a href=\"https://kagoshima-city-fd.site.ktaiwork.jp/?cat=2\" rel=\"category\">火災情報</a>\t\t\t</span>\n\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\t\t</footer><!-- .entry-meta -->\n\t</article><!-- #post-6784 -->\n\n\t\t\t\t\n\t\t\t\t\t\n\t<article id=\"post-6782\" class=\"post-6782 post type-post status-publish format-standard hentry category-2\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://kagoshima-city-fd.site.ktaiwork.jp/?p=6782\" rel=\"bookmark\">災害情報</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://kagoshima-city-fd.site.ktaiwork.jp/?p=6782\" title=\"22:05\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-10T22:05:33+09:00\">2026年11月10日</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://kagoshima-city-fd.site.ktaiwork.jp/?author=245\" title=\"kagoshimacityfduser の投稿をすべて表示\" rel=\"author\">kagoshimacityfduser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-cat-page addthis_tool\" data-url=\"https://kagoshima-city-fd.site.ktaiwork.jp/?p=6782\"></div><p>11月10日22時05分頃、平之町9番地のエレガンス平之町付近で建物火災が発生し、消防隊が出動しております。<br />\n付近の方は、消防活動にご協力お願いします。"
+ },
+ {
+  "url": "https://fukuyama-fd.site2.ktaiwork.jp/",
+  "status": 200,
+  "final": "https://fukuyama-fd.site2.ktaiwork.jp/",
+  "size": 53856,
+  "lines": [
+   "鎮火情報",
+   "投稿日時: 2026年11月15日 13:38 投稿者: fukuyamafduser",
+   "11月15日13時33分頃，福山市駅家町大字大橋付近で発生した建物火災は，13時38分に鎮火しました。",
+   "カテゴリー: 火災情報",
+   "火災情報",
+   "投稿日時: 2026年11月15日 13:34 投稿者: fukuyamafduser",
+   "11月15日13時33分頃",
+   "福山市駅家町大字大橋付近で建物火災が発生しました。",
+   "・住宅用火災警報器は，住宅火災の早期発見に有効です。",
+   "カテゴリー: 火災情報",
+   "鎮火情報",
+   "投稿日時: 2026年11月13日 00:23 投稿者: fukuyamafduser",
+   "11月13日00時10分頃，福山市新市町大字戸手付近で発生した建物火災は，0時22分に鎮火しました。",
+   "カテゴリー: 火災情報",
+   "火災情報",
+   "投稿日時: 2026年11月13日 00:11 投稿者: fukuyamafduser",
+   "11月13日00時10分頃",
+   "福山市新市町大字戸手付近で建物火災が発生しました。",
+   "・住宅用火災警報器は，住宅火災の早期発見に有効です。",
+   "カテゴリー: 火災情報",
+   "鎮火情報",
+   "投稿日時: 2026年11月12日 03:08 投稿者: fukuyamafduser",
+   "11月12日00時00分頃，福山市新市町大字戸手付近で発生した建物火災は，3時07分に鎮火しました。",
+   "カテゴリー: 火災情報",
+   "火災情報",
+   "投稿日時: 2026年11月12日 00:01 投稿者: fukuyamafduser",
+   "11月12日00時00分頃",
+   "福山市新市町大字戸手付近で建物火災が発生しました。",
+   "・住宅用火災警報器は，住宅火災の早期発見に有効です。",
+   "カテゴリー: 火災情報",
+   "鎮火情報",
+   "投稿日時: 2026年11月9日 01:47 投稿者: fukuyamafduser",
+   "11月09日01時30分頃，福山市金江町金見付近で発生したその他の火災は，1時47分に鎮火しました。",
+   "カテゴリー: 火災情報",
+   "火災情報",
+   "投稿日時: 2026年11月9日 01:30 投稿者: fukuyamafduser",
+   "11月09日01時30分頃",
+   "福山市金江町金見付近でその他の火災が発生しました。",
+   "カテゴリー: 火災情報",
+   "鎮火情報",
+   "投稿日時: 2026年11月8日 01:57 投稿者: fukuyamafduser",
+   "11月08日01時48分頃，福山市伊勢丘7丁目付近で発生した建物火災は，1時56分に鎮火しました。",
+   "カテゴリー: 火災情報",
+   "火災情報",
+   "投稿日時: 2026年11月8日 01:48 投稿者: fukuyamafduser",
+   "11月08日01時48分頃",
+   "福山市伊勢丘7丁目付近で建物火災が発生しました。",
+   "・住宅用火災警報器は，住宅火災の早期発見に有効です。",
+   "カテゴリー: 火災情報",
+   "鎮火情報",
+   "火災情報",
+   "鎮火情報",
+   "火災情報",
+   "鎮火情報",
+   "火災情報"
+  ],
+  "links": [
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?p=2361",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?p=2357",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?p=2353",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?p=2349",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?p=2345",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?p=2361",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?p=2357",
+    "火災情報"
+   ],
+   [
+    "https://fukuyama-fd.site2.ktaiwork.jp/?cat=2",
+    "火災情報"
+   ]
+  ],
+  "tables": [],
+  "parsed": 0,
+  "parsedOwn": 5,
+  "parsedOwnItems": [
+   {
+    "kind": "建物火災",
+    "city": "福山市",
+    "town": "駅家町大字大橋",
+    "at": "2026-11-15T04:33:00.000Z",
+    "status": "鎮火",
+    "pref": "広島県",
+    "source": "a-fukuyama-fd-site2-ktaiwork-jp"
+   },
+   {
+    "kind": "建物火災",
+    "city": "福山市",
+    "town": "新市町大字戸手",
+    "at": "2026-11-12T15:10:00.000Z",
+    "status": "鎮火",
+    "pref": "広島県",
+    "source": "a-fukuyama-fd-site2-ktaiwork-jp"
+   },
+   {
+    "kind": "建物火災",
+    "city": "福山市",
+    "town": "新市町大字戸手",
+    "at": "2026-11-11T15:00:00.000Z",
+    "status": "鎮火",
+    "pref": "広島県",
+    "source": "a-fukuyama-fd-site2-ktaiwork-jp"
+   },
+   {
+    "kind": "その他火災",
+    "city": "福山市",
+    "town": "金江町金見",
+    "at": "2026-11-08T16:30:00.000Z",
+    "status": "鎮火",
+    "pref": "広島県",
+    "source": "a-fukuyama-fd-site2-ktaiwork-jp"
+   },
+   {
+    "kind": "建物火災",
+    "city": "福山市",
+    "town": "伊勢丘7丁目",
+    "at": "2026-11-07T16:48:00.000Z",
+    "status": "鎮火",
+    "pref": "広島県",
+    "source": "a-fukuyama-fd-site2-ktaiwork-jp"
+   }
+  ],
+  "articles": 10,
+  "head": "<article id=\"post-2363\" class=\"post-2363 post type-post status-publish format-standard hentry category-2\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://fukuyama-fd.site2.ktaiwork.jp/?p=2363\" rel=\"bookmark\">鎮火情報</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://fukuyama-fd.site2.ktaiwork.jp/?p=2363\" title=\"13:38\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-15T13:38:32+09:00\">2026年11月15日 13:38</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://fukuyama-fd.site2.ktaiwork.jp/?author=13\" title=\"fukuyamafduser の投稿をすべて表示\" rel=\"author\">fukuyamafduser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-homepage addthis_tool\" data-url=\"https://fukuyama-fd.site2.ktaiwork.jp/?p=2363\"></div><p>１１月１５日１３時３３分頃，福山市駅家町大字大橋付近で発生した建物火災は，１３時３８分に鎮火しました。</p>\n<!-- AddThis Advanced Settings above via filter on the_content --><!-- AddThis Advanced Settings below via filter on the_content --><!-- AddThis Advanced Settings generic via filter on the_content --><!-- AddThis Share Buttons above via filter on the_content --><!-- AddThis Share Buttons below via filter on the_content --><div class=\"at-below-post-homepage addthis_tool\" data-url=\"https://fukuyama-fd.site2.ktaiwork.jp/?p=2363\"></div><!-- AddThis Share Buttons generic via filter on the_content -->\t\t\t\t\t</div><!-- .entry-content -->\n\t\t\n\t\t<footer class=\"entry-meta\">\n\t\t\t\n\t\t\t\t\t\t\t\t\t\t<span class=\"cat-links\">\n\t\t\t\t\t<span class=\"entry-utility-prep entry-utility-prep-cat-links\">カテゴリー:</span> <a href=\"https://fukuyama-fd.site2.ktaiwork.jp/?cat=2\" rel=\"category\">火災情報</a>\t\t\t</span>\n\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\t\t</footer><!-- .entry-meta -->\n\t</article><!-- #post-2363 -->\n\n\t\t\t\t\n\t\t\t\t\t\n\t<article id=\"post-2361\" class=\"post-2361 post type-post status-publish format-standard hentry category-2\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://fukuyama-fd.site2.ktaiwork.jp/?p=2361\" rel=\"bookmark\">火災情報</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://fukuyama-fd.site2.ktaiwork.jp/?p=2361\" title=\"13:34\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-15T13:34:02+09:00\">2026年11月15日 13:34</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://fukuyama-fd.site2.ktaiwork.jp/?author=13\" title=\"fukuyamafduser の投稿をすべて表示\" rel=\"author\">fukuyamafduser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-homepage addthis_tool\" data-url=\"https://fukuyama-fd.site2.ktaiwork.jp/?p=2361\"></div><p>１１月１５日１３時３３分頃<br />\n福山市駅家町大字大橋付近で建物火災が発生しました。</p>\n<p>・消防車の緊急走行にご協力をお願いします。<br />\n・住宅用火災警報器は，住宅火災の早期発見に有効です。</p>\n<!-- AddThis Advanced Settings abov"
+ },
+ {
+  "url": "http://kohoku-fd.site.ktaiwork.jp/",
+  "status": 200,
+  "final": "http://kohoku-fd.site.ktaiwork.jp/",
+  "size": 46744,
+  "lines": [
+   "火災情報 | 湖北地域消防本部からの火災情報をお知らせします。 （携帯電話やパソコンへ情報をメールで配信するサービスも行っています。登録は無料です。そちらもぜひご活用ください。）",
+   "火災情報",
+   "湖北地域消防本部からの火災情報をお知らせします。 （携帯電話やパソコンへ情報をメールで配信するサービスも行っています。登録は無料です。そちらもぜひご活用ください。）",
+   "投稿日時: 2026年11月11日 投稿者: kohokuuser",
+   "長浜市室町の建物火災は、消防隊が確認した結果、火災ではありませんでした。",
+   "市民用火災発生報（長浜市）",
+   "投稿日時: 2026年11月11日 投稿者: kohokuuser",
+   "ただいま長浜市室町で建物火災が発生し、消防車が出動しています。",
+   "市民用火災鎮火報（長浜市）",
+   "投稿日時: 2026年11月7日 投稿者: kohokuuser",
+   "こちらは湖北地域消防本部です。長浜市湖北町山本で発生していた建物火災は、14時07分に消えました。",
+   "市民用火災発生報（長浜市）",
+   "投稿日時: 2026年11月7日 投稿者: kohokuuser",
+   "ただいま長浜市湖北町山本で建物火災が発生し、消防車が出動しています。",
+   "市民用火災鎮火報（米原市）",
+   "投稿日時: 2026年11月2日 投稿者: kohokuuser",
+   "こちらは湖北地域消防本部です。米原市甲津原で発生していた車両火災は、16時20分に消えました。",
+   "市民用火災発生報（米原市）",
+   "投稿日時: 2026年11月2日 投稿者: kohokuuser",
+   "こちらは湖北地域消防本部です。ただいま米原市甲津原で車両火災が発生し、消防車が出動しています。",
+   "市民用火災鎮火報（米原市）",
+   "投稿日時: 2026年11月2日 投稿者: kohokuuser",
+   "こちらは湖北地域消防本部です。米原市上板並で発生していた車両火災は、10時51分に消えました。",
+   "市民用火災発生報（米原市）",
+   "投稿日時: 2026年11月2日 投稿者: kohokuuser",
+   "こちらは湖北地域消防本部です。ただいま米原市上板並で車両火災が発生し、消防車が出動しています。",
+   "非火災のお知らせ（米原市）",
+   "投稿日時: 2026年11月1日 投稿者: kohokuuser",
+   "米原市米原の建物火災は、消防隊が確認した結果、火災ではありませんでした。",
+   "市民用火災発生報（米原市）",
+   "投稿日時: 2026年11月1日 投稿者: kohokuuser",
+   "こちらは湖北地域消防本部です。ただいま米原市米原で建物火災が発生し、消防車が出動しています。",
+   "市民用火災発生報（長浜市）",
+   "市民用火災鎮火報（長浜市）",
+   "市民用火災発生報（長浜市）",
+   "市民用火災鎮火報（米原市）"
+  ],
+  "links": [
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/",
+    "火災情報"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/11/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89-367/",
+    "市民用火災発生報（長浜市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/07/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e5%a0%b1%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89-304/",
+    "市民用火災鎮火報（長浜市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/07/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89-366/",
+    "市民用火災発生報（長浜市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/02/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e5%a0%b1%ef%bc%88%e7%b1%b3%e5%8e%9f%e5%b8%82%ef%bc%89-143/",
+    "市民用火災鎮火報（米原市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/02/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e7%b1%b3%e5%8e%9f%e5%b8%82%ef%bc%89-171/",
+    "市民用火災発生報（米原市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/02/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e5%a0%b1%ef%bc%88%e7%b1%b3%e5%8e%9f%e5%b8%82%ef%bc%89-142/",
+    "市民用火災鎮火報（米原市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/02/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e7%b1%b3%e5%8e%9f%e5%b8%82%ef%bc%89-170/",
+    "市民用火災発生報（米原市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/01/%e9%9d%9e%e7%81%ab%e7%81%bd%e3%81%ae%e3%81%8a%e7%9f%a5%e3%82%89%e3%81%9b%ef%bc%88%e7%b1%b3%e5%8e%9f%e5%b8%82%ef%bc%89/",
+    "非火災のお知らせ（米原市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/01/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e7%b1%b3%e5%8e%9f%e5%b8%82%ef%bc%89-169/",
+    "市民用火災発生報（米原市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/11/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89-367/",
+    "市民用火災発生報（長浜市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/07/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e5%a0%b1%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89-304/",
+    "市民用火災鎮火報（長浜市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/07/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89-366/",
+    "市民用火災発生報（長浜市）"
+   ],
+   [
+    "http://kohoku-fd.site.ktaiwork.jp/2026/11/02/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e5%a0%b1%ef%bc%88%e7%b1%b3%e5%8e%9f%e5%b8%82%ef%bc%89-143/",
+    "市民用火災鎮火報（米原市）"
+   ]
+  ],
+  "tables": [],
+  "parsed": 0,
+  "parsedOwn": 10,
+  "parsedOwnItems": [
+   {
+    "kind": "火災",
+    "city": "長浜市",
+    "town": "室町",
+    "at": "2026-11-11T00:59:00.000Z",
+    "status": "誤報",
+    "pref": "滋賀県",
+    "source": "a-kohoku-fd-site-ktaiwork-jp"
+   },
+   {
+    "kind": "建物火災",
+    "city": "長浜市",
+    "town": "室町",
+    "at": "2026-11-11T00:46:00.000Z",
+    "status": "出動",
+    "pref": "滋賀県",
+    "source": "a-kohoku-fd-site-ktaiwork-jp"
+   },
+   {
+    "kind": "建物火災",
+    "city": "長浜市",
+    "town": "湖北町山本",
+    "at": "2026-11-07T05:12:00.000Z",
+    "status": "鎮火",
+    "pref": "滋賀県",
+    "source": "a-kohoku-fd-site-ktaiwork-jp"
+   },
+   {
+    "kind": "建物火災",
+    "city": "長浜市",
+    "town": "湖北町山本",
+    "at": "2026-11-07T03:44:00.000Z",
+    "status": "出動",
+    "pref": "滋賀県",
+    "source": "a-kohoku-fd-site-ktaiwork-jp"
+   },
+   {
+    "kind": "車両火災",
+    "city": "米原市",
+    "town": "甲津原",
+    "at": "2026-11-02T07:24:00.000Z",
+    "status": "鎮火",
+    "pref": "滋賀県",
+    "source": "a-kohoku-fd-site-ktaiwork-jp"
+   }
+  ],
+  "articles": 10,
+  "head": "<article id=\"post-2356\" class=\"post-2356 post type-post status-publish format-standard hentry category-3\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"http://kohoku-fd.site.ktaiwork.jp/2026/11/11/%e8%aa%a4%e5%a0%b1%e3%81%ae%e3%81%8a%e7%9f%a5%e3%82%89%e3%81%9b%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89/\" rel=\"bookmark\">誤報のお知らせ（長浜市）</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"http://kohoku-fd.site.ktaiwork.jp/2026/11/11/%e8%aa%a4%e5%a0%b1%e3%81%ae%e3%81%8a%e7%9f%a5%e3%82%89%e3%81%9b%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89/\" title=\"09:59\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-11T09:59:34+09:00\">2026年11月11日</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"http://kohoku-fd.site.ktaiwork.jp/author/kohokuuser/\" title=\"kohokuuser の投稿をすべて表示\" rel=\"author\">kohokuuser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-homepage addthis_tool\" data-url=\"http://kohoku-fd.site.ktaiwork.jp/2026/11/11/%e8%aa%a4%e5%a0%b1%e3%81%ae%e3%81%8a%e7%9f%a5%e3%82%89%e3%81%9b%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89/\"></div><p>こちらは湖北地域消防本部です。<br />\n長浜市室町の建物火災は、消防隊が確認した結果、火災ではありませんでした。</p>\n<!-- AddThis Advanced Settings above via filter on the_content --><!-- AddThis Advanced Settings below via filter on the_content --><!-- AddThis Advanced Settings generic via filter on the_content --><!-- AddThis Share Buttons above via filter on the_content --><!-- AddThis Share Buttons below via filter on the_content --><div class=\"at-below-post-homepage addthis_tool\" data-url=\"http://kohoku-fd.site.ktaiwork.jp/2026/11/11/%e8%aa%a4%e5%a0%b1%e3%81%ae%e3%81%8a%e7%9f%a5%e3%82%89%e3%81%9b%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89/\"></div><!-- AddThis Share Buttons generic via filter on the_content -->\t\t\t\t\t</div><!-- .entry-content -->\n\t\t\n\t\t<footer class=\"entry-meta\">\n\t\t\t\n\t\t\t\t\t\t\t\t\t\t<span class=\"cat-links\">\n\t\t\t\t\t<span class=\"entry-utility-prep entry-utility-prep-cat-links\">カテゴリー:</span> <a href=\"http://kohoku-fd.site.ktaiwork.jp/category/%e2%97%8e%e5%b8%82%e6%b0%91%e5%b0%82%e7%94%a8%e2%97%8e/\" rel=\"category tag\">◎市民専用◎</a>\t\t\t</span>\n\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\t\t</footer><!-- .entry-meta -->\n\t</article><!-- #post-2356 -->\n\n\t\t\t\t\n\t\t\t\t\t\n\t<article id=\"post-2354\" class=\"post-2354 post type-post status-publish format-standard hentry category-3\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"http://kohoku-fd.site.ktaiwork.jp/2026/11/11/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e9%95%b7%e6%b5%9c%e5%b8%82%ef%bc%89-367/\" rel=\"bookmark\">市民用火災発生報（長浜市）</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"http://kohoku-fd.site.ktaiwork.jp/2026/11/11/%e5%b8%82%e6%b0%91%e7%94%a8%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e5%a0%b1%ef%bc%88%e9%95%b7%e6%b5"
+ },
+ {
+  "url": "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+  "status": 200,
+  "final": "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+  "size": 51645,
+  "lines": [
+   "火災情報 | かしわメール配信サービス",
+   "「火災情報」カテゴリーアーカイブ",
+   "投稿日時: 2026年11月16日 23:26 投稿者: kashiwacityuser",
+   "11月16日(月)23時19分頃に火災通報があり、柏市柏三丁目（柏郵便局西側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月16日 17:53 投稿者: kashiwacityuser",
+   "11月16日(月)17時45分頃に火災通報があり、柏市高柳二丁目（東武アーバンパークライン高柳駅西側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月11日 09:55 投稿者: kashiwacityuser",
+   "11月11日(水)9時39分頃に火災通報があり、柏市光ケ丘二丁目（柏市光ケ丘近隣センター南西側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月10日 03:59 投稿者: kashiwacityuser",
+   "11月10日(火)3時53分頃に火災通報があり、柏市高柳（市立高柳保育園北西側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月9日 12:34 投稿者: kashiwacityuser",
+   "11月9日(月)12時28分頃に火災通報があり、柏市小青田四丁目（小青田円通寺東南側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月7日 12:19 投稿者: kashiwacityuser",
+   "11月7日(土)12時07分頃に火災通報があり、柏市豊住一丁目（低見台第一公園南東側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年11月6日 19:33 投稿者: kashiwacityuser",
+   "11月6日(金)19時22分頃に火災通報があり、柏市豊町二丁目（大膳山大昭の森緑地北東側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年10月29日 09:09 投稿者: kashiwacityuser",
+   "10月29日(木)9時00分頃に火災通報があり、柏市南柏中央（JR南柏駅南西側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年10月28日 12:18 投稿者: kashiwacityuser",
+   "10月28日(水)12時9分頃に火災通報があり、柏市西原二丁目（柏市西原近隣センター南側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "投稿日時: 2026年10月25日 19:26 投稿者: kashiwacityuser",
+   "10月25日(日)19時18分頃に火災通報があり、柏市大島田一丁目（柏市沼南体育館北西側）に消防隊が出場しています。",
+   "カテゴリー: 火災情報",
+   "火災情報"
+  ],
+  "links": [
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?p=1017",
+    "千葉県内に気象防災速報（竜巻注意／竜巻目撃）が発表されています"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?p=1015",
+    "千葉県内に気象防災速報（竜巻注意／竜巻目撃）が発表されています"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=3",
+    "火災情報"
+   ],
+   [
+    "https://kashiwa-city.site2.ktaiwork.jp/?cat=2",
+    "災害情報"
+   ]
+  ],
+  "tables": [],
+  "parsed": 0,
+  "parsedOwn": 10,
+  "parsedOwnItems": [
+   {
+    "kind": "火災",
+    "city": "柏市",
+    "town": "柏三丁目",
+    "at": "2026-11-16T14:19:00.000Z",
+    "status": "出動",
+    "pref": "千葉県",
+    "source": "a-kashiwa-city-site2-ktaiwork-jp-cat-3"
+   },
+   {
+    "kind": "火災",
+    "city": "柏市",
+    "town": "高柳二丁目",
+    "at": "2026-11-16T08:45:00.000Z",
+    "status": "出動",
+    "pref": "千葉県",
+    "source": "a-kashiwa-city-site2-ktaiwork-jp-cat-3"
+   },
+   {
+    "kind": "火災",
+    "city": "柏市",
+    "town": "光ケ丘二丁目",
+    "at": "2026-11-11T00:39:00.000Z",
+    "status": "出動",
+    "pref": "千葉県",
+    "source": "a-kashiwa-city-site2-ktaiwork-jp-cat-3"
+   },
+   {
+    "kind": "火災",
+    "city": "柏市",
+    "town": "高柳",
+    "at": "2026-11-09T18:53:00.000Z",
+    "status": "出動",
+    "pref": "千葉県",
+    "source": "a-kashiwa-city-site2-ktaiwork-jp-cat-3"
+   },
+   {
+    "kind": "火災",
+    "city": "柏市",
+    "town": "小青田四丁目",
+    "at": "2026-11-09T03:28:00.000Z",
+    "status": "出動",
+    "pref": "千葉県",
+    "source": "a-kashiwa-city-site2-ktaiwork-jp-cat-3"
+   }
+  ],
+  "articles": 10,
+  "head": "<article id=\"post-1009\" class=\"post-1009 post type-post status-publish format-standard hentry category-kasai\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://kashiwa-city.site2.ktaiwork.jp/?p=1009\" rel=\"bookmark\">柏市消防局からのお知らせ</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://kashiwa-city.site2.ktaiwork.jp/?p=1009\" title=\"11:26 PM\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-16T23:26:32+09:00\">2026年11月16日 23:26</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://kashiwa-city.site2.ktaiwork.jp/?author=102\" title=\"kashiwacityuser の投稿をすべて表示\" rel=\"author\">kashiwacityuser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-cat-page addthis_tool\" data-url=\"https://kashiwa-city.site2.ktaiwork.jp/?p=1009\"></div><p>11月16日(月)23時19分頃に火災通報があり、柏市柏三丁目（柏郵便局西側）に消防隊が出場しています。<br />\n近隣の方は十分にご注意ください。</p>\n<p>柏市消防局　消防指令センター</p>\n<!-- AddThis Advanced Settings above via filter on the_content --><!-- AddThis Advanced Settings below via filter on the_content --><!-- AddThis Advanced Settings generic via filter on the_content --><!-- AddThis Share Buttons above via filter on the_content --><!-- AddThis Share Buttons below via filter on the_content --><div class=\"at-below-post-cat-page addthis_tool\" data-url=\"https://kashiwa-city.site2.ktaiwork.jp/?p=1009\"></div><!-- AddThis Share Buttons generic via filter on the_content -->\t\t\t\t\t</div><!-- .entry-content -->\n\t\t\n\t\t<footer class=\"entry-meta\">\n\t\t\t\n\t\t\t\t\t\t\t\t\t\t<span class=\"cat-links\">\n\t\t\t\t\t<span class=\"entry-utility-prep entry-utility-prep-cat-links\">カテゴリー:</span> <a href=\"https://kashiwa-city.site2.ktaiwork.jp/?cat=3\" rel=\"category\">火災情報</a>\t\t\t</span>\n\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\t\t</footer><!-- .entry-meta -->\n\t</article><!-- #post-1009 -->\n\n\t\t\t\t\n\t\t\t\t\t\n\t<article id=\"post-1007\" class=\"post-1007 post type-post status-publish format-standard hentry category-kasai\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://kashiwa-city.site2.ktaiwork.jp/?p=1007\" rel=\"bookmark\">柏市消防局からのお知らせ</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://kashiwa-city.site2.ktaiwork.jp/?p=1007\" title=\"5:53 PM\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-16T17:53:04+09:00\">2026年11月16日 17:53</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://kashiwa-city.site2.ktaiwork.jp/?author=102\" title=\"kashiwacityuser の投稿をすべて表示\" rel=\"author\">kashiwacityuser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-cat-page addthis_tool\" data-url=\"https://kashiwa-city.site2.ktaiwork.jp/?p=1007\"></div><p>11月16日(月)17時45分頃に火災通報があり、柏市高柳二丁目（東武アーバンパークライン高柳駅西側）に消防隊が"
+ },
+ {
+  "url": "https://ueda-city.site.ktaiwork.jp/?cat=6",
+  "status": 200,
+  "final": "https://ueda-city.site.ktaiwork.jp/?cat=6",
+  "size": 44322,
+  "lines": [
+   "14 火災情報 | 上田市メール配信サービス",
+   "「14 火災情報」カテゴリーアーカイブ",
+   "■上田市 火災情報",
+   "投稿日時: 2026年11月13日 投稿者: uedacityuser",
+   "鎮火",
+   "車両火災",
+   "発生日時:11月13日18時46分",
+   "鎮火日時:11月13日18時57分",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年11月13日 投稿者: uedacityuser",
+   "車両火災",
+   "日時:11月13日 18時46分",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年11月10日 投稿者: uedacityuser",
+   "鎮火",
+   "車両火災",
+   "発生日時:11月10日13時06分",
+   "鎮火日時:11月10日13時19分",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年11月10日 投稿者: uedacityuser",
+   "車両火災",
+   "日時:11月10日 13時06分",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年10月28日 投稿者: uedacityuser",
+   "鎮火",
+   "建物火災",
+   "発生日時:10月28日23時07分",
+   "鎮火日時:10月28日23時16分",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年10月28日 投稿者: uedacityuser",
+   "建物火災",
+   "日時:10月28日 23時07分",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年10月11日 投稿者: uedacityuser",
+   "鎮火",
+   "その他の火災",
+   "発生日時:10月11日12時15分",
+   "鎮火日時:10月11日 12時22分",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年10月11日 投稿者: uedacityuser",
+   "その他の火災",
+   "日時:10月11日 12時15分",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年10月3日 投稿者: uedacityuser",
+   "その他の火災",
+   "発生日時:10月03日03時18分",
+   "誤報確認日時:10月03日 03時44分",
+   "状況:誤報によるもので、火災ではありませんでした。",
+   "カテゴリー: 14 火災情報",
+   "■上田市 火災情報",
+   "投稿日時: 2026年10月3日 投稿者: uedacityuser",
+   "その他の火災"
+  ],
+  "links": [
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17466",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17464",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17436",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17434",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17380",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17378",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17288",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17286",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17244",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?p=17242",
+    "■上田市　火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=4",
+    "11 緊急速報"
+   ],
+   [
+    "https://ueda-city.site.ktaiwork.jp/?cat=6",
+    "14 火災情報"
+   ]
+  ],
+  "tables": [],
+  "parsed": 0,
+  "parsedOwn": 3,
+  "parsedOwnItems": [
+   {
+    "kind": "車両火災",
+    "city": "上田市",
+    "town": "中央西二丁目",
+    "at": "2026-11-13T09:46:00.000Z",
+    "status": "鎮火",
+    "pref": "長野県",
+    "source": "a-ueda-city-site-ktaiwork-jp-cat-6"
+   },
+   {
+    "kind": "車両火災",
+    "city": "上田市",
+    "town": "天神三丁目",
+    "at": "2026-11-10T04:06:00.000Z",
+    "status": "鎮火",
+    "pref": "長野県",
+    "source": "a-ueda-city-site-ktaiwork-jp-cat-6"
+   },
+   {
+    "kind": "建物火災",
+    "city": "上田市",
+    "town": "下之条",
+    "at": "2026-10-28T14:07:00.000Z",
+    "status": "鎮火",
+    "pref": "長野県",
+    "source": "a-ueda-city-site-ktaiwork-jp-cat-6"
+   }
+  ],
+  "articles": 10,
+  "head": "<article id=\"post-17466\" class=\"post-17466 post type-post status-publish format-standard hentry category-14-\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://ueda-city.site.ktaiwork.jp/?p=17466\" rel=\"bookmark\">■上田市　火災情報</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://ueda-city.site.ktaiwork.jp/?p=17466\" title=\"19:05\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-13T19:05:03+09:00\">2026年11月13日</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://ueda-city.site.ktaiwork.jp/?author=64\" title=\"uedacityuser の投稿をすべて表示\" rel=\"author\">uedacityuser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-cat-page addthis_tool\" data-url=\"https://ueda-city.site.ktaiwork.jp/?p=17466\"></div><p>鎮火<br />\n車両火災<br />\n場所：上田市中央西二丁目<br />\n発生日時：１１月１３日１８時４６分<br />\n鎮火日時：１１月１３日１８時５７分<br />\n目標：国道１８号上田城跡公園入口信号　南　２０ｍ付近<br />\n状況：普通自動車１台が燃えたもの。</p>\n<p> 御協力ありがとうございました。<br />\n上田地域広域連合消防本部0268-26-0119</p>\n<!-- AddThis Advanced Settings above via filter on the_content --><!-- AddThis Advanced Settings below via filter on the_content --><!-- AddThis Advanced Settings generic via filter on the_content --><!-- AddThis Share Buttons above via filter on the_content --><!-- AddThis Share Buttons below via filter on the_content --><div class=\"at-below-post-cat-page addthis_tool\" data-url=\"https://ueda-city.site.ktaiwork.jp/?p=17466\"></div><!-- AddThis Share Buttons generic via filter on the_content -->\t\t\t\t\t</div><!-- .entry-content -->\n\t\t\n\t\t<footer class=\"entry-meta\">\n\t\t\t\n\t\t\t\t\t\t\t\t\t\t<span class=\"cat-links\">\n\t\t\t\t\t<span class=\"entry-utility-prep entry-utility-prep-cat-links\">カテゴリー:</span> <a href=\"https://ueda-city.site.ktaiwork.jp/?cat=6\" rel=\"category\">14 火災情報</a>\t\t\t</span>\n\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\t\t</footer><!-- .entry-meta -->\n\t</article><!-- #post-17466 -->\n\n\t\t\t\t\n\t\t\t\t\t\n\t<article id=\"post-17464\" class=\"post-17464 post type-post status-publish format-standard hentry category-14-\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://ueda-city.site.ktaiwork.jp/?p=17464\" rel=\"bookmark\">■上田市　火災情報</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://ueda-city.site.ktaiwork.jp/?p=17464\" title=\"18:48\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-13T18:48:32+09:00\">2026年11月13日</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://ueda-city.site.ktaiwork.jp/?author=64\" title=\"uedacityuser の投稿をすべて表示\" rel=\"author\">uedacityuser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-cat-page addthis_tool\" data-url=\"https://ueda-city.site.ktaiwork.jp/?p=17464\"></div><p>車両火災<br />\n場所：上田市中央西二丁目<br "
+ },
+ {
+  "url": "https://joetsu-city.site.ktaiwork.jp/category/%E7%81%AB%E7%81%BD%E6%83%85%E5%A0%B1/",
+  "status": 200,
+  "final": "https://joetsu-city.site.ktaiwork.jp/category/%E7%81%AB%E7%81%BD%E6%83%85%E5%A0%B1/",
+  "size": 48739,
+  "lines": [
+   "火災情報 | 上越市安全メール",
+   "「火災情報」カテゴリーアーカイブ",
+   "【安全メール】火災鎮火連絡",
+   "投稿日時: 2026年11月7日 投稿者: joetsucityuser",
+   "14:42覚知",
+   "建物火災は、鎮火しました。",
+   "配信時刻 14:56",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災発生連絡",
+   "投稿日時: 2026年11月7日 投稿者: joetsucityuser",
+   "14:42覚知",
+   "建物火災発生",
+   "配信時刻 14:42",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災誤報連絡",
+   "投稿日時: 2026年11月4日 投稿者: joetsucityuser",
+   "05:58覚知",
+   "福祉建物火災は、火災ではありませんでした。",
+   "配信時刻 06:05",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災発生連絡",
+   "投稿日時: 2026年11月4日 投稿者: joetsucityuser",
+   "05:58覚知",
+   "福祉建物火災発生",
+   "配信時刻 05:58",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災誤報連絡",
+   "投稿日時: 2026年10月24日 投稿者: joetsucityuser",
+   "06:42覚知",
+   "福祉建物火災は、火災ではありませんでした。",
+   "配信時刻 07:01",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災発生連絡",
+   "投稿日時: 2026年10月24日 投稿者: joetsucityuser",
+   "06:42覚知",
+   "福祉建物火災発生",
+   "配信時刻 06:42",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災誤報連絡",
+   "投稿日時: 2026年10月19日 投稿者: joetsucityuser",
+   "14:21覚知",
+   "福祉建物火災は、火災ではありませんでした。",
+   "配信時刻 14:25",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災発生連絡",
+   "投稿日時: 2026年10月19日 投稿者: joetsucityuser",
+   "14:21覚知",
+   "福祉建物火災発生",
+   "配信時刻 14:21",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災誤報連絡",
+   "投稿日時: 2026年10月18日 投稿者: joetsucityuser",
+   "17:09覚知",
+   "福祉建物火災は、火災ではありませんでした。",
+   "配信時刻 17:13",
+   "カテゴリー: 火災情報",
+   "【安全メール】火災発生連絡",
+   "投稿日時: 2026年10月18日 投稿者: joetsucityuser",
+   "17:09覚知",
+   "福祉建物火災発生"
+  ],
+  "links": [
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/11/07/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e9%80%a3%e7%b5%a1-239/",
+    "【安全メール】火災鎮火連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/11/07/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e9%80%a3%e7%b5%a1-601/",
+    "【安全メール】火災発生連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/11/04/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e8%aa%a4%e5%a0%b1%e9%80%a3%e7%b5%a1-126/",
+    "【安全メール】火災誤報連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/11/04/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e9%80%a3%e7%b5%a1-600/",
+    "【安全メール】火災発生連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/10/24/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e8%aa%a4%e5%a0%b1%e9%80%a3%e7%b5%a1-125/",
+    "【安全メール】火災誤報連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/10/24/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e9%80%a3%e7%b5%a1-599/",
+    "【安全メール】火災発生連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/10/19/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e8%aa%a4%e5%a0%b1%e9%80%a3%e7%b5%a1-124/",
+    "【安全メール】火災誤報連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/10/19/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e9%80%a3%e7%b5%a1-598/",
+    "【安全メール】火災発生連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/10/18/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e8%aa%a4%e5%a0%b1%e9%80%a3%e7%b5%a1-123/",
+    "【安全メール】火災誤報連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/2026/10/18/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e9%80%a3%e7%b5%a1-597/",
+    "【安全メール】火災発生連絡"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ],
+   [
+    "https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/",
+    "火災情報"
+   ]
+  ],
+  "tables": [],
+  "parsed": 0,
+  "parsedOwn": 6,
+  "parsedOwnItems": [
+   {
+    "kind": "建物火災",
+    "city": "上越市",
+    "town": "西本町3丁目",
+    "at": "2026-11-07T06:00:00.000Z",
+    "status": "鎮火",
+    "pref": "新潟県",
+    "source": "a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8"
+   },
+   {
+    "kind": "建物火災",
+    "city": "上越市",
+    "town": "西本町3丁目",
+    "at": "2026-11-07T05:42:00.000Z",
+    "status": null,
+    "pref": "新潟県",
+    "source": "a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8"
+   },
+   {
+    "kind": "火災",
+    "city": "上越市",
+    "town": "寺町3丁目",
+    "at": "2026-11-03T21:10:00.000Z",
+    "status": "誤報",
+    "pref": "新潟県",
+    "source": "a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8"
+   },
+   {
+    "kind": "建物火災",
+    "city": "上越市",
+    "town": "寺町3丁目",
+    "at": "2026-11-03T20:58:00.000Z",
+    "status": null,
+    "pref": "新潟県",
+    "source": "a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8"
+   },
+   {
+    "kind": "火災",
+    "city": "上越市",
+    "town": "今泉",
+    "at": "2026-10-23T22:05:00.000Z",
+    "status": "誤報",
+    "pref": "新潟県",
+    "source": "a-joetsu-city-site-ktaiwork-jp-category-e7-81-ab-e7-81-bd-e6-8"
+   }
+  ],
+  "articles": 10,
+  "head": "<article id=\"post-7979\" class=\"post-7979 post type-post status-publish format-standard hentry category-7\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://joetsu-city.site.ktaiwork.jp/2026/11/07/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e9%80%a3%e7%b5%a1-239/\" rel=\"bookmark\">【安全メール】火災鎮火連絡</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://joetsu-city.site.ktaiwork.jp/2026/11/07/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e9%80%a3%e7%b5%a1-239/\" title=\"15:00\" rel=\"bookmark\"><time class=\"entry-date\" datetime=\"2026-11-07T15:00:33+09:00\">2026年11月7日</time></a><span class=\"by-author\"> <span class=\"sep\"> 投稿者: </span> <span class=\"author vcard\"><a class=\"url fn n\" href=\"https://joetsu-city.site.ktaiwork.jp/author/joetsucityuser/\" title=\"joetsucityuser の投稿をすべて表示\" rel=\"author\">joetsucityuser</a></span></span>\t\t\t</div><!-- .entry-meta -->\n\t\t\t\n\t\t\t\t\t</header><!-- .entry-header -->\n\n\t\t\t\t<div class=\"entry-content\">\n\t\t\t<div class=\"at-above-post-cat-page addthis_tool\" data-url=\"https://joetsu-city.site.ktaiwork.jp/2026/11/07/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e9%80%a3%e7%b5%a1-239/\"></div><p>上越消防署管内<br />\n１４：４２覚知<br />\n上越市西本町３丁目９－３２付近の<br />\n建物火災は、鎮火しました。<br />\n配信時刻　１４：５６</p>\n<!-- AddThis Advanced Settings above via filter on the_content --><!-- AddThis Advanced Settings below via filter on the_content --><!-- AddThis Advanced Settings generic via filter on the_content --><!-- AddThis Share Buttons above via filter on the_content --><!-- AddThis Share Buttons below via filter on the_content --><div class=\"at-below-post-cat-page addthis_tool\" data-url=\"https://joetsu-city.site.ktaiwork.jp/2026/11/07/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e9%8e%ae%e7%81%ab%e9%80%a3%e7%b5%a1-239/\"></div><!-- AddThis Share Buttons generic via filter on the_content -->\t\t\t\t\t</div><!-- .entry-content -->\n\t\t\n\t\t<footer class=\"entry-meta\">\n\t\t\t\n\t\t\t\t\t\t\t\t\t\t<span class=\"cat-links\">\n\t\t\t\t\t<span class=\"entry-utility-prep entry-utility-prep-cat-links\">カテゴリー:</span> <a href=\"https://joetsu-city.site.ktaiwork.jp/category/%e7%81%ab%e7%81%bd%e6%83%85%e5%a0%b1/\" rel=\"category tag\">火災情報</a>\t\t\t</span>\n\t\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\n\t\t\t\n\t\t\t\t\t</footer><!-- .entry-meta -->\n\t</article><!-- #post-7979 -->\n\n\t\t\t\t\n\t\t\t\t\t\n\t<article id=\"post-7977\" class=\"post-7977 post type-post status-publish format-standard hentry category-7\">\n\t\t<header class=\"entry-header\">\n\t\t\t\t\t\t<h1 class=\"entry-title\"><a href=\"https://joetsu-city.site.ktaiwork.jp/2026/11/07/%e3%80%90%e5%ae%89%e5%85%a8%e3%83%a1%e3%83%bc%e3%83%ab%e3%80%91%e7%81%ab%e7%81%bd%e7%99%ba%e7%94%9f%e9%80%a3%e7%b5%a1-601/\" rel=\"bookmark\">【安全メール】火災発生連絡</a></h1>\n\t\t\t\n\t\t\t\t\t\t<div class=\"entry-meta\">\n\t\t\t\t<span class=\"sep\">投稿日時: </span><a href=\"https://joetsu-city.site.ktaiwork.jp/2026/11/07/%e3%8"
+ }
+]
