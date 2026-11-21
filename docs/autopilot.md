@@ -4,9 +4,10 @@
 運営者は週1回のレポートを見て、まずいものだけ止める。**運営者への確認待ちで作業を止めない。** 承認が要るものは PR にして先へ進む。
 
 ## 0. 毎回の準備
-1. リポジトリを最新にする（`git pull`）。
+1. リポジトリを最新にする（`git pull`）。作業環境に前の回の履歴が残っていて `git pull` が「履歴が食い違っている」と止まるときは、手元の `main` を別の名前のブランチに退避してから `git fetch origin && git reset --hard origin/main` で公開中の `main` に合わせる（2026-11-16 の週次の回で起きた）。
 2. 次を読む：`CLAUDE.md` → `docs/STATUS.md` → `docs/goals.md` → `ops/metrics/latest.md` → `docs/experiments.md` → `docs/backlog.md`。
 3. `ops/metrics/latest.md` の日付が今日でなければ、`python3 ops/metrics.py` を自分で動かす（Search Console の取得が止まっていれば、それも報告に書く）。
+4. `seo/gsc/api/by_date.csv` の新しい3日分の表示回数を見る。3日続けて0回なら、その日の報告と `docs/STATUS.md` に書く（2026-11-09 から0回が続いていたのに、11/16 の週次の回まで誰も気づかなかったため）。
 
 ### Fable は使わない（2026-11-18〜）
 Claude Fable は追加のクレジットがないと使えなくなり、11/18 の毎日の回はそのせいで動かずに止まった。運営者から指示があるまで、スケジュールタスクは Claude Opus で動かし、サブエージェントも `model: "fable"` では呼ばない。深い分析・仮説出し・外の調査は自分で行うか、`model: "opus"` のサブエージェントを使う。
