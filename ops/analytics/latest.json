@@ -1,22 +1,12 @@
 {
- "fetchedAt": "2026-11-18T06:31+00:00",
+ "fetchedAt": "2026-11-21T06:08+00:00",
  "range": [
-  "2026-11-11",
-  "2026-11-17"
+  "2026-11-14",
+  "2026-11-20"
  ],
- "pageviews_7d": 128,
- "visits_7d": 97,
+ "pageviews_7d": 222,
+ "visits_7d": 194,
  "daily": [
-  {
-   "date": "2026-11-12",
-   "pageviews": 2,
-   "visits": 2
-  },
-  {
-   "date": "2026-11-13",
-   "pageviews": 28,
-   "visits": 12
-  },
   {
    "date": "2026-11-14",
    "pageviews": 3,
@@ -36,13 +26,28 @@
    "date": "2026-11-17",
    "pageviews": 31,
    "visits": 29
+  },
+  {
+   "date": "2026-11-18",
+   "pageviews": 52,
+   "visits": 46
+  },
+  {
+   "date": "2026-11-19",
+   "pageviews": 40,
+   "visits": 36
+  },
+  {
+   "date": "2026-11-20",
+   "pageviews": 32,
+   "visits": 29
   }
  ],
  "top_paths": [
   {
    "path": "/fire.html",
-   "pageviews": 93,
-   "visits": 80
+   "pageviews": 185,
+   "visits": 173
   },
   {
    "path": "/",
@@ -51,18 +56,23 @@
   },
   {
    "path": "/index.html",
-   "pageviews": 13,
+   "pageviews": 12,
    "visits": 0
   },
   {
-   "path": "/p-%E6%96%B0%E6%BD%9F%E7%9C%8C.html",
+   "path": "/quiz.html",
    "pageviews": 3,
-   "visits": 1
+   "visits": 3
   },
   {
-   "path": "/town.html",
+   "path": "/map.html",
    "pageviews": 2,
    "visits": 0
+  },
+  {
+   "path": "/live/gmxk683",
+   "pageviews": 1,
+   "visits": 1
   },
   {
    "path": "/f-n-%E6%96%B0%E6%BD%9F%E7%9C%8C-%E6%96%B0%E6%BD%9F%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA-%E9%B3%A5%E5%B1%8B%E9%87%8E1%E4%B8%81%E7%9B%AE-2026-11-18.html",
@@ -70,7 +80,7 @@
    "visits": 1
   },
   {
-   "path": "/p-%E5%AE%AE%E5%9F%8E%E7%9C%8C.html",
+   "path": "/c-%E6%96%B0%E6%BD%9F%E7%9C%8C-%E6%96%B0%E6%BD%9F%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA.html",
    "pageviews": 1,
    "visits": 0
   },
@@ -78,20 +88,30 @@
    "path": "/f-n-%E6%96%B0%E6%BD%9F%E7%9C%8C-%E6%96%B0%E6%BD%9F%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA-%E9%B3%A5%E5%B1%8B%E9%87%8E1%E4%B8%81%E7%9B%AE-2026-11-17.html",
    "pageviews": 1,
    "visits": 1
+  },
+  {
+   "path": "/town.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
+   "path": "/p-%E6%96%B0%E6%BD%9F%E7%9C%8C.html",
+   "pageviews": 1,
+   "visits": 1
   }
  ],
  "top_referers": [
   {
    "host": "t.co",
-   "pageviews": 76
-  },
-  {
-   "host": "kajisoku.jp",
-   "pageviews": 31
+   "pageviews": 166
   },
   {
    "host": "",
-   "pageviews": 21
+   "pageviews": 28
+  },
+  {
+   "host": "kajisoku.jp",
+   "pageviews": 28
   }
  ]
 }
