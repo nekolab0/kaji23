@@ -20,6 +20,17 @@ INSPECT_PER_DAY = int(os.environ.get('INSPECT_PER_DAY') or 1500)   # 手動実�
 API = 'https://searchconsole.googleapis.com'
 SCOPES = ['https://www.googleapis.com/auth/webmasters.readonly']
 JST = dt.timezone(dt.timedelta(hours=9))
+NET_ERRORS = (requests.exceptions.Timeout, requests.exceptions.ConnectionError)
+
+
+def retry_once(fn, what, wait=30):
+    """時間切れ・接続の切断は、少しあけて1回だけやり直す（2026-11-19・11-20 は URL 検査の1件の Read timed out でジョブ全体が失敗し、何も保存されなかった）"""
+    try:
+        return fn()
+    except NET_ERRORS as e:
+        print(f'::warning::{what}：{type(e).__name__}。{wait}秒あけて1回やり直します')
+        time.sleep(wait)
+        return fn()
 
 
 def session():
@@ -50,7 +61,7 @@ def query(s, site, start, end, dims, limit=25000):
     while True:
         body = {'startDate': start, 'endDate': end, 'dimensions': dims, 'type': 'web',
                 'rowLimit': limit, 'startRow': start_row, 'dataState': 'final'}
-        r = s.post(url, json=body); r.raise_for_status()
+        r = retry_once(lambda: s.post(url, json=body), f'検索パフォーマンス {dims}'); r.raise_for_status()
         got = r.json().get('rows', [])
         rows += got
         if len(got) < limit:
@@ -145,9 +156,14 @@ def inspect(s, site, today):
     lists = [buckets[k] for k in ('other', 'g-', 'p-', 'c-', 'm-', 'f-') if k in buckets]
     for i in range(max(map(len, lists), default=0)):
         order += [l[i] for l in lists if i < len(l) and l[i].rstrip('/') != SITE_URL]
-    done = 0
+    done, stopped = 0, None
     for u in order[:max(INSPECT_PER_DAY, 0)]:
-        r = s.post(f'{API}/v1/urlInspection/index:inspect', json={'inspectionUrl': u, 'siteUrl': site, 'languageCode': 'ja'})
+        try:
+            r = retry_once(lambda: s.post(f'{API}/v1/urlInspection/index:inspect', json={'inspectionUrl': u, 'siteUrl': site, 'languageCode': 'ja'}), f'URL検査 {u}')
+        except NET_ERRORS as e:
+            # やり直しても読めなければ、そこで打ち切り、調べ終わった分を保存して先へ進む（残りは翌日の回が古い順に調べる）
+            stopped = f'{type(e).__name__}（{done}件目のあと）'
+            print(f'::warning::URL検査を打ち切りました：{stopped}'); break
         if r.status_code == 429:
             print('URL検査の上限に達したので終了'); break
         if not r.ok:
@@ -173,7 +189,7 @@ def inspect(s, site, today):
     print(f'URL検査：今回{done}件、記録{len(known)}件 / サイトマップ{len(urls)}件')
     by_kind = {}
     for u in urls: by_kind[sitemap_kind(u)] = by_kind.get(sitemap_kind(u), 0) + 1
-    return len(urls), len(known), counts, by_kind
+    return len(urls), len(known), counts, by_kind, {'done': done, 'stopped': stopped}
 
 
 def main():
@@ -191,12 +207,13 @@ def main():
     write_rows('pages_28d.csv', ['page'], query(s, site, start28, end, ['page']))
     write_rows('query_page_28d.csv', ['query', 'page'], query(s, site, start28, end, ['query', 'page']))
     sm = sitemaps_status(s, site)
-    total, checked, counts, by_kind = inspect(s, site, today.isoformat())
+    total, checked, counts, by_kind, run = inspect(s, site, today.isoformat())
 
     with open(os.path.join(OUT, 'meta.json'), 'w', encoding='utf-8') as f:
         json.dump({'fetchedAt': dt.datetime.now(JST).isoformat(timespec='minutes'), 'property': site,
                    'range28d': [start28, end], 'sitemapUrls': total, 'sitemapUrlsByKind': by_kind, 'inspectedUrls': checked,
-                   'coverage': counts, 'submittedSitemaps': sm}, f, ensure_ascii=False, indent=1)
+                   'coverage': counts, 'submittedSitemaps': sm,
+                   'inspectedToday': run['done'], 'inspectionStopped': run['stopped']}, f, ensure_ascii=False, indent=1)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 // 全国の報道抽出のテスト（見出しは検査用に作った架空のもの）
 import { createRequire } from 'node:module'; import fs from 'node:fs';
 const require = createRequire(import.meta.url);
-const { buildGeo, extractFireNewsJP, pinKnownPubDates, rememberNews } = require('./news_jp.js');
+const { buildGeo, extractFireNewsJP, pinKnownPubDates, rememberNews, dropReattributed } = require('./news_jp.js');
 const areas = JSON.parse(fs.readFileSync(new URL('../data/raw/areas.json', import.meta.url)));
 const towns = JSON.parse(fs.readFileSync(new URL('../data/raw/towns_jp.json', import.meta.url))).towns;
 const geo = buildGeo(areas, towns);
@@ -60,6 +60,29 @@ let extra = 0;
   rememberNews(known, [], new Date(Date.parse(now) + 25 * 864e5));   // 30日より前の記録は消える
   extra++;
   if (Object.keys(known).length === 2) ok++; else fails.push('古い記録の削除 ' + Object.keys(known).length);
+}
+{
+  // 前の回に別の日の火事に使った続報の記事だけが残った回（2026-11-20 山形市印役町の型）。別の日の火事を作らない
+  const L = 'https://news.google.com/rss/articles/FOLLOW?oc=5';
+  const prev = [{ id: '山形県-山形市-印役町-2026-11-19', sources: [{ name: 'A', link: 'https://news.google.com/rss/articles/FIRST?oc=5' }, { name: 'B', link: L }] }];
+  const its = [{ title: '山形市印役町の車両火災 けが人', link: L, pubDate: t(1), source: 'B' },
+    { title: '札幌市北区で住宅火災', link: 'https://news.google.com/rss/articles/OTHER?oc=5', pubDate: t(1), source: 'C' }];
+  const r = extractFireNewsJP(its, geo, { now, maxAgeHours: 48 });
+  const n = dropReattributed(r, prev);
+  extra++;
+  if (n === 1 && r.length === 1 && r[0].city === '札幌市北区') ok++; else fails.push('続報の記事だけの火事 ' + n + ' ' + JSON.stringify(r.map(x => x.id)));
+  // 同じ id の火事なら、記事は外さない（前の回と同じ火事の更新）
+  const r2 = extractFireNewsJP(its.slice(0, 1), geo, { now, maxAgeHours: 48 });
+  const n2 = dropReattributed(r2, [{ id: r2[0].id, sources: [{ name: 'B', link: L }] }]);
+  extra++;
+  if (n2 === 0 && r2.length === 1) ok++; else fails.push('同じ火事の更新 ' + n2 + ' ' + r2.length);
+  // ほかの記事も持つ火事は、使用済みの記事だけ外して残す（2026-11-19 墨田区向島の型）
+  const its3 = [{ title: '墨田区向島の共同住宅で火災 1人死亡', link: L, pubDate: t(3), source: 'B' },
+    { title: '墨田区向島で火事 1人死亡', link: 'https://news.google.com/rss/articles/NEW3?oc=5', pubDate: t(2), source: 'D' }];
+  const r3 = extractFireNewsJP(its3, geo, { now, maxAgeHours: 48 });
+  const n3 = dropReattributed(r3, [{ id: '東京都-墨田区-向島-2026-11-01', sources: [{ name: 'B', link: L }] }]);
+  extra++;
+  if (n3 === 1 && r3.length === 1 && r3[0].sources.length === 1 && r3[0].sources[0].name === 'D') ok++; else fails.push('使用済みの記事だけ外す ' + n3 + ' ' + JSON.stringify(r3));
 }
 console.log(`${ok}/${cases.length + 1 + extra} 合格`); fails.forEach(f => console.log('FAIL ' + f));
 process.exit(fails.length ? 1 : 0);
