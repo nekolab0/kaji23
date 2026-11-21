@@ -198,4 +198,22 @@ function rememberNews(known, pairs, now = new Date(), keepDays = 30) {
   for (const k of Object.keys(known)) if (known[k] < cut) delete known[k];
   return known;
 }
-if (typeof module !== 'undefined') module.exports = { buildGeo, extractFireNewsJP, parseRSS, newsLinkKey, pinKnownPubDates, rememberNews };
+// 前の回までに別の火事（別の id）に使った記事を、今回の火事から外す。外したら記事が残らない火事は捨てる。
+// 続報の記事だけが検索結果に残った回に、その記事の公開日で同じ火事を別の日の火事として作っていた（2026-11-19 墨田区向島・11-20 山形市印役町。
+// ops/metrics.py の「同じ記事が別の日の火事になっている」）。prev は news.json の火事、fresh は今回の extractFireNewsJP の結果。外した記事の数を返す
+function dropReattributed(fresh, prev) {
+  const owner = new Map();
+  for (const x of prev) for (const s of x.sources || []) {
+    const k = newsLinkKey(s.link); if (!owner.has(k)) owner.set(k, new Set()); owner.get(k).add(x.id);
+  }
+  let n = 0;
+  for (let i = fresh.length - 1; i >= 0; i--) {
+    const x = fresh[i];
+    const keep = x.sources.filter(s => { const o = owner.get(newsLinkKey(s.link)); return !o || o.has(x.id); });
+    n += x.sources.length - keep.length;
+    if (keep.length) x.sources = keep;
+    else fresh.splice(i, 1);
+  }
+  return n;
+}
+if (typeof module !== 'undefined') module.exports = { buildGeo, extractFireNewsJP, parseRSS, newsLinkKey, pinKnownPubDates, rememberNews, dropReattributed };
