@@ -1,17 +1,12 @@
 {
- "fetchedAt": "2026-11-21T06:08+00:00",
+ "fetchedAt": "2026-11-22T05:21+00:00",
  "range": [
-  "2026-11-14",
-  "2026-11-20"
+  "2026-11-15",
+  "2026-11-21"
  ],
- "pageviews_7d": 222,
- "visits_7d": 194,
+ "pageviews_7d": 250,
+ "visits_7d": 217,
  "daily": [
-  {
-   "date": "2026-11-14",
-   "pageviews": 3,
-   "visits": 3
-  },
   {
    "date": "2026-11-15",
    "pageviews": 1,
@@ -41,23 +36,28 @@
    "date": "2026-11-20",
    "pageviews": 32,
    "visits": 29
+  },
+  {
+   "date": "2026-11-21",
+   "pageviews": 31,
+   "visits": 26
   }
  ],
  "top_paths": [
   {
    "path": "/fire.html",
-   "pageviews": 185,
-   "visits": 173
-  },
-  {
-   "path": "/",
-   "pageviews": 14,
-   "visits": 14
+   "pageviews": 211,
+   "visits": 198
   },
   {
    "path": "/index.html",
-   "pageviews": 12,
+   "pageviews": 14,
    "visits": 0
+  },
+  {
+   "path": "/",
+   "pageviews": 13,
+   "visits": 13
   },
   {
    "path": "/quiz.html",
@@ -66,6 +66,11 @@
   },
   {
    "path": "/map.html",
+   "pageviews": 2,
+   "visits": 0
+  },
+  {
+   "path": "/p-%E5%8D%83%E8%91%89%E7%9C%8C.html",
    "pageviews": 2,
    "visits": 0
   },
@@ -93,25 +98,20 @@
    "path": "/town.html",
    "pageviews": 1,
    "visits": 0
-  },
-  {
-   "path": "/p-%E6%96%B0%E6%BD%9F%E7%9C%8C.html",
-   "pageviews": 1,
-   "visits": 1
   }
  ],
  "top_referers": [
   {
    "host": "t.co",
-   "pageviews": 166
-  },
-  {
-   "host": "",
-   "pageviews": 28
+   "pageviews": 190
   },
   {
    "host": "kajisoku.jp",
-   "pageviews": 28
+   "pageviews": 33
+  },
+  {
+   "host": "",
+   "pageviews": 27
   }
  ]
 }
