@@ -157,6 +157,14 @@ m['sources_total'] = len(_src) or None
 m['sources_failing'] = sorted(f"{x['id']}（{x['status']}・{x['fails']}回続けて）" for x in _src if x.get('status') and x['status'] != 'ok') if _src else None
 m['fire_mail_senders'] = len(_ss.get('mails', [])) if _ss else None
 
+# ---- 報道の検索の取りこぼし（data/raw/news_queries.json。collector/news_run.mjs が毎回記録。2026-11-22〜）
+# 「掲載件数が減った」とき、検索が100件で頭打ち・取得失敗で取りこぼしたのか、火事そのものが少ないのかを分ける
+_nq = load('data/raw/news_queries.json', {}) or {}
+_nr = [r for r in _nq.get('runs', []) if r.get('at', '')[:10] >= (today - datetime.timedelta(days=7)).isoformat()]   # 今日の回も含める
+m['news_query_runs_7d'] = len(_nr) or None
+m['news_saturated_last'] = _nq.get('saturated')
+m['news_failed_runs_7d'] = sum(1 for r in _nr if r.get('failed')) if _nr else None
+
 # ---- 守る数字：検査
 rep = load('verify/report.json', {})
 bad = [c['name'] for c in rep.get('checks', []) if c.get('level') == 'error' and not c.get('ok')]
@@ -206,6 +214,7 @@ md = f"""# 今日の数字（{m['date']}）
 | 掲載までの分数（中央値・90%） | {f(m['publish_minutes_median_7d'], '分')}・{f(m['publish_minutes_p90_7d'], '分')}（30分以内 {f(m['publish_within_30m_7d'])}、{m['publish_samples_7d']}件） |
 | 報道のページの掲載まで6時間超（7日） | {f(m['news_over_6h_7d'])}（{m['news_samples_7d']}件） |
 | 掲載件数（7日平均） | {m['fires_per_day_7d']}件/日（前の7日 {m['fires_per_day_prev7d']}） |
+| 報道の検索の取りこぼし | {'不明（data/raw/news_queries.json がまだない）' if m['news_saturated_last'] is None else f"直近の回で100件の頭打ち {len(m['news_saturated_last'])}本{'（' + '・'.join(m['news_saturated_last'][:6]) + '）' if m['news_saturated_last'] else ''}・7日で取得失敗のあった回 {f(m['news_failed_runs_7d'])}/{f(m['news_query_runs_7d'])}"} |
 | 検査 | {'合格' if m['verify_ok'] else '不合格' if m['verify_ok'] is False else '不明'} |
 | 出動情報ページの読み取り | {f'{m["sources_total"] - len(m["sources_failing"])}/{m["sources_total"]} ページが読めている（{m["sources_status_at"]}）' if m['sources_total'] else '不明（verify/sources_status.json がまだない）'} |
 

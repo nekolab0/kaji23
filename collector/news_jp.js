@@ -39,7 +39,13 @@ function buildGeo(areas, townsJP) {
     townCount.set(n, (townCount.get(n) || 0) + 1); townAt.set(n, byCode[code]);
   }
   const uniqTowns = [...townCount].filter(([, c]) => c === 1).map(([n]) => n).sort((a, b) => b.length - a.length);
-  return { prefs, byName, names, codeOf, towns, aliases, shorts, shortNames, uniqTowns, townAt };
+  // 政令市の区を、市の名前を省いて書く見出し（「南区西長住の住宅で火災」）。区の名前 → その名前の区の一覧
+  const wardsByShort = new Map();
+  for (const e of entries) {
+    const m = !e.parent && e.code && e.city.match(/^.+市(.+区)$/); if (!m) continue;
+    (wardsByShort.get(m[1]) || wardsByShort.set(m[1], []).get(m[1])).push(e);
+  }
+  return { prefs, byName, names, codeOf, towns, aliases, shorts, shortNames, uniqTowns, townAt, wardsByShort };
 }
 // 地名以外の意味でよく使う語・人の名字に多い語（省いた形では使わない）
 const SHORT_STOP = new Set(['東北', '南部', '東海', '上野', '昭和', '朝日', '大和', '中山', '共和', '日高', '清水', '池田', '小野', '中島', '平田', '野田', '山田', '高山', '川内',
@@ -48,6 +54,29 @@ const SHORT_STOP = new Set(['東北', '南部', '東海', '上野', '昭和', '�
   '高田', '藤井', '三好', '香川', '岩田', '坂井', '松田', '竹田', '宮田', '有田', '平和', '大宮', '三郷', '美郷', '中野', '平野', '大川', '大和田', '高橋', '豊田', '前田', '石田', '日野',
   '多賀', '多治見', '大津', '新田', '神戸', '府中', '光', '北', '南', '東', '西', '那須', '日光', '白馬', '伊豆', '箱根', '軽井沢', '熱海', '草津', '湯沢', '平泉', '富士', '浦安', '舞浜',
   '国見', '白石', '長井', '天童', '鹿島', '神栖', '桜', '旭', '緑', '泉', '本町', '大東', '中津', '小山', '大山', '宮古', '古賀', '久米', '国分', '大口', '日南', '高千穂', '南国', '大洲']);
+
+// 市区町村の名前が出ない、よく知られた地区の呼び名 → 市区町村（全国で1か所だけを指すものに限る）
+const LANDMARKS = [[/心斎橋|道頓堀|大阪・?ミナミ/, '大阪府', '大阪市中央区']];
+// 「南区西長住」: 区の名前のすぐ後ろの町名で、どの市の区かを決める（候補が1つに決まるときだけ）
+function wardTownHit(title, geo, prefHit) {
+  const found = [];
+  for (const [w, list] of geo.wardsByShort || []) {
+    let i = title.indexOf(w);
+    while (i >= 0) {
+      const prev = title[i - 1] || '';
+      if (!/[一-龥ぁ-んァ-ヶ]/.test(prev)) {   // 「○○市南区」「港南区」の一部ではない
+        const after = title.slice(i + w.length);
+        for (const e of list) {
+          if (prefHit.size && !prefHit.has(e.pref)) continue;
+          const t = (geo.towns[e.code] || []).find(t => t.length >= 2 && after.startsWith(t));
+          if (t) found.push({ ...e, at: i, name: w });
+        }
+      }
+      i = title.indexOf(w, i + 1);
+    }
+  }
+  return new Set(found.map(e => e.code)).size === 1 ? found[0] : null;
+}
 
 const KANJI_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
 const NOT_INCIDENT = /訓練|予防|啓発|呼びかけ|放送文化|時の話題|特集|振り返|判決|裁判|初公判|起訴|送検|再逮捕|年前|周年|統計|まとめ|ランキング|映画|ドラマ|イベント|消防団|表彰|防災週間|火災保険|山火事対策|クラウドファンディング|募金|支援金|寄付|再建|復興|READYFOR|CAMPFIRE|応援|バザー|コンサート|感謝状|販売再開|営業再開|教訓|防火設備|点検|閉鎖/;
@@ -93,6 +122,11 @@ function extractFireNewsJP(items, geo, opts = {}) {
       const t = geo.uniqTowns.find(n => title.includes(n) && !/[一-龥ぁ-んァ-ヶ]/.test(title[title.indexOf(n) - 1] || ''));
       const e = t && geo.townAt.get(t);
       if (e && (!prefHit.size || prefHit.has(e.pref))) hit = { ...e, at: title.indexOf(t), name: '' };
+    }
+    if (!hit) hit = wardTownHit(title, geo, prefHit);
+    if (!hit) for (const [re, pref, name] of LANDMARKS) {
+      const m = title.match(re); const e = m && (geo.byName.get(name) || [])[0];
+      if (e && (!prefHit.size || prefHit.has(pref))) { hit = { ...e, at: m.index, name: '' }; break; }
     }
     if (!hit) continue;
     // 町名: 市区町村名の直後、またはタイトル中の3文字以上の町名

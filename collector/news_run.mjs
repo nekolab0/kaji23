@@ -19,14 +19,28 @@ const queries = ['火事 when:1d', '火災 when:1d', '全焼 when:1d', '建物�
   ...TOKYO23.map(w => `(火事 OR 火災) "${w}" when:2d`)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const items = []; const seen = new Set(); let failed = 0;
+const perQuery = [];   // 検索ごとの記事数（100件＝Google ニュースの上限で頭打ち＝取りこぼしの疑い）と、その検索で初めて拾った記事の数
 for (const q of queries) {
+  const row = { q, n: 0, added: 0 }; perQuery.push(row);
   try {
     const url = 'https://news.google.com/rss/search?q=' + encodeURIComponent(q) + '&hl=ja&gl=JP&ceid=JP:ja';
     const r = await fetch(url, { headers: { 'User-Agent': 'kaji23-news/1.0 (+https://github.com/nekolab0/kaji23)' } });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    for (const it of parseRSS(await r.text())) if (!seen.has(it.link)) { seen.add(it.link); items.push(it); }
-  } catch (e) { failed++; console.error(q, e.message); }
+    const got = parseRSS(await r.text()); row.n = got.length;
+    for (const it of got) if (!seen.has(it.link)) { seen.add(it.link); items.push(it); row.added++; }
+  } catch (e) { failed++; row.err = String(e.message).slice(0, 40); console.error(q, e.message); }
   await sleep(400);
+}
+// 検索ごとの記録（data/raw/news_queries.json）。「掲載件数が減った」とき、取りこぼし（頭打ち・取得失敗）か、火事そのものが少ないかを分ける
+{
+  const qfile = path.join(RAW, 'news_queries.json');
+  const old = fs.existsSync(qfile) ? JSON.parse(fs.readFileSync(qfile, 'utf8')) : {};
+  const at = new Date().toISOString();
+  const saturated = perQuery.filter(x => x.n >= 100).map(x => x.q);
+  const runs = [...(old.runs || []), { at, items: items.length, saturated: saturated.length, failed }]
+    .filter(x => Date.now() - new Date(x.at) < 14 * 864e5);
+  fs.writeFileSync(qfile, JSON.stringify({ note: '報道の検索ごとの記事数（n）と初めて拾った記事数（added）。n が 100 は頭打ち。collector/news_run.mjs', at, saturated, perQuery, runs }));
+  console.log(`検索の頭打ち（100件）: ${saturated.length}本${saturated.length ? '（' + saturated.join('・') + '）' : ''}・取得失敗 ${failed}本`);
 }
 if (failed > queries.length / 2) { console.error('取得失敗が多いため前回のデータを維持'); process.exit(1); }
 
