@@ -250,9 +250,11 @@ def featured_fires(n=3, hours=24, now=None):
     cand = []
     for x in news['incidents']:
         if x.get('sensitive'): continue
-        t = datetime.datetime.fromisoformat(x['first'].replace('Z', '+00:00'))
+        try: t = datetime.datetime.fromisoformat(x['first'].replace('Z', '+00:00'))
+        except (KeyError, TypeError, ValueError): continue
+        if t.tzinfo is None: t = t.replace(tzinfo=datetime.timezone.utc)   # 時刻帯のない値で生成全体が止まらないように
         if t < since or t > now + datetime.timedelta(minutes=10): continue
-        score = 4 * bool(x.get('dead')) + 2 * bool(x.get('injured')) + len(x['sources'])
+        score = 4 * bool(x.get('dead')) + 2 * bool(x.get('injured')) + min(len(x['sources']), 3)
         if score >= 4: cand.append((score, x['first'], x))
     cand.sort(key=lambda c: (c[0], c[1]), reverse=True)
     return [x for _, _, x in cand[:n]]

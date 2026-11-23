@@ -81,6 +81,9 @@ function wardTownHit(title, geo, prefHit) {
 
 const KANJI_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
 const NOT_INCIDENT = /訓練|予防|啓発|呼びかけ|放送文化|時の話題|特集|振り返|判決|裁判|初公判|起訴|送検|再逮捕|年前|周年|統計|まとめ|ランキング|映画|ドラマ|イベント|消防団|表彰|防災週間|火災保険|山火事対策|クラウドファンディング|募金|支援金|寄付|再建|復興|READYFOR|CAMPFIRE|応援|バザー|コンサート|感謝状|販売再開|営業再開|教訓|防火設備|点検|閉鎖/;
+// 「けが人なし」「死者はいない」などの否定を、けが人・死者ありと読まない（2026-11-23。検証役の指摘：トップの「主な火事」（E014）に「けが人あり」と出ていた）
+const NO_HARM = /(けが人|ケガ人|怪我人|けが|ケガ|怪我|負傷者|死傷者|死者)(は|も)?(なし|無し|いない|いません|なかった|ない|出ていない|出ていません)/g;
+function harmText(title) { return title.replace(NO_HARM, ''); }
 const SENSITIVE = /自殺|死のう|心中|自ら火|焼身/; // 文言は表示しない（事実の抽出だけに使う）
 const BUILDING = [['共同住宅', /共同住宅|アパート|マンション|団地/], ['住宅', /住宅|民家|一軒家|戸建/], ['飲食店', /飲食店|店舗|ラーメン|居酒屋|レストラン/],
   ['ビル', /ビル|雑居/], ['工場・倉庫', /工場|倉庫|作業場/], ['車両', /車両|車が|乗用車|トラック|バス/], ['施設', /グループホーム|施設|病院|学校|寺|神社/],
@@ -147,7 +150,7 @@ function extractFireNewsJP(items, geo, opts = {}) {
     let source = (it.source || '').trim() || '報道';
     if (/^https?:\/\//.test(source)) { try { source = new URL(source).hostname.replace(/^www\./, ''); } catch (e) {} }
     out.push({ pref: hit.pref, city, parent: !code, town, chome, building,
-      injured: /けが|負傷|重傷|軽傷|搬送|やけど/.test(title), dead: /死亡|死者|遺体|心肺停止/.test(title), sensitive: SENSITIVE.test(title),
+      injured: /けが|負傷|重傷|軽傷|搬送|やけど/.test(harmText(title)), dead: /死亡|死者|遺体|心肺停止/.test(harmText(title)), sensitive: SENSITIVE.test(title),
       pub: pub.toISOString(), source, link: it.link });
   }
   // 同じ火事をまとめる: 同じ市区町村で、町名が一致（または片方が不明）し、建物が矛盾せず、近い時刻
