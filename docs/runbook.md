@@ -7,7 +7,7 @@
 2. 「Merge pull request」→「Confirm merge」を押す。
 3. マージすると、`daily` というワークフローが自動で動き、サイトを作り直して公開する。1回 約25分かかる。
    - `data/`・`verify/`・`seo/` と `.md` ファイルだけの変更では、作り直しは動かない。その場合も、30分ごとの定期の回で反映される。
-   - `worker/` の変更は、Cloudflare 側が自動で受付サーバーに反映する（Workers Builds）。反映されたかは Cloudflare の画面で確かめる。
+   - `worker/` の変更は、Cloudflare 側が自動で受付サーバーに反映する（Workers Builds）。反映されたかは Cloudflare の画面で確かめる。PR のときは「Previews Base」の設定で `npx wrangler deploy --dry-run --outdir dist` が動き、組み立てられるかだけを確かめる（公開しない。2026-11-23〜）。
 4. 30分ごとの自動保存（`data: 日時` というコミット）と重なって「This branch has conflicts」と出ることがある。そのときは、作業したチャットに「競合を直して」と頼む。
 
 ## 2. Secret（秘密の値）を入れる
