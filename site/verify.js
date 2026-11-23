@@ -337,7 +337,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       const xt = decodeURIComponent(x);
       if (!/【火事の目撃情報】北区赤羽西2丁目付近　報告1件/.test(xt) || !xt.includes(API + '/f/' + incId) || !/#赤羽西/.test(xt)) flowBad.push(`Xの共有文が不正「${xt.slice(0, 160)}」`); else flowOk.push('X・LINEの共有文');
       const og = await (await handle(new Request(API + '/f/' + incId), W.env)).text();
-      if (!/北区赤羽西2丁目付近で火事の目撃情報 1件/.test(og)) flowBad.push('共有用ページの見出しが不正'); else flowOk.push('共有用ページの見出し');
+      if (!/北区赤羽西2丁目付近で火事の目撃報告｜火事速/.test(og) || !/目撃報告1件/.test(og)) flowBad.push('共有用ページの見出しが不正'); else flowOk.push('共有用ページの見出し');
       clock++; await fp.click('.f-report [data-tab=text]');
       await fp.fill('.f-report textarea', '黒い煙が見えます。消防車が来ています');
       await fp.click('.f-report form.text button[type=submit]');
