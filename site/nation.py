@@ -499,6 +499,39 @@ def area_crumbs(p, c, t=None):
         items.append((t, tf if not tf.startswith('town.html') else None))
     return items
 
+# ---------- 火事のページの SNS カード（OGP）を件別にする（2026-11-23・運営者の依頼） ----------
+# <title>・description・canonical は変えず、og:title・og:description・og:image だけを件別にする。
+# 件別の OG 画像は直近 FIRE_OG_DAYS 日の火事だけ og.js で作る（X で共有されるのは新しい火事。全件作ると生成が重い）
+FIRE_OG_DAYS = 7
+FIRE_OG = []   # og.js に渡す（dist/data/_fires_og.json）
+def fire_og(r, place, k, hurt=''):
+    o = r.get('official') or {}
+    when = jtime(o['at']).split(' ') if o.get('at') else None
+    if when:
+        hh, mm = when[1].split(':')
+        at = f'{when[0]} {int(hh)}時{int(mm)}分ごろ'
+    else:
+        at = jmd(r['day'])
+    # 種別は「○○火災」の形にそろえる（報道の建物の種類「住宅」「車両」などをそのまま使うと「車両が発生」になる）
+    what = '火災' if not k or k == 'その他火災' else k if k.endswith(('火災', '火事')) else f'{k}の火災' if '・' in k else f'{k}火災'
+    title = f'{place}で{what}が発生｜{SITE_NAME}'
+    if o:
+        tail = '鎮火しました。' if o.get('status') == '鎮火' else '消防車が出動しました。'   # 固定ページは数日残るので「出動中」とは書かない
+        desc = f'{at}発生（消防の発表）。{tail}詳細は{SITE_NAME}で。'
+    else:
+        desc = f'{at}に発生、報道されました。{hurt}詳細は{SITE_NAME}で。'
+    name = fire_href(r['fid'])[:-5]
+    image = 'og/live.png'
+    try:
+        recent = (datetime.date.fromisoformat(TODAY_JST) - datetime.date.fromisoformat(r['day'])).days < FIRE_OG_DAYS
+    except Exception:
+        recent = False
+    if recent:
+        image = f'og/f/{name}.png'
+        if not any(f['name'] == name for f in FIRE_OG): FIRE_OG.append({'name': name, 'place': place, 'what': what, 'at': at, 'src': '報道' if r['x'] else '消防の発表',
+                        'status': o.get('status') or '', 'hurt': hurt})
+    return {'title': title, 'desc': desc, 'image': image}
+
 def static_fire_page(r):
     p, c, t, day, x, o = r['pref'], r['city'], r['town'], r['day'], r['x'], r.get('official')
     chome = (x or {}).get('chome')
@@ -539,7 +572,9 @@ def static_fire_page(r):
     title = f'{place}の火事（{jmd(day)}）{"・" + k if k else ""}｜{SITE_NAME}'
     desc = (f'{jday(day)}、{place}の火事。' + (f'種別：{k}。' if k else '') + hurt + ('報道元' if x else '消防本部の発表') + 'と、近所の人の目撃報告・口コミをまとめています。')
     ld = [bc_ld(cr + [(f'{jmd(day)}の火事', None)])]
+    og = fire_og(r, place, k, hurt)
     return fire_page({'name': fire_href(r['fid'])[:-5], 'title': title, 'desc': desc, 'kind': kind_label, 'h1': f'{place}の火事（{jmd(day)}）',
+                      'og_title': og['title'], 'og_desc': og['desc'], 'og_image': og['image'],
                       'lead': lead, 'news': news_html, 'crumb': crumb_html, 'after': after, 'ld': ld,
                       'id': r['fid'] if x else ('' if r['fid'].startswith('o-b-') else r['fid'][2:]), 'pref': p, 'city': c, 'town': t})   # さかのぼった分は受付サーバーに火事がない
 

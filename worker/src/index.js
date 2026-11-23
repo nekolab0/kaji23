@@ -146,8 +146,47 @@ const incOut = r => r && ({ id: r.id, pref: r.pref, city: r.ward, ward: r.ward, 
   official: r.official ? { kind: r.official_kind, source: r.official_src, name: (SOURCES.find(s => s.id === r.official_src) || {}).name || null } : null });
 const comOut = r => ({ id: r.id, inc: r.inc, pref: r.pref, city: r.ward, ward: r.ward, town: r.town, body: r.body, at: r.at });
 
+// ---- 火事ごとの SNS カード（og:title・og:description・og:url）。2026-11-23・運営者の依頼 ----
+// 消防の出動がある火事は「{場所}で{種別}が発生」、近所の人の報告だけの火事は未確認なので「{場所}付近で火事の目撃報告」にする
+const SITE_HOSTS = ['kajisoku.jp', 'www.kajisoku.jp'];
+const jstAt = iso => { const t = new Date(new Date(iso).getTime() + 9 * 3600e3); return `${t.getUTCMonth() + 1}月${t.getUTCDate()}日 ${t.getUTCHours()}時${t.getUTCMinutes()}分`; };
+export function incCard(inc, site, now = new Date()) {
+  const place = placeName(inc.pref, inc.ward, inc.town);
+  const at = jstAt(inc.first_at);
+  const url = `${site}/fire.html?id=${encodeURIComponent(inc.id)}`;
+  if (inc.official) {
+    const fresh = now - new Date(inc.last_at) < MERGE_HOURS * 3600e3;   // 古くなった火事に「出動中」と書かない
+    return { url, title: `${place}で${inc.official_kind || '火災'}が発生｜火事速`,
+      desc: `${at}ごろ発生。${fresh ? '消防車が出動中。' : '消防車が出動しました。'}${inc.n ? `近所の人の目撃報告${inc.n}件。` : ''}詳細は火事速で。` };
+  }
+  return { url, title: `${place}付近で火事の目撃報告｜火事速`, desc: `${at}に最初の報告。目撃報告${inc.n}件・口コミ${inc.comments}件。詳細は火事速で。` };
+}
+// fire.html の HTML の og:title・og:description・og:url（と twitter:）だけを差し替える。<title>・description・canonical は変えない（SEO 担当の判断 2026-11-23）
+export function rewriteFirePage(html, card) {
+  const put = (h, prop, v) => h.replace(new RegExp(`(<meta (?:property|name)="${prop}" content=")[^"]*(")`), `$1${escHtml(v)}$2`);
+  let h = put(put(put(html, 'og:title', card.title), 'og:description', card.desc), 'og:url', card.url);
+  h = h.replace('<meta property="og:type" content="website">', '<meta property="og:type" content="article">');
+  return h;
+}
+async function siteFirePage(request, env, now) {
+  const origin = await fetch(request);   // 同じゾーンへの取得は、この Worker を通らずに GitHub Pages へ行く
+  try {
+    const id = new URL(request.url).searchParams.get('id') || '';
+    if (!origin.ok || !/text\/html/.test(origin.headers.get('Content-Type') || '') || !/^[a-z0-9-]{4,80}$/.test(id)) return origin;
+    const inc = await env.DB.prepare('SELECT * FROM incidents WHERE id = ?').bind(id).first();
+    if (!inc) return origin;   // ない ID は汎用のカードのまま（偽の火事のカードを作らせない）
+    const site = (env.SITE_URL || DEFAULT_SITE).replace(/\/$/, '');
+    const html = rewriteFirePage(await origin.text(), incCard(inc, site, now));
+    const headers = new Headers(origin.headers); headers.delete('Content-Length'); headers.delete('ETag');
+    headers.set('Cache-Control', 'public, max-age=60');
+    return new Response(html, { status: origin.status, headers });
+  } catch (e) { return origin; }
+}
+
 export async function handle(request, env, now = new Date()) {
   const url = new URL(request.url);
+  // サイト（kajisoku.jp）の fire.html に Cloudflare のルートで割り込み、SNS のカードを火事ごとにする
+  if (SITE_HOSTS.includes(url.hostname)) return request.method === 'GET' && url.pathname === '/fire.html' ? siteFirePage(request, env, now) : fetch(request);
   if (request.method === 'OPTIONS') return cors(env, new Response(null, { status: 204 }));
   // 受付サーバー（api.kajisoku.jp）は検索結果に出す場所ではない。検索エンジンには読まないよう伝え、
   // トップ（/）に来た人はサイトへ移す（Search Console の「見つかりませんでした（404）」対策）
@@ -341,13 +380,7 @@ export async function handle(request, env, now = new Date()) {
     const inc = await DB.prepare('SELECT * FROM incidents WHERE id = ?').bind(m[1]).first();
     const dest = `${site}/fire.html?id=${encodeURIComponent(m[1])}`;
     let title = '火事の目撃情報｜火事速', desc = '「近くで火事？」を町名で確かめられるサイトです。';
-    if (inc) {
-      const place = placeName(inc.pref, inc.ward, inc.town);
-      const parts = KINDS.filter(k => inc[k]).map(k => `${KIND_JA[k]}${inc[k]}`).join('・');
-      const t = new Date(new Date(inc.last_at).getTime() + 9 * 3600e3);
-      title = inc.official ? `${place}付近で${inc.official_kind || '火災'}（消防出動）${inc.n ? ` 目撃報告${inc.n}件` : ''}｜火事速` : `${place}付近で火事の目撃情報 ${inc.n}件｜火事速`;
-      desc = `${parts}の報告、口コミ${inc.comments}件（最新 ${t.getUTCMonth() + 1}/${t.getUTCDate()} ${t.getUTCHours()}:${String(t.getUTCMinutes()).padStart(2, '0')}）。現場の状況を近所の人どうしで共有しています。近づかず、火や煙が見えたら119番へ。`;
-    }
+    if (inc) ({ title, desc } = incCard(inc, site, now));   // fire.html のカードと同じ文（2026-11-23）
     const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">
 <meta property="og:type" content="article"><meta property="og:site_name" content="火事速"><meta property="og:title" content="${escHtml(title)}">

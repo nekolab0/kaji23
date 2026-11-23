@@ -1,7 +1,7 @@
 // D1 を Node の組み込み SQLite で代用して、受付サーバーの動作を確認する
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
-import { handle, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue, sourceWaitMs } from './src/index.js';
+import { handle, incCard, rewriteFirePage, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue, sourceWaitMs } from './src/index.js';
 export function makeEnv() {
   const db = new DatabaseSync(':memory:');
   const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
@@ -46,7 +46,7 @@ if (isMain) {
   r = await handle(req('POST', '/api/comment', { pref: '大阪府', city: '堺市堺区', body: '堺でもサイレンが聞こえる' }, '11.1.1.5'), env, at(4)); const sc = await J(r);
   ok('全国: 火事のない場所の口コミは掲示板へ', r.status === 200 && sc.inc === null);
   r = await handle(req('GET', '/f/' + osaka.incident), env, at(5));
-  ok('全国: 共有ページに都道府県から表示', /大阪府大阪市北区梅田1丁目付近で火事の目撃情報 1件/.test(await r.text()));
+  ok('全国: 共有ページに都道府県から表示', /大阪府大阪市北区梅田1丁目付近で火事の目撃報告｜火事速[\s\S]*目撃報告1件/.test(await r.text()));
   r = await handle(req('POST', '/api/report', { ward: '港区', kind: 'explosion' }), env, t0);
   ok('決められた種類以外は断る', r.status === 400);
   r = await handle(req('POST', '/api/report', { ward: '港区', town: '<script>', kind: 'siren' }, '9.9.9.9'), env, t0);
@@ -88,7 +88,7 @@ if (isMain) {
 
   // 共有ページ
   r = await handle(req('GET', '/f/' + a.incident), env, at(42)); const html = await r.text();
-  ok('共有ページに場所と件数の見出し', /北区赤羽西2丁目付近で火事の目撃情報 3件/.test(html) && /og:title/.test(html) && html.includes('https://example.jp/kaji23/fire.html?id=' + a.incident), html.match(/<title>.*?<\/title>/)[0]);
+  ok('共有ページに場所と件数の見出し', /北区赤羽西2丁目付近で火事の目撃報告｜火事速/.test(html) && /目撃報告3件/.test(html) && /og:title/.test(html) && html.includes('https://example.jp/kaji23/fire.html?id=' + a.incident), html.match(/<title>.*?<\/title>/)[0]);
   ok('共有ページの見出しに投稿文を入れない（中身はエスケープ）', !/<script>alert/.test(html));
   r = await handle(req('GET', '/api/reports?hours=24'), env, at(42)); const old = await J(r);
   ok('旧形式の集計も動く', old.wards['北区'].total === 5);
@@ -168,6 +168,28 @@ if (isMain) {
   { const rb = await handle(new Request('https://api.example/robots.txt'), env); const top = await handle(new Request('https://api.example/'), env);
     ok('受付サーバーは検索エンジンに読ませない（robots.txt）・トップはサイトへ移す', /Disallow: \//.test(await rb.text()) && top.status === 301 && top.headers.get('Location') === 'https://kajisoku.jp/'); }
 
+  { // 火事ごとの SNS カード（2026-11-23）
+    const now = new Date('2026-11-23T08:00:00Z');
+    const off = incCard({ id: 'j92m28g', pref: '新潟県', ward: '新潟市江南区', town: '祖父興野', first_at: '2026-11-23T07:12:00Z', last_at: '2026-11-23T07:30:00Z', n: 0, comments: 0, official: 1, official_kind: '火災' }, 'https://kajisoku.jp', now);
+    ok('カード：消防の出動がある火事は「場所で種別が発生」・日本時間・出動中', off.title === '新潟県新潟市江南区祖父興野で火災が発生｜火事速' && off.desc === '11月23日 16時12分ごろ発生。消防車が出動中。詳細は火事速で。' && off.url === 'https://kajisoku.jp/fire.html?id=j92m28g', JSON.stringify(off));
+    const old = incCard({ id: 'x', pref: '新潟県', ward: '新潟市江南区', town: null, first_at: '2026-11-22T07:12:00Z', last_at: '2026-11-22T07:30:00Z', n: 2, comments: 1, official: 1, official_kind: '建物火災' }, 'https://kajisoku.jp', now);
+    ok('カード：時間がたった火事に「出動中」と書かない', /出動しました。近所の人の目撃報告2件/.test(old.desc) && !/出動中/.test(old.desc), old.desc);
+    const rep = incCard({ id: 'y', pref: '東京都', ward: '北区', town: '赤羽西2丁目', first_at: '2026-11-23T07:12:00Z', last_at: '2026-11-23T07:30:00Z', n: 3, comments: 1, official: 0 }, 'https://kajisoku.jp', now);
+    ok('カード：報告だけの火事は未確認として「付近で火事の目撃報告」', rep.title === '北区赤羽西2丁目付近で火事の目撃報告｜火事速' && /目撃報告3件・口コミ1件/.test(rep.desc), JSON.stringify(rep));
+    const src = '<title>火事の目撃情報｜火事速</title><meta name="description" content="汎用"><meta property="og:type" content="website"><meta property="og:title" content="火事の目撃情報｜火事速"><meta property="og:description" content="汎用"><meta property="og:url" content="https://kajisoku.jp/fire.html"><link rel="canonical" href="https://kajisoku.jp/fire.html">';
+    const out = rewriteFirePage(src, { ...rep, title: 'A&B"<' });
+    ok('fire.html の og だけ差し替え（title・description・canonical はそのまま・エスケープ）', out.includes('og:title" content="A&amp;B&quot;&lt;"') && out.includes('og:url" content="https://kajisoku.jp/fire.html?id=y"') && out.includes('<title>火事の目撃情報｜火事速</title>') && out.includes('name="description" content="汎用"') && out.includes('canonical" href="https://kajisoku.jp/fire.html"'), out);
+    const saved = globalThis.fetch; globalThis.fetch = async () => new Response(src, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    try {
+      const page = await handle(new Request('https://kajisoku.jp/fire.html?id=' + a.incident), env, at(10));
+      const html = await page.text();
+      ok('kajisoku.jp/fire.html?id= は火事ごとの og を返す', /og:title" content="[^"]*赤羽西2丁目付近で火事の目撃報告｜火事速"/.test(html) && html.includes(`fire.html?id=${a.incident}`), html.slice(0, 300));
+      const none = await (await handle(new Request('https://kajisoku.jp/fire.html?id=nosuchid'), env, at(10))).text();
+      ok('ない ID は汎用のカードのまま', none === src);
+      const other = await handle(new Request('https://kajisoku.jp/index.html'), env, at(10));
+      ok('サイトのほかのページはそのまま通す', (await other.text()) === src);
+    } finally { globalThis.fetch = saved; }
+  }
   results.forEach(x => console.log(`${x.ok ? 'PASS' : 'FAIL'}  ${x.name}${x.detail !== '' ? ' — ' + x.detail : ''}`));
   fs.mkdirSync(new URL('../verify/', import.meta.url), { recursive: true });
   fs.writeFileSync(new URL('../verify/worker.json', import.meta.url), JSON.stringify({ at: new Date().toISOString(), results }));
