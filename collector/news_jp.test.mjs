@@ -52,7 +52,9 @@ const merged = extractFireNewsJP([
 if (merged.length === 1 && merged[0].sources.length === 2 && merged[0].town === '栄' && !merged[0].injured) ok++; else fails.push('同じ火事がまとまらない ' + JSON.stringify(merged.map(m => [m.city, m.town, m.sources.length])));
 // 否定の見出しを、けが人・死者ありと読まない（2026-11-23・E014 の検証役の指摘）
 const HARM_CASES = [['西立神町で住宅1棟が全焼 けが人なし - KTN', false, false], ['名古屋市中区栄で建物火災 死者はいない - NHK', false, false],
-  ['横浜市神奈川区三ツ沢下町で住宅火災 1人搬送 - tvk', true, false], ['西立神町で住宅火災 1人死亡 - KTN', false, true], ['名古屋市中区栄で火災 けが人なし 1人死亡', false, true]];
+  ['横浜市神奈川区三ツ沢下町で住宅火災 1人搬送 - tvk', true, false], ['西立神町で住宅火災 1人死亡 - KTN', false, true], ['名古屋市中区栄で火災 けが人なし 1人死亡', false, true], ['西立神町で住宅火災 けが人はありませんでした', false, false],
+  ['西立神町で住宅火災 けがはありません', false, false], ['西立神町で住宅火災 けが人がいない', false, false], ['西立神町で住宅火災 けが人は確認されず', false, false],
+  ['西立神町で住宅火災 けが人は出ず', false, false], ['西立神町で住宅火災 けが人は確認されていません', false, false]];
 for (const [title, inj, dead] of HARM_CASES) {
   const r = extractFireNewsJP([{ title, link: 'https://h/' + title, pubDate: t(1), source: 'テスト' }], geo, { now })[0];
   if (r && r.injured === inj && r.dead === dead) ok++; else fails.push('けが人・死者の読み ' + title + ' ' + JSON.stringify(r && [r.injured, r.dead]));
