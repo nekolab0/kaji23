@@ -116,7 +116,7 @@
 
 | 作業 | 現在の状況 |
 |---|---|
-| Cloudflare の Workers Builds（`kaji23-reports`）で、PR のプレビューのビルドが毎回失敗している | **済（2026-11-23）**。原因は、PR のときに動く `npx wrangler preview` が、`worker/wrangler.toml` に試し版用の `previews` の段（試し版のデータベースなど）を求めていたこと。運営者が「Previews Base」の Preview command を `npx wrangler deploy --dry-run --outdir dist`（組み立てられるかだけ確かめ、公開しない）に変えた |
+| Cloudflare の Workers Builds（`kaji23-reports`）で、PR のプレビューのビルドが毎回失敗している | **済（2026-11-23）**。原因は、PR のときに動く `npx wrangler preview` が、`worker/wrangler.toml` に試し版用の `previews` の段（試し版のデータベースなど）を求めていたこと。運営者が「Previews Base」の Preview command を `npx wrangler deploy --dry-run --outdir dist`（組み立てられるかだけ確かめ、公開しない）に変えた（最初は保存し忘れで、PR #56 の1回目のビルドは前のコマンドのまま失敗した。設定を変えたら保存まで確かめる） |
 | Search Console で `sitemap.xml` をもう一度送信する | **済（2026-11-13）**。翌朝以降の `ops/metrics/latest.md` の「サイトマップを Google が読んだ日」に日付が入れば、Google が読んだことになる |
 | Bing Webmaster Tools への登録（Search Console から取り込み） | **済（2026-11-13 に報告）** |
 | X の公式アカウントで、大きめの火事のページと糸魚川大火の記事（12/22 で10年）を投稿 | 公式アカウントは **@kaji_sokuohu**（2026-11-13 に報告）。**投稿は Muse（運営者の別の AI）の担当**。この依頼の投稿をしたかは**不明** |
