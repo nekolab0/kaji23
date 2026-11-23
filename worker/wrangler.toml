@@ -18,3 +18,9 @@ ALLOW_ORIGIN = "*"   # 独自ドメインを決めたら "https://（ドメイ�
 
 [triggers]
 crons = ["* * * * *", "17 4 * * *"]   # 毎分、消防本部の出動情報を8ページずつ読む（各ページはおよそ数十分に1回）／毎日、古い報告の明細を削除
+
+# ログの記録（Cloudflare の画面の Observability で、エラーの中身を見るため。2026-11-23〜）
+# 本番の Error rate が 39.6% と出ていて、原因を調べるのに要る。Free プランは1日20万件まで（毎分の cron と報告の受け付けで1日2万件ほどの見込み）
+[observability]
+enabled = true
+head_sampling_rate = 1
