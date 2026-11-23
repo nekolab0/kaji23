@@ -63,7 +63,8 @@ const HARM_CASES = [['西立神町で住宅1棟が全焼 けが人なし - KTN',
   ['西立神町で住宅全焼 けが人も死者もいない', false, false], ['西立神町で住宅火災 けが人はいなかった', false, false], ['西立神町で住宅全焼 けが人・死者は出なかった', false, false],
   ['西立神町で住宅火災 けが人は確認できていない', false, false], ['西立神町で住宅火災 負傷者や死者の情報はなし', false, false],
   ['西立神町で住宅火災 2人けが 1人死亡', true, true], ['西立神町で住宅火災 男性がけが、死者なし', true, false], ['西立神町で住宅火災 焼け跡から遺体', false, true],
-  ['西立神町で住宅火災 3人が重傷', true, false], ['西立神町で住宅火災 1人が心肺停止', false, true], ['西立神町で住宅火災 2人がやけど', true, false]];
+  ['西立神町で住宅火災 3人が重傷', true, false], ['西立神町で住宅火災 1人が心肺停止', false, true], ['西立神町で住宅火災 2人がやけど', true, false],
+  ['西立神町で住宅火災 死亡は確認されていない', false, false], ['西立神町で住宅火災 けが・死亡なし', false, false], ['西立神町で住宅火災 けがや死亡はなし', false, false], ['西立神町で住宅火災 けがも死亡もなし', false, false], ['西立神町で住宅火災 死亡や負傷はなかった', false, false], ['西立神町で住宅火災 1人も死亡していない', false, false], ['西立神町で住宅火災 1人の死亡確認されず', false, false], ['西立神町で住宅火災 遺体は見つかっていない', false, false], ['西立神町で住宅火災 心肺停止の人はいない', false, false], ['西立神町で住宅火災 死者0人', false, false], ['西立神町で住宅火災 けが人0人', false, false], ['西立神町で住宅火災 けがをしていない', false, false], ['西立神町で住宅火災 けがをした人はいない', false, false], ['西立神町で住宅火災 けがを負わず', false, false], ['西立神町で住宅火災 搬送されず', false, false], ['西立神町で住宅火災 搬送された人はいない', false, false], ['西立神町で住宅火災 やけどなし', false, false], ['西立神町で住宅火災 重傷はなし', false, false], ['西立神町で住宅火災 男性が負傷', true, false], ['西立神町で住宅火災 男性重体', true, false], ['西立神町で住宅火災 男性が亡くなる', false, true], ['西立神町で住宅火災 男性けが', true, false], ['西立神町で住宅火災 3人死傷', true, false], ['西立神町で住宅火災 1人が病院に運ばれる', true, false], ['西立神町で住宅火災 男性死亡 けが人なし', false, true], ['西立神町で住宅火災 2人けが 1人死亡 けが人なし', true, true]];
 for (const [title, inj, dead] of HARM_CASES) {
   const r = extractFireNewsJP([{ title, link: 'https://h/' + title, pubDate: t(1), source: 'テスト' }], geo, { now })[0];
   if (r && r.injured === inj && r.dead === dead) ok++; else fails.push('けが人・死者の読み ' + title + ' ' + JSON.stringify(r && [r.injured, r.dead]));

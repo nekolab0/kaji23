@@ -81,17 +81,27 @@ function wardTownHit(title, geo, prefHit) {
 
 const KANJI_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
 const NOT_INCIDENT = /訓練|予防|啓発|呼びかけ|放送文化|時の話題|特集|振り返|判決|裁判|初公判|起訴|送検|再逮捕|年前|周年|統計|まとめ|ランキング|映画|ドラマ|イベント|消防団|表彰|防災週間|火災保険|山火事対策|クラウドファンディング|募金|支援金|寄付|再建|復興|READYFOR|CAMPFIRE|応援|バザー|コンサート|感謝状|販売再開|営業再開|教訓|防火設備|点検|閉鎖/;
-// 「けが人なし」「死者はいない」などの否定を、けが人・死者ありと読まない（2026-11-23。検証役の指摘：トップの「主な火事」（E014）に「けが人あり」と出ていた）
-const HARM_PERSON = '(?:けが人|ケガ人|怪我人|負傷者|重傷者|軽傷者|死傷者|死亡者|搬送者|死者)', HARM_BARE = '(?:けが|ケガ|怪我)';
-// 「死者・けが人なし」「けが人や死者はいない」のように並べた形もまとめて否定として扱う（検証役の3回目の指摘）。
-// ただし「2人けが、死者は出ず」の「けが、」は並びではない（けががあった）ので、「けが」のあとの「、」ではつながない
-const NO_HARM = new RegExp(`(?:${HARM_PERSON}[・、,，やと]|${HARM_BARE}[・やと])*(?:${HARM_PERSON}|${HARM_BARE})(?:は|も|が)?(?:なし|無し|なく|ありませんでした|ありません|いない|いません|なかった|ない|出ていない|出ていません|出ず|確認されていません|確認されていない|確認されず)`, 'g');
-// けが人・死者は「あった」と言い切る形があるときだけ「あり」にする（3回目の指摘：否定の言い方を1つずつ足しても残りが出続けるため）。
-// 「けが人も死者もいない」「けが人はいなかった」のように、人の語だけで数も動詞もない見出しは「なし」側に倒す（トップの「主な火事」で重さを間違えて出さない）
-const NUM = '[0-9０-９一二三四五六七八九十数複]+人';
-const INJURED = new RegExp(`搬送(?!者)|重傷(?!者)|軽傷(?!者)|やけど|負傷し|けがをし|けがを負|${NUM}(?:が|も)?(?:けが|ケガ|怪我|負傷|重傷|軽傷)|(?:けが人|負傷者|重傷者|軽傷者|搬送者)[0-9０-９一二三四五六七八九十数複]|がけが(?!人)|がケガ(?!人)`);
-const DEAD = new RegExp(`死亡(?!者)|遺体|心肺停止|焼死|${NUM}(?:が|の)?(?:死亡|死者)|(?:死者|死亡者)[0-9０-９一二三四五六七八九十数複]|死者が出`);
-function harmText(title) { return title.replace(NO_HARM, ''); }
+// けが人・死者の読み取り（2026-11-23・E014 の検証役の指摘を4回受けて、否定の言い方を1つずつ足す直し方をやめた）。
+// 見出しを「、」「。」・空白・「-」などで句に分け、否定（なし・ない・ず・ません・0人 など）を含む句は数えない。
+// 否定のない句に、けが・死亡などの語があるときだけ「あり」にする。迷う見出しは「なし」側に倒す（トップの「主な火事」で重さを間違えて出さない）。
+// 人の語だけの句（「けが人、死者ともになし」の「けが人」）は、次の句と1つにして読む。
+const HARM_NOUN_ONLY = /^(?:けが人|ケガ人|怪我人|けが|ケガ|怪我|負傷者|重傷者|軽傷者|死傷者|死亡者|搬送者|死者|死亡|負傷)$/;
+const HARM_NEG = /なし|無し|ない|なかった|なく|ません|[0０]人|ゼロ|ず$|ず(?=に|も)|されず|られず|わず|出ず|せず/;
+const INJ_WORD = /けが|ケガ|怪我|負傷|重傷|軽傷|重体|意識不明|搬送|運ばれ|やけど|煙を吸|煙吸|死傷/;
+const DEAD_WORD = /死亡|死者|遺体|心肺停止|焼死|亡くな|亡くし/;
+function harmClauses(title) {
+  const raw = title.split(/[\s　、。，,／/｜|\-–—]+/).filter(Boolean), out = [];
+  for (let i = 0; i < raw.length; i++) {
+    let c = raw[i];
+    while (HARM_NOUN_ONLY.test(c) && i + 1 < raw.length) c += raw[++i];
+    out.push(c);
+  }
+  return out.filter(c => !HARM_NEG.test(c));
+}
+function harmFlags(title) {
+  const cs = harmClauses(title);
+  return { injured: cs.some(c => INJ_WORD.test(c)), dead: cs.some(c => DEAD_WORD.test(c)) };
+}
 const SENSITIVE = /自殺|死のう|心中|自ら火|焼身/; // 文言は表示しない（事実の抽出だけに使う）
 const BUILDING = [['共同住宅', /共同住宅|アパート|マンション|団地/], ['住宅', /住宅|民家|一軒家|戸建/], ['飲食店', /飲食店|店舗|ラーメン|居酒屋|レストラン/],
   ['ビル', /ビル|雑居/], ['工場・倉庫', /工場|倉庫|作業場/], ['車両', /車両|車が|乗用車|トラック|バス/], ['施設', /グループホーム|施設|病院|学校|寺|神社/],
@@ -158,7 +168,7 @@ function extractFireNewsJP(items, geo, opts = {}) {
     let source = (it.source || '').trim() || '報道';
     if (/^https?:\/\//.test(source)) { try { source = new URL(source).hostname.replace(/^www\./, ''); } catch (e) {} }
     out.push({ pref: hit.pref, city, parent: !code, town, chome, building,
-      injured: INJURED.test(harmText(title)), dead: DEAD.test(harmText(title)), sensitive: SENSITIVE.test(title),
+      ...harmFlags(title), sensitive: SENSITIVE.test(title),
       pub: pub.toISOString(), source, link: it.link });
   }
   // 同じ火事をまとめる: 同じ市区町村で、町名が一致（または片方が不明）し、建物が矛盾せず、近い時刻
