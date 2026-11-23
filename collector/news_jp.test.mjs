@@ -49,7 +49,28 @@ for (const [title, want] of cases) {
 const merged = extractFireNewsJP([
   { title: '名古屋市中区栄で建物火災', link: 'https://a', pubDate: t(3), source: '中京テレビ' },
   { title: '名古屋・中区栄のビル火災 けが人なし', link: 'https://b', pubDate: t(2), source: 'NHK' }], geo, { now });
-if (merged.length === 1 && merged[0].sources.length === 2 && merged[0].town === '栄') ok++; else fails.push('同じ火事がまとまらない ' + JSON.stringify(merged.map(m => [m.city, m.town, m.sources.length])));
+if (merged.length === 1 && merged[0].sources.length === 2 && merged[0].town === '栄' && !merged[0].injured) ok++; else fails.push('同じ火事がまとまらない ' + JSON.stringify(merged.map(m => [m.city, m.town, m.sources.length])));
+// 否定の見出しを、けが人・死者ありと読まない（2026-11-23・E014 の検証役の指摘）
+const HARM_CASES = [['西立神町で住宅1棟が全焼 けが人なし - KTN', false, false], ['名古屋市中区栄で建物火災 死者はいない - NHK', false, false],
+  ['横浜市神奈川区三ツ沢下町で住宅火災 1人搬送 - tvk', true, false], ['西立神町で住宅火災 1人死亡 - KTN', false, true], ['名古屋市中区栄で火災 けが人なし 1人死亡', false, true], ['西立神町で住宅火災 けが人はありませんでした', false, false],
+  ['西立神町で住宅火災 けがはありません', false, false], ['西立神町で住宅火災 けが人がいない', false, false], ['西立神町で住宅火災 けが人は確認されず', false, false],
+  ['西立神町で住宅火災 けが人は出ず', false, false], ['西立神町で住宅火災 けが人は確認されていません', false, false],
+  ['西立神町で住宅全焼 死者、けが人なし', false, false], ['西立神町で住宅全焼 死者・けが人はいない', false, false], ['西立神町で住宅全焼 死亡者なし', false, false],
+  ['西立神町で住宅全焼 けが人・死者なし', false, false], ['西立神町で住宅全焼 けが人や死者はいない', false, false], ['西立神町で住宅火災 男性けがなく', false, false],
+  ['西立神町で住宅火災 1人死亡 けが人・重傷者なし', false, true], ['西立神町で住宅火災 女性1人が死亡 他にけが人はいない', false, true], ['西立神町で住宅火災 2人けが 死者は出ず', true, false], ['西立神町で住宅火災 2人けが、死者は出ず', true, false],
+  ['西立神町で住宅火災 2人がけがをしたが、死者はいない', true, false], ['西立神町で住宅火災 死亡1人、けが人なし', false, true],
+  ['西立神町で住宅全焼 けが人、死者ともになし', false, false], ['西立神町で住宅全焼 死者・けが人ともにいない', false, false], ['西立神町で住宅全焼 けが人・死者とも出ていない', false, false],
+  ['西立神町で住宅全焼 けが人も死者もいない', false, false], ['西立神町で住宅火災 けが人はいなかった', false, false], ['西立神町で住宅全焼 けが人・死者は出なかった', false, false],
+  ['西立神町で住宅火災 けが人は確認できていない', false, false], ['西立神町で住宅火災 負傷者や死者の情報はなし', false, false],
+  ['西立神町で住宅火災 2人けが 1人死亡', true, true], ['西立神町で住宅火災 男性がけが、死者なし', true, false], ['西立神町で住宅火災 焼け跡から遺体', false, true],
+  ['西立神町で住宅火災 3人が重傷', true, false], ['西立神町で住宅火災 1人が心肺停止', false, true], ['西立神町で住宅火災 2人がやけど', true, false],
+  ['西立神町で住宅火災 死亡は確認されていない', false, false], ['西立神町で住宅火災 けが・死亡なし', false, false], ['西立神町で住宅火災 けがや死亡はなし', false, false], ['西立神町で住宅火災 けがも死亡もなし', false, false], ['西立神町で住宅火災 死亡や負傷はなかった', false, false], ['西立神町で住宅火災 1人も死亡していない', false, false], ['西立神町で住宅火災 1人の死亡確認されず', false, false], ['西立神町で住宅火災 遺体は見つかっていない', false, false], ['西立神町で住宅火災 心肺停止の人はいない', false, false], ['西立神町で住宅火災 死者0人', false, false], ['西立神町で住宅火災 けが人0人', false, false], ['西立神町で住宅火災 けがをしていない', false, false], ['西立神町で住宅火災 けがをした人はいない', false, false], ['西立神町で住宅火災 けがを負わず', false, false], ['西立神町で住宅火災 搬送されず', false, false], ['西立神町で住宅火災 搬送された人はいない', false, false], ['西立神町で住宅火災 やけどなし', false, false], ['西立神町で住宅火災 重傷はなし', false, false], ['西立神町で住宅火災 男性が負傷', true, false], ['西立神町で住宅火災 男性重体', true, false], ['西立神町で住宅火災 男性が亡くなる', false, true], ['西立神町で住宅火災 男性けが', true, false], ['西立神町で住宅火災 3人死傷', true, false], ['西立神町で住宅火災 1人が病院に運ばれる', true, false], ['西立神町で住宅火災 男性死亡 けが人なし', false, true], ['西立神町で住宅火災 2人けが 1人死亡 けが人なし', true, true],
+  ['西立神町で住宅火災 けが人の有無を確認', false, false], ['西立神町で住宅火災 死傷者の有無確認中', false, false], ['西立神町で住宅火災 けが人は無かった', false, false],
+  ['西立神町で住宅火災 10人が死亡', false, true], ['西立神町で住宅火災 20人搬送', true, false], ['西立神町で住宅火災 1人死亡し他にけが人はなし', false, true], ['西立神町で住宅火災 けが人がいるか確認中', false, false]];
+for (const [title, inj, dead] of HARM_CASES) {
+  const r = extractFireNewsJP([{ title, link: 'https://h/' + title, pubDate: t(1), source: 'テスト' }], geo, { now })[0];
+  if (r && r.injured === inj && r.dead === dead) ok++; else fails.push('けが人・死者の読み ' + title + ' ' + JSON.stringify(r && [r.injured, r.dead]));
+}
 // 更新された古い記事（同じ link・新しい pubDate）を、今日の火事にしない（2026-11-18。豊後高田市の 11/8 の記事が 11/16 に再び出た型）
 let extra = 0;
 {
@@ -93,5 +114,5 @@ let extra = 0;
   extra++;
   if (n3 === 1 && r3.length === 1 && r3[0].sources.length === 1 && r3[0].sources[0].name === 'D') ok++; else fails.push('使用済みの記事だけ外す ' + n3 + ' ' + JSON.stringify(r3));
 }
-console.log(`${ok}/${cases.length + 1 + extra} 合格`); fails.forEach(f => console.log('FAIL ' + f));
+console.log(`${ok}/${cases.length + 1 + HARM_CASES.length + extra} 合格`); fails.forEach(f => console.log('FAIL ' + f));
 process.exit(fails.length ? 1 : 0);

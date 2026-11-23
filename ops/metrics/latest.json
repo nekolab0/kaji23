@@ -1,5 +1,5 @@
 {
- "date": "2026-11-22",
+ "date": "2026-11-23",
  "indexed": 1,
  "inspected": 4597,
  "sitemap_urls": 4597,
@@ -59,31 +59,30 @@
  "visits_7d": 217,
  "pages_per_visit_7d": 1.15,
  "rpm": null,
- "publish_samples_7d": 356,
- "news_samples_7d": 266,
- "news_over_6h_7d": 0.24,
- "publish_minutes_median_7d": 68,
- "publish_minutes_p90_7d": 1031,
- "publish_within_30m_7d": 0.19,
- "fires_per_day_7d": 55.7,
- "fires_per_day_prev7d": 74.7,
+ "publish_samples_7d": 369,
+ "news_samples_7d": 271,
+ "news_over_6h_7d": 0.23,
+ "publish_minutes_median_7d": 66,
+ "publish_minutes_p90_7d": 948,
+ "publish_within_30m_7d": 0.2,
+ "fires_per_day_7d": 58.7,
+ "fires_per_day_prev7d": 70.4,
  "misread_suspects": [],
  "news_reused_articles": [
   "山形県-山形市-印役町-2026-11-20",
   "東京都-墨田区-向島-2026-11-19"
  ],
- "sources_status_at": "2026-11-22T01:36:47.015Z",
+ "sources_status_at": "2026-11-22T23:39:38.917Z",
  "sources_total": 79,
  "sources_failing": [
-  "a-www-kinutoh-jp-chiryu（HTTP 530・1回続けて）",
-  "kyoto（HTTP 522・23回続けて）"
+  "kyoto（HTTP 522・27回続けて）"
  ],
  "fire_mail_senders": 60,
- "news_query_runs_7d": 1,
+ "news_query_runs_7d": 22,
  "news_saturated_last": [
   "火災 when:1d"
  ],
- "news_failed_runs_7d": 1,
+ "news_failed_runs_7d": 4,
  "verify_ok": true,
  "verify_failed": [],
  "stage": 1,
@@ -92,7 +91,6 @@
  "stage_value": 1,
  "stage_gate": 1000,
  "guard_alerts": [
-  "掲載件数が減った（74.7→55.7件/日）",
   "同じ記事が別の日の火事になっている 2件（更新された古い記事を新しい火事として取り込んだ疑い）：山形県-山形市-印役町-2026-11-20・東京都-墨田区-向島-2026-11-19"
  ]
 }
