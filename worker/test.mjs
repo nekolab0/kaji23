@@ -1,7 +1,7 @@
 // D1 を Node の組み込み SQLite で代用して、受付サーバーの動作を確認する
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
-import { handle, incCard, rewriteFirePage, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue, sourceWaitMs } from './src/index.js';
+import { handle, incCard, rewriteFirePage, shareClickOf, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue, sourceWaitMs } from './src/index.js';
 export function makeEnv() {
   const db = new DatabaseSync(':memory:');
   const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
@@ -166,7 +166,11 @@ if (isMain) {
     ok('サイトの作り直しを GitHub に頼む（報道だけ・main）', st === 204 && /workflows\/daily\.yml\/dispatches$/.test(got.u) && JSON.parse(got.o.body).inputs.quick === 'true' && got.o.headers.Authorization === 'Bearer tok'); }
   ok('表と塩を自動で用意（塩はランダム48桁）', salt && /^[0-9a-f]{48}$/.test(salt.v));
   { const rb = await handle(new Request('https://api.example/robots.txt'), env); const top = await handle(new Request('https://api.example/'), env);
-    ok('受付サーバーは検索エンジンに読ませない（robots.txt）・トップはサイトへ移す', /Disallow: \//.test(await rb.text()) && top.status === 301 && top.headers.get('Location') === 'https://kajisoku.jp/'); }
+    const rbt = await rb.text();
+    ok('受付サーバーは検索エンジンに読ませない（robots.txt）・トップはサイトへ移す', /Disallow: \//.test(rbt) && top.status === 301 && top.headers.get('Location') === 'https://kajisoku.jp/'); 
+    ok('robots.txt：共有用ページ /f/ だけは X などのカード取得に開ける', /Allow: \/f\//.test(rbt) && rbt.indexOf('Allow: /f/') < rbt.indexOf('Disallow: /'), rbt);
+    const fp = await handle(req('GET', '/f/' + a.incident), env, at(43));
+    ok('共有用ページ /f/ は検索に出さない（X-Robots-Tag: noindex・canonical なし・og はページ自体に）', fp.headers.get('X-Robots-Tag') === 'noindex' && !/rel="canonical"/.test(await fp.clone().text()) && /og:title/.test(await fp.text())); }
 
   { // 火事ごとの SNS カード（2026-11-23）
     const now = new Date('2026-11-23T08:00:00Z');
@@ -186,6 +190,17 @@ if (isMain) {
       ok('kajisoku.jp/fire.html?id= は火事ごとの og を返す', /og:title" content="[^"]*赤羽西2丁目付近で火事の目撃報告｜火事速"/.test(html) && html.includes(`fire.html?id=${a.incident}`), html.slice(0, 300));
       const none = await (await handle(new Request('https://kajisoku.jp/fire.html?id=nosuchid'), env, at(10))).text();
       ok('ない ID は汎用のカードのまま', none === src);
+      // X の投稿から来た人を数える（utm_source=x）。ボット・目印なしは数えない
+      const now2 = new Date('2026-11-23T15:30:00Z');   // 日本時間 11/24 0:30
+      const xu = `https://kajisoku.jp/fire.html?id=${a.incident}&utm_source=x&utm_medium=social&utm_campaign=fire_post`;
+      ok('目印の読み取り：日本時間の日・小文字', JSON.stringify(shareClickOf(new Request(xu.replace('utm_source=x', 'utm_source=X'), { headers: { 'User-Agent': 'Mozilla/5.0 (iPhone) Twitter for iPhone' } }), now2)) === JSON.stringify({ day: '2026-11-24', inc: a.incident, src: 'x', campaign: 'fire_post' }));
+      ok('目印の読み取り：Twitterbot・目印なしは数えない', shareClickOf(new Request(xu, { headers: { 'User-Agent': 'Twitterbot/1.0' } }), now2) === null && shareClickOf(new Request('https://kajisoku.jp/fire.html?id=' + a.incident), now2) === null);
+      for (let i = 0; i < 2; i++) await handle(new Request(xu, { headers: { 'User-Agent': 'Mozilla/5.0' } }), env, now2);
+      const xpage = await (await handle(new Request(xu, { headers: { 'User-Agent': 'Mozilla/5.0' } }), env, now2)).text();
+      await handle(new Request(xu, { headers: { 'User-Agent': 'Twitterbot/1.0' } }), env, now2);
+      ok('目印つきでも火事ごとの og を返す', /og:title" content="[^"]*赤羽西2丁目付近で火事の目撃報告｜火事速"/.test(xpage));
+      const sc = await J(await handle(req('GET', '/api/share-clicks?days=7'), env, now2));
+      ok('X から来た人の数（3回・ボットは除く）', sc.byDay.length === 1 && sc.byDay[0].n === 3 && sc.byDay[0].src === 'x' && sc.byDay[0].day === '2026-11-24' && sc.byInc[0].inc === a.incident, JSON.stringify(sc));
       const other = await handle(new Request('https://kajisoku.jp/index.html'), env, at(10));
       ok('サイトのほかのページはそのまま通す', (await other.text()) === src);
     } finally { globalThis.fetch = saved; }

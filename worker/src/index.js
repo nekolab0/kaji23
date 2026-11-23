@@ -128,6 +128,8 @@ async function setup(env) {
   try { await run('ALTER TABLE sources ADD COLUMN sample TEXT'); } catch (e) {}   // 読み取りの確認用: 火災・出動を含む行の見本
   try { await run('ALTER TABLE sources ADD COLUMN fails INTEGER NOT NULL DEFAULT 0'); } catch (e) {}   // 続けて失敗した回数（読めないページの間引き用。pollSources）
   for (const col of ['official INTEGER NOT NULL DEFAULT 0', 'official_kind TEXT', 'official_src TEXT']) { try { await run(`ALTER TABLE incidents ADD COLUMN ${col}`); } catch (e) {} }
+  // X などの投稿から来た人の数（utm_source つきの fire.html を開いた回数。日本時間の日・火事ID・流入元ごと。2026-11-23）
+  await run(`CREATE TABLE IF NOT EXISTS share_clicks (day TEXT NOT NULL, inc TEXT NOT NULL, src TEXT NOT NULL, campaign TEXT NOT NULL DEFAULT '', n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, inc, src, campaign))`);
   await run('CREATE TABLE IF NOT EXISTS contact (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL, at TEXT NOT NULL, who TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0)');
   if (env.SALT) return env.SALT;
   const rnd = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -168,8 +170,28 @@ export function rewriteFirePage(html, card) {
   h = h.replace('<meta property="og:type" content="website">', '<meta property="og:type" content="article">');
   return h;
 }
+// X などに貼った URL の目印（utm_source）を数える。カードを取りに来るボット（Twitterbot など）は数えない。
+// 人の情報は残さず、日・火事ID・流入元・キャンペーンごとの回数だけを持つ
+const BOT_UA = /bot|crawl|spider|slurp|facebookexternalhit|embedly|preview|curl|wget|python|headless|lighthouse/i;
+export function shareClickOf(request, now = new Date()) {
+  const u = new URL(request.url), ua = request.headers.get('User-Agent') || '';
+  const src = (u.searchParams.get('utm_source') || '').toLowerCase().slice(0, 20);
+  const inc = u.searchParams.get('id') || '';
+  if (!src || !/^[a-z0-9_-]+$/.test(src) || !/^[a-z0-9-]{4,80}$/.test(inc) || BOT_UA.test(ua) || request.method !== 'GET') return null;
+  const campaign = (u.searchParams.get('utm_campaign') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+  const day = new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
+  return { day, inc, src, campaign };
+}
+async function countShareClick(request, env, now) {
+  const c = shareClickOf(request, now); if (!c) return;
+  if (!ready || ready.env !== env) { const p = setup(env); ready = { env, p }; p.catch(() => { ready = null; }); }
+  await ready.p;
+  await env.DB.prepare('INSERT INTO share_clicks (day, inc, src, campaign, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(day, inc, src, campaign) DO UPDATE SET n = n + 1')
+    .bind(c.day, c.inc, c.src, c.campaign).run();
+}
 async function siteFirePage(request, env, now) {
   const origin = await fetch(request);   // 同じゾーンへの取得は、この Worker を通らずに GitHub Pages へ行く
+  try { await countShareClick(request, env, now); } catch (e) {}   // 数え損ねてもページは返す
   try {
     const id = new URL(request.url).searchParams.get('id') || '';
     if (!origin.ok || !/text\/html/.test(origin.headers.get('Content-Type') || '') || !/^[a-z0-9-]{4,80}$/.test(id)) return origin;
@@ -190,7 +212,8 @@ export async function handle(request, env, now = new Date()) {
   if (request.method === 'OPTIONS') return cors(env, new Response(null, { status: 204 }));
   // 受付サーバー（api.kajisoku.jp）は検索結果に出す場所ではない。検索エンジンには読まないよう伝え、
   // トップ（/）に来た人はサイトへ移す（Search Console の「見つかりませんでした（404）」対策）
-  if (request.method === 'GET' && url.pathname === '/robots.txt') return new Response('User-agent: *\nDisallow: /\n', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  // ただし共有用ページ /f/ は X などのカード取得（robots.txt に従う）が読めるように開ける。/f/ 自体は noindex で検索に出さない（2026-11-23）
+  if (request.method === 'GET' && url.pathname === '/robots.txt') return new Response('User-agent: *\nAllow: /f/\nDisallow: /\n', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   if (request.method === 'GET' && url.pathname === '/') return new Response(null, { status: 301, headers: { Location: 'https://kajisoku.jp/', 'X-Robots-Tag': 'noindex' } });
   if (!ready || ready.env !== env) { const p = setup(env); ready = { env, p }; p.catch(() => { ready = null; }); }
   const salt = await ready.p;
@@ -359,6 +382,15 @@ export async function handle(request, env, now = new Date()) {
     return json(env, { generatedAt: iso, counts }, 200, { 'Cache-Control': 'public, max-age=300' });
   }
 
+  // X などの投稿から来た人の数（日ごと・流入元ごとの合計と、火事ごとの内訳）。X の投稿の表示回数と割ってクリック率を見る（2026-11-23）
+  if (P === '/api/share-clicks' && request.method === 'GET') {
+    const days = Math.min(60, Math.max(1, parseInt(url.searchParams.get('days') || '14', 10) || 14));
+    const since = new Date(now.getTime() + 9 * 3600e3 - (days - 1) * 864e5).toISOString().slice(0, 10);
+    const { results: byDay } = await DB.prepare('SELECT day, src, campaign, SUM(n) AS n FROM share_clicks WHERE day >= ? GROUP BY day, src, campaign ORDER BY day').bind(since).all();
+    const { results: byInc } = await DB.prepare('SELECT day, inc, src, SUM(n) AS n FROM share_clicks WHERE day >= ? GROUP BY day, inc, src ORDER BY n DESC LIMIT 200').bind(since).all();
+    return json(env, { generatedAt: iso, days, since, byDay, byInc }, 200, { 'Cache-Control': 'public, max-age=300' });
+  }
+
   // 旧形式（区・町ごとの件数）
   if (P === '/api/reports' && request.method === 'GET') {
     const hours = Math.min(72, Math.max(1, parseInt(url.searchParams.get('hours') || '24', 10) || 24));
@@ -385,10 +417,11 @@ export async function handle(request, env, now = new Date()) {
 <title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">
 <meta property="og:type" content="article"><meta property="og:site_name" content="火事速"><meta property="og:title" content="${escHtml(title)}">
 <meta property="og:description" content="${escHtml(desc)}"><meta property="og:url" content="${escHtml(dest)}"><meta property="og:image" content="${site}/og/live.png">
-<meta name="twitter:card" content="summary_large_image"><link rel="canonical" href="${escHtml(dest)}">
+<meta name="twitter:card" content="summary_large_image">
 <meta http-equiv="refresh" content="0;url=${escHtml(dest)}"></head><body><p><a href="${escHtml(dest)}">${escHtml(title)}</a></p>
 <script>location.replace(${JSON.stringify(dest)})</script></body></html>`;
-    return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60' } });
+    // noindex だけにして canonical は付けない（共有専用で、どこかへまとめるページではない。SEO 担当の判断 2026-11-23）
+    return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60', 'X-Robots-Tag': 'noindex' } });
   }
   return json(env, { error: 'not found' }, 404);
 }
