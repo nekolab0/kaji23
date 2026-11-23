@@ -1,7 +1,7 @@
 // D1 を Node の組み込み SQLite で代用して、受付サーバーの動作を確認する
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
-import { handle, incCard, rewriteFirePage, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue, sourceWaitMs } from './src/index.js';
+import worker, { handle, incCard, rewriteFirePage, cleanTown, baseTown, checkBody, pollSources, receiveMail, isLoop, kickBuild, sourceDue, sourceWaitMs } from './src/index.js';
 export function makeEnv() {
   const db = new DatabaseSync(':memory:');
   const D1 = { prepare: sql => { const st = db.prepare(sql); let args = []; const o = {
@@ -189,6 +189,16 @@ if (isMain) {
       const other = await handle(new Request('https://kajisoku.jp/index.html'), env, at(10));
       ok('サイトのほかのページはそのまま通す', (await other.text()) === src);
     } finally { globalThis.fetch = saved; }
+  }
+  // 例外で落ちても、ログを残して JSON の 500 を返す（2026-11-23。本番の Error rate 39.6% の調べ）
+  {
+    const se = console.error; const logged = []; console.error = m => logged.push(String(m));
+    try {
+      const bad = { DB: { prepare: () => { throw new Error('D1 が使えない'); } }, ALLOW_ORIGIN: '*' };
+      const r = await worker.fetch(new Request('https://api.kajisoku.jp/api/town?pref=福島県&city=会津若松市&town=北会津町本田'), bad);
+      const body = await r.json();
+      ok('例外は 500 の JSON にして、URL とエラーの文をログに残す', r.status === 500 && body.error && logged.some(l => l.includes('/api/town') && l.includes('D1 が使えない')), logged[0]);
+    } finally { console.error = se; }
   }
   results.forEach(x => console.log(`${x.ok ? 'PASS' : 'FAIL'}  ${x.name}${x.detail !== '' ? ' — ' + x.detail : ''}`));
   fs.mkdirSync(new URL('../verify/', import.meta.url), { recursive: true });
