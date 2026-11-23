@@ -54,7 +54,11 @@ if (merged.length === 1 && merged[0].sources.length === 2 && merged[0].town === 
 const HARM_CASES = [['西立神町で住宅1棟が全焼 けが人なし - KTN', false, false], ['名古屋市中区栄で建物火災 死者はいない - NHK', false, false],
   ['横浜市神奈川区三ツ沢下町で住宅火災 1人搬送 - tvk', true, false], ['西立神町で住宅火災 1人死亡 - KTN', false, true], ['名古屋市中区栄で火災 けが人なし 1人死亡', false, true], ['西立神町で住宅火災 けが人はありませんでした', false, false],
   ['西立神町で住宅火災 けがはありません', false, false], ['西立神町で住宅火災 けが人がいない', false, false], ['西立神町で住宅火災 けが人は確認されず', false, false],
-  ['西立神町で住宅火災 けが人は出ず', false, false], ['西立神町で住宅火災 けが人は確認されていません', false, false]];
+  ['西立神町で住宅火災 けが人は出ず', false, false], ['西立神町で住宅火災 けが人は確認されていません', false, false],
+  ['西立神町で住宅全焼 死者、けが人なし', false, false], ['西立神町で住宅全焼 死者・けが人はいない', false, false], ['西立神町で住宅全焼 死亡者なし', false, false],
+  ['西立神町で住宅全焼 けが人・死者なし', false, false], ['西立神町で住宅全焼 けが人や死者はいない', false, false], ['西立神町で住宅火災 男性けがなく', false, false],
+  ['西立神町で住宅火災 1人死亡 けが人・重傷者なし', false, true], ['西立神町で住宅火災 女性1人が死亡 他にけが人はいない', false, true], ['西立神町で住宅火災 2人けが 死者は出ず', true, false], ['西立神町で住宅火災 2人けが、死者は出ず', true, false],
+  ['西立神町で住宅火災 2人がけがをしたが、死者はいない', true, false], ['西立神町で住宅火災 死亡1人、けが人なし', false, true]];
 for (const [title, inj, dead] of HARM_CASES) {
   const r = extractFireNewsJP([{ title, link: 'https://h/' + title, pubDate: t(1), source: 'テスト' }], geo, { now })[0];
   if (r && r.injured === inj && r.dead === dead) ok++; else fails.push('けが人・死者の読み ' + title + ' ' + JSON.stringify(r && [r.injured, r.dead]));
