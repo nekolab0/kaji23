@@ -1112,6 +1112,8 @@ def build(report=None):
     (DIST / 'data' / 'map.js').write_text('window.KAJI_MAP = ' + json.dumps(mapdata, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')   # ファイルのままでも読めるよう script で
     geo_files(DIST)
     for fn, h in pages.items(): (DIST / fn).write_text(h, encoding='utf-8')
+    (ROOT / 'ops' / 'x_drafts').mkdir(parents=True, exist_ok=True)
+    (ROOT / 'ops' / 'x_drafts' / 'latest.md').write_text(x_drafts_md(), encoding='utf-8')   # X 用の投稿文（E014。daily が保存する）
     # 公開データ（誰でも検証できるように）
     public = {'fetchedAt': tfd['fetchedAt'], 'source': tfd_file, 'population_source': pop['url'], 'daily': daily,
               'news': {'collectedAt': news['collectedAt'], 'incidents': [{k: x[k] for k in ('id', 'ward', 'town', 'chome', 'building', 'injured', 'dead', 'first', 'sources')} for x in news['incidents']]},

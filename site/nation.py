@@ -207,6 +207,7 @@ def index_page(full=True):
   {national_search()}
   {ALERT_JP}
 </section>
+{featured_block()}
 <section class="section" aria-labelledby="now">
   <div class="sec-head"><h2 id="now">いま・直近24時間の火事</h2><span class="small muted live-updated"></span><a class="map-link" href="map.html">地図で見る →</a></div>
   <div class="two-col">
@@ -238,6 +239,47 @@ def index_page(full=True):
     title = f'{SITE_NAME}｜今どこで火事？全国の火事の目撃情報・速報を町名でリアルタイムに'
     desc = '今どこで火事？サイレンや煙に気づいたら地名で検索。全国の火事の目撃報告・口コミ・報道を、都道府県・市区町村・町ごとにリアルタイムでまとめています。'
     return page('index', title, desc, body, full=full)
+
+# ---------- 直近24時間の主な火事と、X 用の投稿文（自動改善 E014） ----------
+# PV の多くは X で共有された火事のページから来る（2026-11-18 の top_paths）。目立つ火事をトップの上に出し、
+# 投稿の下書きを毎回の生成で ops/x_drafts/latest.md に書き出して、投稿の手間を減らす。
+# 見出し文は使わない（CLAUDE.md の情報源の方針）。自殺などに関わる記事（sensitive）は出さない。
+def featured_fires(n=3, hours=24, now=None):
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    since = now - datetime.timedelta(hours=hours)
+    cand = []
+    for x in news['incidents']:
+        if x.get('sensitive'): continue
+        t = datetime.datetime.fromisoformat(x['first'].replace('Z', '+00:00'))
+        if t < since or t > now + datetime.timedelta(minutes=10): continue
+        score = 4 * bool(x.get('dead')) + 2 * bool(x.get('injured')) + len(x['sources'])
+        if score >= 4: cand.append((score, x['first'], x))
+    cand.sort(key=lambda c: (c[0], c[1]), reverse=True)
+    return [x for _, _, x in cand[:n]]
+def featured_block():
+    xs = featured_fires()
+    if not xs: return ''
+    return ('<section class="section" aria-labelledby="feat"><h2 id="feat">直近24時間の主な火事</h2>'
+            + news_list_jp(xs)
+            + '<p class="small muted">けが人・亡くなった方がいると報じられた火事と、複数の報道があった火事から、新しい順ではなく目立つ順に3件まで出しています。</p></section>')
+def x_post_text(x):
+    """X 用の投稿文（煽らない・けが人の有無や見出しは書かない。場所・時刻・ページの URL だけ）"""
+    xp = x.get('pref', '東京都'); xc = x.get('city', x['ward'])
+    place = ('' if is23(xp, xc) else xp) + xc + ((x['town'] + (f'{x["chome"]}丁目' if x.get('chome') else '')) if x.get('town') else '')
+    b = '' if x.get('building') in (None, '', '建物不明') else f'（{x["building"]}）'
+    url = f'{SITE_URL}/{quote(fire_href(news_fire_id(x)))}'
+    tag = re.sub(r'[市区町村]$', '', WARD_PARENT.get((xp, xc)) or xc)   # 名古屋市中村区 → 名古屋、四日市市 → 四日市
+    return (f'【火事】{jtime(x["first"])}ごろ、{place}で火事{b}が報道されました。'
+            f'近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら\n{url}\n#火事 #{tag}')
+def x_drafts_md(now=None):
+    xs = featured_fires(n=5, now=now)
+    lines = ['# X 用の投稿文（自動で毎回作り直す・直近24時間の主な火事）', '',
+             '`site/nation.py` の `x_post_text` が作る。投稿する前に、リンク先のページと報道で場所を確かめる。',
+             'けが人・亡くなった方のことは書かない（煽らない・二次被害を避ける）。', '']
+    if not xs: lines.append('いま出す火事はありません。')
+    for x in xs:
+        lines += [f'## {x.get("pref", "")}{x.get("city", x["ward"])}{x.get("town") or ""}（{jtime(x["first"])}）', '', '```', x_post_text(x), '```', '']
+    return '\n'.join(lines)
 
 # ---------- 都道府県 ----------
 def pref_page(p):
