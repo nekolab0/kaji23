@@ -1,9 +1,9 @@
 {
  "date": "2026-11-23",
  "indexed": 1,
- "inspected": 4597,
- "sitemap_urls": 4597,
- "gsc_fetched_at": "2026-11-22T14:21+09:00",
+ "inspected": 4665,
+ "sitemap_urls": 4665,
+ "gsc_fetched_at": "2026-11-23T14:42+09:00",
  "index_by_kind": {
   "main": {
    "sitemap": 40,
@@ -34,15 +34,15 @@
    "known": 0
   },
   "town": {
-   "sitemap": 1158,
-   "inspected": 1158,
+   "sitemap": 1172,
+   "inspected": 1172,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "fire": {
-   "sitemap": 1750,
-   "inspected": 1750,
+   "sitemap": 1804,
+   "inspected": 1804,
    "indexed": 0,
    "crawled": 0,
    "known": 0
@@ -52,45 +52,48 @@
  "sitemap_index_downloaded": "2026-11-13",
  "sitemap_index_submitted_urls": 9170,
  "clicks_7d": 0,
- "impressions_7d": 10,
+ "impressions_7d": 11,
  "clicks_per_day_7d": 0.0,
- "gsc_last_day": "2026-11-19",
- "pageviews_7d": 250,
- "visits_7d": 217,
- "pages_per_visit_7d": 1.15,
+ "gsc_last_day": "2026-11-20",
+ "pageviews_7d": 322,
+ "visits_7d": 275,
+ "pages_per_visit_7d": 1.17,
  "rpm": null,
- "publish_samples_7d": 369,
- "news_samples_7d": 271,
+ "publish_samples_7d": 373,
+ "news_samples_7d": 275,
  "news_over_6h_7d": 0.23,
  "publish_minutes_median_7d": 66,
- "publish_minutes_p90_7d": 948,
+ "publish_minutes_p90_7d": 1000,
  "publish_within_30m_7d": 0.2,
- "fires_per_day_7d": 58.7,
+ "fires_per_day_7d": 59.3,
  "fires_per_day_prev7d": 70.4,
  "misread_suspects": [],
  "news_reused_articles": [
   "山形県-山形市-印役町-2026-11-20",
   "東京都-墨田区-向島-2026-11-19"
  ],
- "sources_status_at": "2026-11-22T23:39:38.917Z",
+ "sources_status_at": "2026-11-23T02:09:51.048Z",
  "sources_total": 79,
  "sources_failing": [
   "kyoto（HTTP 522・27回続けて）"
  ],
  "fire_mail_senders": 60,
- "news_query_runs_7d": 22,
+ "news_query_runs_7d": 24,
  "news_saturated_last": [
   "火災 when:1d"
  ],
  "news_failed_runs_7d": 4,
- "verify_ok": true,
- "verify_failed": [],
+ "verify_ok": false,
+ "verify_failed": [
+  "M1 受付サーバーの応答"
+ ],
  "stage": 1,
  "stage_name": "インデックス",
  "stage_metric": "indexed",
  "stage_value": 1,
  "stage_gate": 1000,
  "guard_alerts": [
+  "検査に不合格：M1 受付サーバーの応答",
   "同じ記事が別の日の火事になっている 2件（更新された古い記事を新しい火事として取り込んだ疑い）：山形県-山形市-印役町-2026-11-20・東京都-墨田区-向島-2026-11-19"
  ]
 }

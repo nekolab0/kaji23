@@ -1,23 +1,23 @@
 {
- "fetchedAt": "2026-11-22T14:21+09:00",
+ "fetchedAt": "2026-11-23T14:42+09:00",
  "property": "sc-domain:kajisoku.jp",
  "range28d": [
-  "2026-10-24",
-  "2026-11-20"
+  "2026-10-25",
+  "2026-11-21"
  ],
- "sitemapUrls": 4597,
+ "sitemapUrls": 4665,
  "sitemapUrlsByKind": {
   "main": 40,
   "dial": 47,
   "pref": 47,
   "city": 1555,
-  "town": 1158,
-  "fire": 1750
+  "town": 1172,
+  "fire": 1804
  },
- "inspectedUrls": 4597,
+ "inspectedUrls": 4665,
  "coverage": {
   "送信して登録されました": 1,
-  "URL が Google に認識されていません": 4596
+  "URL が Google に認識されていません": 4664
  },
  "submittedSitemaps": [
   {
@@ -85,6 +85,6 @@
    "children": []
   }
  ],
- "inspectedToday": 1500,
+ "inspectedToday": 1499,
  "inspectionStopped": null
 }
