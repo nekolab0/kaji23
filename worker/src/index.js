@@ -574,7 +574,15 @@ export async function receiveMail(env, raw, now = new Date()) {
 const QUIET_KICK = ['17:37', '18:07'];
 
 export default {
-  fetch: (request, env) => handle(request, env),
+  // 例外で落ちたときは、どの URL で何が起きたかをログ（Observability）に残し、JSON の 500 を返す（2026-11-23。Error rate 39.6% の原因を見るため）
+  fetch: async (request, env) => {
+    try { return await handle(request, env); }
+    catch (e) {
+      const u = new URL(request.url);
+      console.error(JSON.stringify({ at: 'fetch', path: u.pathname, search: u.search.slice(0, 300), error: String(e && e.message || e).slice(0, 500), stack: String(e && e.stack || '').slice(0, 1500) }));
+      return cors(env, new Response(JSON.stringify({ error: '一時的に読み込めませんでした' }), { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } }));
+    }
+  },
   email: async (message, env) => {
     const buf = new Uint8Array(await new Response(message.raw).arrayBuffer());
     let raw = ''; for (let i = 0; i < buf.length; i += 8192) raw += String.fromCharCode.apply(null, buf.subarray(i, i + 8192));
