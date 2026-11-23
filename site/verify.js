@@ -264,8 +264,15 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     if (!h.includes(encodeURIComponent('n-' + x.id).replace(/%2D/g, '-')) && !h.includes('n-' + x.id)) newsBad.push(`${t.file}:報道が出ていない`);
   }
   await page.goto('file://' + path.join(DIST, 'index.html'));
-  const topNews = await page.$$eval('.news-item', els => els.length);
+  // 「最近報道された火事」は12件。その上の「直近24時間の主な火事」（E014）は別に数える：3件まで・配慮の要る記事は出さない
+  const topNews = await page.$$eval('section[aria-labelledby="recent"] .news-item', els => els.length);
   if (topNews !== Math.min(12, news.incidents.length)) newsBad.push(`トップ:表示${topNews}`);
+  const feat = await page.$$eval('section[aria-labelledby="feat"] .news-item a.place', as => as.map(a => decodeURIComponent(a.getAttribute('href'))));
+  if (feat.length > 3) newsBad.push(`トップの主な火事:${feat.length}件（3件まで）`);
+  const sensIds = new Set(news.incidents.filter(x => x.sensitive).map(x => `f-n-${x.id}.html`));
+  feat.forEach(h => { if (sensIds.has(h)) newsBad.push(`トップの主な火事:配慮の要る記事 ${h}`); });
+  const featAll = await page.$$eval('.news-item', els => els.length);
+  if (featAll !== topNews + feat.length) newsBad.push(`トップ:一覧の外に報道 ${featAll - topNews - feat.length}件`);
 
   // R7 町名検索と現在地
   const searchBad = [];
