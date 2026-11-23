@@ -182,7 +182,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     const title = (h.match(/<title>([^<]*)<\/title>/) || [])[1];
     const h1 = (h.match(/<h1[\s>]/g) || []).length;
     const desc = /<meta name="description" content="[^"]+"/.test(h);
-    const og = ((h.match(/property="og:image" content="([^"]+)"/) || [])[1] || '').replace(/^https?:\/\/.*?\/(?=og\/)/, '');
+    const og = decodeURIComponent(((h.match(/property="og:image" content="([^"]+)"/) || [])[1] || '').replace(/^https?:\/\/.*?\/(?=og\/)/, ''));
     const can = (h.match(/rel="canonical" href="([^"]+)"/) || [])[1];
     if (!can || !/^https:\/\//.test(can) || /[^\x21-\x7e]/.test(can)) meta.push(`${f}: 正規URLが不正 ${can}`);
     if (!title || h1 !== 1 || !desc || !og || !fileSet.has(og)) meta.push(`${f}: title=${!!title} h1=${h1} desc=${desc} og=${og}`);

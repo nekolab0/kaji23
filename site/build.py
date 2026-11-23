@@ -163,6 +163,7 @@ def chg(cur, prev):
     return f'<span class="chg {cls}">前年同時期 {prev}件 → {sign}{d}</span>'
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
+TODAY_JST = datetime.datetime.now(JST).date().isoformat()   # 件別の OG 画像を作る範囲（nation.py の fire_og）
 def jtime(iso):
     t = datetime.datetime.fromisoformat(iso.replace('Z', '+00:00')).astimezone(JST)
     return f'{t.month}月{t.day}日 {t.hour}:{t.minute:02d}'
@@ -297,18 +298,19 @@ def insert_ads(name, body):
     pat = re.compile(r'<section class="section[^"]*"[^>]*? aria-labelledby="(?:' + '|'.join(keys) + r')"[^>]*>.*?</section>', re.S)
     return pat.sub(rep, body)
 
-def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=None):
+def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=None, og_title=None, og_desc=None):
+    """og_title・og_desc：SNS のカードにだけ出す件別の文（<title>・description は変えない。火事のページで使う）"""
     body = insert_ads(name, body)
     nav = ''.join(f'<a href="{k.split("#")[0]}.html{("#" + k.split("#")[1]) if "#" in k else ""}"{" aria-current=\"page\"" if k == name else ""}>{esc(v)}</a>' for k, v in NAV)
     canon = f'{SITE_URL}/{quote(name)}.html' if name != 'index' else f'{SITE_URL}/'
-    ogimg = f'{SITE_URL}/{og_image}'
+    ogimg = f'{SITE_URL}/{quote(og_image)}'   # 火事のページの画像名には日本語が入る（X は生の日本語の URL を読めないことがある）
     head = f'''<title>{esc(title)}</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="{esc(desc)}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE_NAME}">
-<meta property="og:title" content="{esc(title)}">
-<meta property="og:description" content="{esc(desc)}">
+<meta property="og:title" content="{esc(og_title or title)}">
+<meta property="og:description" content="{esc(og_desc or desc)}">
 <meta property="og:image" content="{esc(ogimg)}">
 <meta property="og:url" content="{esc(canon)}">
 <link rel="canonical" href="{esc(canon)}">
@@ -689,7 +691,8 @@ def fire_page(pre=None):
 </div>
 '''
     if pre:
-        return page(pre['name'], pre['title'], pre['desc'], body, og_image='og/live.png', ld_extra=pre.get('ld'))
+        return page(pre['name'], pre['title'], pre['desc'], body, og_image=pre.get('og_image', 'og/live.png'), ld_extra=pre.get('ld'),
+                    og_title=pre.get('og_title'), og_desc=pre.get('og_desc'))
     title = f'火事の目撃情報｜{SITE_NAME}'
     desc = '近所の人から寄せられたサイレン・煙・火の目撃報告と、現場の口コミ。全国の火事を町名ごとにリアルタイムで。'
     return page('fire', title, desc, body, og_image='og/live.png')
@@ -1125,6 +1128,7 @@ def build(report=None):
     (DIST / 'data' / 'kaji23.json').write_text(json.dumps(public, ensure_ascii=False, indent=1), encoding='utf-8')
     # 内部用（OG画像・検査で使う）
     (DIST / 'data' / '_guides.json').write_text(json.dumps(GUIDE_OG, ensure_ascii=False), encoding='utf-8')   # 読み物の OG 画像用（og.js）
+    (DIST / 'data' / '_fires_og.json').write_text(json.dumps(FIRE_OG, ensure_ascii=False), encoding='utf-8')   # 直近の火事のページの OG 画像用（og.js）
     (DIST / 'data' / '_model.json').write_text(json.dumps({'wards': [{k: v for k, v in w.items() if k != 'stations'} | {'stations': [s['slug'] for s in w['stations']]} for w in wards],
                                                             'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news,
                                                             'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
@@ -1183,7 +1187,7 @@ def build(report=None):
     (DIST / f'{_ik}.txt').write_text(_ik, encoding='utf-8')
     # 索引に加えて、型ごとのサイトマップも1本ずつ書く。Google が索引を読んでも子を読みに来ないため（実験 E006・2026-11-17）。
     # robots.txt のサイトマップの行は何本でも書け、索引と個別の両方を知らせてよい（seo/knowledge.md の11章）
-    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nDisallow: /data/_guides.json\nSitemap: {SITE_URL}/sitemap.xml\n'
+    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nDisallow: /data/_guides.json\nDisallow: /data/_fires_og.json\nSitemap: {SITE_URL}/sitemap.xml\n'
         + ''.join(f'Sitemap: {SITE_URL}/{n}\n' for n, _ in files), encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:
