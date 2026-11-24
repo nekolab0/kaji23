@@ -703,7 +703,7 @@
           list.push({ href: fireHref(x.id), place: (x.ward || '') + (x.town || ''), at: x.last, city: x.ward, tag: x.official ? '消防の発表' : '目撃報告' });
         });
         Object.keys(r[1]).forEach(function (k) {
-          var x = r[1][k], at = x.last || x.first;
+          var x = r[1][k], at = x.first || x.last;   // 報道は最初の報道の時刻
           if (k === id || x.pref !== pref || !at || Date.now() - Date.parse(at) > 3 * 864e5) return;
           list.push({ href: fireHref(k), place: (x.city || '') + (x.town || '') + (x.chome ? x.chome + '丁目' : ''), at: at, city: x.city, tag: '報道' });
         });
@@ -715,7 +715,7 @@
           var ul = el('ul', { class: 'plain' });
           list.forEach(function (x) {
             var li = el('li'); li.appendChild(el('a', { href: x.href }, x.place + 'の火事'));
-            li.appendChild(el('span', { class: 'small muted' }, '　' + x.tag + '・' + ago(x.at))); ul.appendChild(li);
+            li.appendChild(el('span', { class: 'small muted' }, '　' + x.tag + '・' + hm(x.at) + 'ごろ')); ul.appendChild(li);
           });
           box.appendChild(ul);
         } else box.appendChild(el('p', { class: 'small muted' }, '直近の' + pref + 'で、ほかの火事の情報はありません。'));

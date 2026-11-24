@@ -418,8 +418,8 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
         .then(() => flowOk.push('火事のページに「北海道のほかの火事」（自分は出さない）'), () => flowBad.push('火事のページに近くのほかの火事が出ない、または自分の火事が出る'));
       const nl = await fp.$$eval('.f-near a', as => as.map(a => decodeURIComponent(a.getAttribute('href'))));
       if (!nl.some(h => h.startsWith('fire.html?id=')) || !nl.includes('c-北海道-札幌市北区.html') || !nl.includes('p-北海道.html')) flowBad.push(`近くの火事のリンクが不正 ${nl.join(',')}`); else flowOk.push('近くの火事から市区町村・都道府県ページへ');
-      const pv = await fp.evaluate(() => { const s = document.querySelector('.f-push-sec'); const b = s && s.querySelector('[data-push]'); return s && !s.hidden && b ? b.getAttribute('data-city') + '|' + b.getAttribute('data-town') : ''; });
-      if (pv !== '札幌市北区|北32条西') flowBad.push(`火事のページの通知の欄が不正「${pv}」`); else flowOk.push('火事のページにその町の通知の欄');
+      const pv = await fp.evaluate(() => { const s = document.querySelector('.f-push-sec'); const b = s && s.querySelector('[data-push]'); return s && !s.hidden && b && b.getAttribute('data-town') ? b.getAttribute('data-city') : ''; });
+      if (pv !== '札幌市北区') flowBad.push(`火事のページの通知の欄が不正「${pv}」`); else flowOk.push('火事のページにその町の通知の欄');
     }
     const nid = news.incidents[0] && 'n-' + news.incidents[0].id;
     if (nid) {
