@@ -401,7 +401,8 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       if (near < 5) flowBad.push('近くの町が出ない');
     }
     // 消防本部の発表: 取り込むと一覧に「消防の発表」、火事のページに出典つきで出る
-    await ingestOfficial(W.env, [{ source: 'sapporo', pref: '北海道', city: '札幌市北区', town: '北32条西7丁目', kind: '建物火災', at: new Date(Date.now() - 20 * 60e3).toISOString() }], new Date());
+    await ingestOfficial(W.env, [{ source: 'sapporo', pref: '北海道', city: '札幌市北区', town: '北32条西7丁目', kind: '建物火災', at: new Date(Date.now() - 20 * 60e3).toISOString() },
+      { source: 'sapporo', pref: '北海道', city: '札幌市中央区', town: '北1条西2丁目', kind: '建物火災', at: new Date(Date.now() - 40 * 60e3).toISOString() }], new Date());
     const offInc = W.db.prepare("SELECT id FROM incidents WHERE ward = '札幌市北区'").get();
     await fp.goto('file://' + path.join(DIST, 'index.html'));
     await fp.waitForFunction(() => [...document.querySelectorAll('.fire-card')].some(c => /札幌市北区北32条西7丁目付近/.test(c.textContent) && /消防の発表・建物火災/.test(c.textContent)), null, { timeout: 5000 })
@@ -412,6 +413,13 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
         .then(() => flowOk.push('火事のページに消防の発表と出典'), () => flowBad.push('火事のページに消防の発表が出ない'));
       const xs = decodeURIComponent((await fp.$$eval('.f-share a', as => as.map(a => a.href))).find(h => /intent/.test(h)) || '');
       if (!/【消防出動】北海道札幌市北区北32条西7丁目付近で建物火災/.test(xs)) flowBad.push('消防の発表の共有文が不正'); else flowOk.push('消防の発表の共有文');
+      // 目撃報告・消防の発表の火事のページ（fire.html?id=）に、同じ都道府県のほかの火事と、その町の通知の欄が出る（E015）
+      await fp.waitForFunction(() => { const n = document.querySelector('.f-near-sec'); return n && !n.hidden && /札幌市中央区北1条西2丁目の火事/.test(n.textContent) && !/札幌市北区北32条西7丁目の火事/.test(n.textContent); }, null, { timeout: 5000 })
+        .then(() => flowOk.push('火事のページに「北海道のほかの火事」（自分は出さない）'), () => flowBad.push('火事のページに近くのほかの火事が出ない、または自分の火事が出る'));
+      const nl = await fp.$$eval('.f-near a', as => as.map(a => decodeURIComponent(a.getAttribute('href'))));
+      if (!nl.some(h => h.startsWith('fire.html?id=')) || !nl.includes('c-北海道-札幌市北区.html') || !nl.includes('p-北海道.html')) flowBad.push(`近くの火事のリンクが不正 ${nl.join(',')}`); else flowOk.push('近くの火事から市区町村・都道府県ページへ');
+      const pv = await fp.evaluate(() => { const s = document.querySelector('.f-push-sec'); const b = s && s.querySelector('[data-push]'); return s && !s.hidden && b ? b.getAttribute('data-city') + '|' + b.getAttribute('data-town') : ''; });
+      if (pv !== '札幌市北区|北32条西') flowBad.push(`火事のページの通知の欄が不正「${pv}」`); else flowOk.push('火事のページにその町の通知の欄');
     }
     const nid = news.incidents[0] && 'n-' + news.incidents[0].id;
     if (nid) {
