@@ -1,17 +1,12 @@
 {
- "fetchedAt": "2026-11-23T05:42+00:00",
+ "fetchedAt": "2026-11-24T09:04+00:00",
  "range": [
-  "2026-11-16",
-  "2026-11-22"
+  "2026-11-17",
+  "2026-11-23"
  ],
- "pageviews_7d": 322,
- "visits_7d": 275,
+ "pageviews_7d": 312,
+ "visits_7d": 274,
  "daily": [
-  {
-   "date": "2026-11-16",
-   "pageviews": 63,
-   "visits": 50
-  },
   {
    "date": "2026-11-17",
    "pageviews": 31,
@@ -41,31 +36,36 @@
    "date": "2026-11-22",
    "pageviews": 73,
    "visits": 59
+  },
+  {
+   "date": "2026-11-23",
+   "pageviews": 53,
+   "visits": 49
   }
  ],
  "top_paths": [
   {
    "path": "/fire.html",
-   "pageviews": 270,
-   "visits": 255
+   "pageviews": 263,
+   "visits": 254
   },
   {
    "path": "/index.html",
-   "pageviews": 21,
+   "pageviews": 16,
    "visits": 0
   },
   {
    "path": "/",
-   "pageviews": 14,
-   "visits": 14
+   "pageviews": 13,
+   "visits": 13
   },
   {
-   "path": "/town.html",
+   "path": "/map.html",
    "pageviews": 4,
    "visits": 0
   },
   {
-   "path": "/map.html",
+   "path": "/town.html",
    "pageviews": 3,
    "visits": 0
   },
@@ -85,6 +85,11 @@
    "visits": 1
   },
   {
+   "path": "/about.html",
+   "pageviews": 1,
+   "visits": 1
+  },
+  {
    "path": "/f-n-%E6%96%B0%E6%BD%9F%E7%9C%8C-%E6%96%B0%E6%BD%9F%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA-%E9%B3%A5%E5%B1%8B%E9%87%8E1%E4%B8%81%E7%9B%AE-2026-11-18.html",
    "pageviews": 1,
    "visits": 1
@@ -95,7 +100,17 @@
    "visits": 0
   },
   {
+   "path": "/c-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E3%81%95%E3%81%84%E3%81%9F%E3%81%BE%E5%B8%82%E8%A6%8B%E6%B2%BC%E5%8C%BA.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
    "path": "/c-%E6%96%B0%E6%BD%9F%E7%9C%8C-%E6%96%B0%E6%BD%9F%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
+   "path": "/m-%E9%B3%A5%E5%8F%96%E7%9C%8C-%E9%B3%A5%E5%8F%96%E5%B8%82-%E5%8F%A4%E6%B5%B7.html",
    "pageviews": 1,
    "visits": 0
   },
@@ -112,11 +127,11 @@
   },
   {
    "host": "kajisoku.jp",
-   "pageviews": 47
+   "pageviews": 38
   },
   {
    "host": "",
-   "pageviews": 33
+   "pageviews": 32
   }
  ]
 }
