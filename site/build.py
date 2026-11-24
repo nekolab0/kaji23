@@ -646,6 +646,18 @@ def make_icons(dist):
         im.save(dist / f'icon-{n}.png')
 
 # ---------- 火事のページ ----------
+# 目撃報告の火事（fire.html?id=）だけに置く欄。X から来た人の多くが1ページで帰るので、
+# 同じ地域のほかの火事と、その町の通知への入口を出す（中身は assets/site.js の showNear）。固定ページは nation.py の after に同じ役の欄がある
+NEAR_SECS = '''<section class="section f-push-sec" aria-labelledby="fpush" hidden>
+  <h2 id="fpush" class="f-push-h">この町の次の火事を知らせる</h2>
+  <div class="f-push"></div>
+</section>
+<section class="section f-near-sec" aria-labelledby="fnear" hidden>
+  <h2 id="fnear" class="f-near-h">近くのほかの火事</h2>
+  <div class="f-near"></div>
+</section>
+'''
+
 def fire_page(pre=None):
     """pre を渡すと、報道された火事の固定ページ（中身をHTMLに書き込み済み。JSが報告・口コミを足す）"""
     pre = pre or {}
@@ -682,7 +694,7 @@ def fire_page(pre=None):
   <h2 id="src">報道</h2>
   <div class="f-news">{pre.get('news', '')}</div>
 </section>
-<section class="section" aria-labelledby="sns">
+{'' if pre else NEAR_SECS}<section class="section" aria-labelledby="sns">
   <h2 id="sns">SNS・ニュースで確かめる</h2>
   <div class="f-sns"></div>
 </section>
