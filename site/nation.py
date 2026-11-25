@@ -740,3 +740,54 @@ def national_pages():
     pages['town.html'] = town_page()
     pages.update(static_pages())
     return pages
+
+# ---------- Atom フィード（docs/growth.md の C8。SEO 担当の決定 2026-11-25・seo/decisions.md） ----------
+# 新しい火事のページだけを並べた「短いサイトマップ」として Google に読ませ、WebSub で更新を知らせる。全国1本 /feed.xml から始める。
+# 入れるのは、その回のサイトマップに載った f-n-・f-o- のうち町名まで分かったもの（市までの -x-・noindex・移動ページ・fire.html?id= は除く）、直近3日・最大100件。
+# 見出し・けが人・番地・報道社名は書かない。id・link は utm なしの canonical。published・updated は情報源の時刻（生成時刻は使わない）
+FEED_DAYS, FEED_MAX = 3, 100
+WEBSUB_HUB = 'https://pubsubhubbub.appspot.com/'
+def _rfc3339(iso):
+    t = datetime.datetime.fromisoformat(str(iso).replace('Z', '+00:00'))
+    if t.tzinfo is None: t = t.replace(tzinfo=datetime.timezone.utc)
+    return t.astimezone(JST).isoformat(timespec='seconds')
+def feed_entries(listed, titles, now=None):
+    """listed：サイトマップに載せたファイル名の集合。titles：ファイル名 → <title> の文"""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    since = now - datetime.timedelta(days=FEED_DAYS)
+    out = []
+    for r in RECORDS:
+        if not has_page(r) or not r['town']: continue
+        fn = fire_href(r['fid'])
+        if fn not in listed or '-x-' in fn: continue
+        x, o = r['x'] or {}, r.get('official') or {}
+        if x.get('sensitive'): continue
+        times = [t for t in [o.get('at'), x.get('first')] if t]
+        if not times: continue
+        try:
+            pub = min(_rfc3339(t) for t in times)
+            upd = max([_rfc3339(t) for t in times] + [_rfc3339(s['pub']) for s in x.get('sources', []) if s.get('pub')])
+        except (TypeError, ValueError):
+            continue
+        if datetime.datetime.fromisoformat(pub) < since: continue
+        chome = x.get('chome')
+        place = place_of(r['pref'], r['city'], r['town'] + (f'{chome}丁目' if chome else ''))
+        k = rec_kind(r)
+        tm = jtime(min(times))
+        what = k if k.endswith(('火災', '火事')) else f'{k}の火事' if k else '火事'
+        summary = f'{tm}ごろ、{place}で{what}。情報源：{rec_src(r)}。' + ('鎮火しました。' if o.get('status') == '鎮火' else '')
+        title = re.sub(r'｜' + re.escape(SITE_NAME) + r'$', '', titles.get(fn) or f'{place}の火事')
+        out.append({'id': f'{SITE_URL}/{quote(fn)}', 'title': title, 'summary': summary, 'published': pub, 'updated': upd})
+    out.sort(key=lambda e: e['published'], reverse=True)
+    return out[:FEED_MAX]
+def feed_xml(entries):
+    self_url = f'{SITE_URL}/feed.xml'
+    updated = max((e['updated'] for e in entries), default=None) or datetime.datetime.now(JST).isoformat(timespec='seconds')
+    x = lambda s: html.escape(str(s), quote=True)
+    return ('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="ja">\n'
+            f'<title>{x(SITE_NAME)}｜全国の新しい火事（町名まで分かったもの）</title>\n<id>{x(self_url)}</id>\n'
+            f'<link rel="self" type="application/atom+xml" href="{x(self_url)}"/>\n<link rel="hub" href="{x(WEBSUB_HUB)}"/>\n'
+            f'<link rel="alternate" type="text/html" href="{x(SITE_URL)}/"/>\n<updated>{x(updated)}</updated>\n<author><name>{x(SITE_NAME)}</name></author>\n'
+            + ''.join(f'<entry><id>{x(e["id"])}</id><title>{x(e["title"])}</title><link rel="alternate" type="text/html" href="{x(e["id"])}"/>'
+                      f'<published>{x(e["published"])}</published><updated>{x(e["updated"])}</updated><summary>{x(e["summary"])}</summary></entry>\n' for e in entries)
+            + '</feed>\n')

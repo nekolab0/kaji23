@@ -53,6 +53,8 @@ jobs:
         run: node collector/indexnow.mjs || true
       - uses: actions/upload-artifact@v7
         with: { name: indexnow, path: indexnow/urls.json, if-no-files-found: ignore, retention-days: 1 }
+      - uses: actions/upload-artifact@v7   # Atom フィードの中身が変わった回だけできる（公開のあとに WebSub のハブへ知らせる）
+        with: { name: websub, path: websub/ping.txt, if-no-files-found: ignore, retention-days: 1 }
       - uses: actions/upload-artifact@v7   # X 以外の SNS への投稿キュー（公開のあとに受付サーバーへ送る。docs/growth.md の C3）
         with: { name: social, path: ops/social/queue.json, if-no-files-found: ignore, retention-days: 1 }
       - name: データを保存
@@ -105,6 +107,20 @@ jobs:
         with: { name: indexnow, path: indexnow }
       - env: { SITE_URL: '${{ vars.SITE_URL }}' }
         run: node collector/indexnow.mjs --send || true
+
+  # Atom フィード（/feed.xml）が変わったことを WebSub のハブに知らせる（公開のあと。ハブが古いフィードを読まないように）。失敗しても公開は失敗にしない
+  websub:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        continue-on-error: true
+        with: { name: websub, path: websub }
+      - run: |
+          [ -s websub/ping.txt ] || { echo 'フィードは変わっていない'; exit 0; }
+          u=$(head -1 websub/ping.txt)
+          code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' -X POST https://pubsubhubbub.appspot.com/ --data-urlencode hub.mode=publish --data-urlencode "hub.url=$u" || echo 000)
+          echo "WebSub: $u → $code（204 なら受け付け）"
 
   # X 以外の SNS への投稿キューを、公開が済んでから受付サーバーへ送る（ページが公開される前にリンクを投稿しないため。docs/growth.md）
   # SOCIAL_KEY（GitHub の Secret。受付サーバーの Secret と同じ値）がないあいだは何もしない。送れなくても公開は失敗にしない

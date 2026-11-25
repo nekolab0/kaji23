@@ -77,7 +77,7 @@
 | C5 | 計測：`share_clicks` を `f-n-`・`f-o-`・`g-`・`quiz.html` にも広げる。`ops/metrics/latest.md` に「配信先ごとの来訪（直近7日）」の表と、Cloudflare Web Analytics の参照元（`bsky.app`・`threads.com`・`l.instagram.com`・`chatgpt.com`・`perplexity.ai`・`gemini.google.com`・`copilot.microsoft.com` など）を出す | `worker/`・`ops/metrics.py` | 自動 |
 | C6 | 週のまとめ（backlog の「今週の火事まとめ」8.0）を作るときに、SNS 用の画像5〜8枚（1080×1350）と縦の動画（1080×1920・ffmpeg）と文面を `ops/social/weekly/` に書き出す（Muse が TikTok・YouTube・note・はてなに使う） | `site/` | 自動 |
 | C7 | サイトの「運営者情報」と全ページの構造化データ（Organization）に、作った SNS アカウントを `sameAs` で並べる。フッターに各 SNS へのリンク | `site/build.py` | 自動（SEO 担当に確認） |
-| C8 | Atom フィード（全国1本＋都道府県ごと）と WebSub（backlog 4.5 を前倒し）。Discover の「フォロー」とフィードリーダーの入口になる | `site/build.py` | 自動（SEO 担当に確認） |
+| C8 | Atom フィード（まず全国1本 `/feed.xml`。都道府県ごとは段階2から）と WebSub（backlog 4.5 を前倒し）。新しい火事のページだけの短いサイトマップとして Google に早く知らせる（2026-11-25 に SEO 担当が確認：Discover の「フォロー」の根拠は 2025-11 に消えたので、ねらいから外した。`seo/decisions.md`） | `site/build.py`・`site/nation.py` | 自動（SEO 担当に確認済み） |
 
 作る順番：C1 → C2・C4（Bluesky・Misskey・Mastodon）→ C3 → C5 → C4（Threads）→ C8 → C7 → C6 → C4（Instagram・Facebook）。
 1日1件の自動マージの上限は守る。C2・C4 は受付サーバーの変更なので、`worker/` のテストを全部通したものだけをマージする。
