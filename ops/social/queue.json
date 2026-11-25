@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-25T11:20:29+00:00",
+ "generatedAt": "2026-11-25T12:04:21+00:00",
  "version": 1,
  "dests": [
   "bsky",
@@ -10,6 +10,41 @@
   "facebook"
  ],
  "items": [
+  {
+   "id": "n-富山県-富山市-常盤台-2026-11-25",
+   "kind": "fire_post",
+   "first": "2026-11-25T10:35:00+00:00",
+   "expires": "2026-11-25T22:35:00+00:00",
+   "page": "https://kajisoku.jp/f-n-%E5%AF%8C%E5%B1%B1%E7%9C%8C-%E5%AF%8C%E5%B1%B1%E5%B8%82-%E5%B8%B8%E7%9B%A4%E5%8F%B0-2026-11-25.html",
+   "place": "富山県富山市常盤台",
+   "posts": {
+    "bsky": {
+     "text": "【火事】11月25日 19:35ごろ、富山県富山市常盤台で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。\n#火事 #富山",
+     "url": "https://kajisoku.jp/f-n-%E5%AF%8C%E5%B1%B1%E7%9C%8C-%E5%AF%8C%E5%B1%B1%E5%B8%82-%E5%B8%B8%E7%9B%A4%E5%8F%B0-2026-11-25.html?utm_source=bsky&utm_medium=social&utm_campaign=fire_post",
+     "image": "https://kajisoku.jp/og/f/f-n-%E5%AF%8C%E5%B1%B1%E7%9C%8C-%E5%AF%8C%E5%B1%B1%E5%B8%82-%E5%B8%B8%E7%9B%A4%E5%8F%B0-2026-11-25.png",
+     "title": "富山県富山市常盤台の火事｜火事速",
+     "desc": "11月25日 19:35ごろ発生、報道されました。町名ごとの情報・目撃の共有は火事速で。"
+    },
+    "misskey": {
+     "text": "【火事】11月25日 19:35ごろ、富山県富山市常盤台で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら\nhttps://kajisoku.jp/f-n-%E5%AF%8C%E5%B1%B1%E7%9C%8C-%E5%AF%8C%E5%B1%B1%E5%B8%82-%E5%B8%B8%E7%9B%A4%E5%8F%B0-2026-11-25.html?utm_source=misskey&utm_medium=social&utm_campaign=fire_post\n#火事 #富山"
+    },
+    "mastodon": {
+     "text": "【火事】11月25日 19:35ごろ、富山県富山市常盤台で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら\nhttps://kajisoku.jp/f-n-%E5%AF%8C%E5%B1%B1%E7%9C%8C-%E5%AF%8C%E5%B1%B1%E5%B8%82-%E5%B8%B8%E7%9B%A4%E5%8F%B0-2026-11-25.html?utm_source=mastodon&utm_medium=social&utm_campaign=fire_post\n#火事 #富山"
+    },
+    "threads": {
+     "text": "【火事】11月25日 19:35ごろ、富山県富山市常盤台で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報はリンクから #火事",
+     "url": "https://kajisoku.jp/f-n-%E5%AF%8C%E5%B1%B1%E7%9C%8C-%E5%AF%8C%E5%B1%B1%E5%B8%82-%E5%B8%B8%E7%9B%A4%E5%8F%B0-2026-11-25.html?utm_source=threads&utm_medium=social&utm_campaign=fire_post"
+    },
+    "instagram": {
+     "text": "【火事】11月25日 19:35ごろ、富山県富山市常盤台で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報は、プロフィールのリンクから町名で検索できます。\n#火事 #富山",
+     "image": "https://kajisoku.jp/og/f/f-n-%E5%AF%8C%E5%B1%B1%E7%9C%8C-%E5%AF%8C%E5%B1%B1%E5%B8%82-%E5%B8%B8%E7%9B%A4%E5%8F%B0-2026-11-25.png"
+    },
+    "facebook": {
+     "text": "【火事】11月25日 19:35ごろ、富山県富山市常盤台で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら",
+     "url": "https://kajisoku.jp/f-n-%E5%AF%8C%E5%B1%B1%E7%9C%8C-%E5%AF%8C%E5%B1%B1%E5%B8%82-%E5%B8%B8%E7%9B%A4%E5%8F%B0-2026-11-25.html?utm_source=facebook&utm_medium=social&utm_campaign=fire_post"
+    }
+   }
+  },
   {
    "id": "n-鹿児島県-鹿児島市-吉野町-2026-11-25",
    "kind": "fire_post",
