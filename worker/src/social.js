@@ -6,7 +6,7 @@
 //  - 投稿した結果は social_posts に残し、同じ火事を同じ先に二度投稿しない。期限（expires）を過ぎた火事は投稿しない（翌日に回さない）
 //  - 配信先の Secret が入っていない先は飛ばす（エラーにしない）。Secret を入れること＝投稿を始めてよいという承認（docs/decisions.md 2026-11-25）
 //  - SOCIAL_PAUSE（変数）に何か入れると、すべての投稿を止める（誤った情報・削除依頼が来たとき）
-//  - 今動く配信先は Bluesky・Misskey・Mastodon（段階 1a）。Threads・Instagram・Facebook はキューに入るが、送り方（G5・G9）ができるまで投稿しない
+//  - 今動く配信先は Bluesky・Misskey・Mastodon（段階 1a）と Threads（1b・G5）。Instagram・Facebook はキューに入るが、送り方（G9）ができるまで投稿しない
 
 export const DESTS = ['bsky', 'misskey', 'mastodon', 'threads', 'instagram', 'facebook'];
 export const DAILY_MAX = { bsky: 8, misskey: 8, mastodon: 8, threads: 5, instagram: 2, facebook: 3 };   // 初期値。SOCIAL_MAX_<DEST>（変数）で変えられる
@@ -20,7 +20,8 @@ export function configured(env, d) {
   if (d === 'bsky') return !!(env.BSKY_HANDLE && env.BSKY_APP_PASSWORD);
   if (d === 'misskey') return !!(env.MISSKEY_HOST && env.MISSKEY_TOKEN);
   if (d === 'mastodon') return !!(env.MASTODON_HOST && env.MASTODON_TOKEN);
-  return false;   // threads・instagram・facebook は送り方ができるまで投稿しない
+  if (d === 'threads') return !!(env.THREADS_USER_ID && env.THREADS_TOKEN);
+  return false;   // instagram・facebook は送り方（G9）ができるまで投稿しない
 }
 export function dailyMax(env, d) {
   const raw = env['SOCIAL_MAX_' + d.toUpperCase()];
@@ -28,14 +29,18 @@ export function dailyMax(env, d) {
 }
 const jstDayStart = now => { const j = new Date(+now + 9 * 3600e3); j.setUTCHours(0, 0, 0, 0); return new Date(+j - 9 * 3600e3).toISOString(); };
 
+const readyDBs = new WeakSet();   // 表は1つの実行環境で1回だけ作る（毎分の cron で何度も CREATE しない）
 export async function setupSocial(DB) {
+  if (readyDBs.has(DB)) return;
   await DB.prepare(`CREATE TABLE IF NOT EXISTS social_queue (id TEXT NOT NULL, dest TEXT NOT NULL, kind TEXT NOT NULL, text TEXT NOT NULL, url TEXT, image TEXT,
     title TEXT, descr TEXT, first TEXT NOT NULL, expires TEXT NOT NULL, added TEXT NOT NULL, PRIMARY KEY (id, dest))`).run();
   await DB.prepare(`CREATE TABLE IF NOT EXISTS social_posts (id TEXT NOT NULL, dest TEXT NOT NULL, status TEXT NOT NULL, tries INTEGER NOT NULL DEFAULT 0,
     post_id TEXT, post_url TEXT, error TEXT, at TEXT NOT NULL, PRIMARY KEY (id, dest))`).run();
   await DB.prepare('CREATE INDEX IF NOT EXISTS idx_social_posts_dest ON social_posts(dest, at)').run();
   // Threads のトークン（60日で切れる）を自動で更新して持つ（G5 で使う）
-  await DB.prepare('CREATE TABLE IF NOT EXISTS social_tokens (dest TEXT PRIMARY KEY, token TEXT NOT NULL, expires TEXT, refreshed TEXT)').run();
+  await DB.prepare('CREATE TABLE IF NOT EXISTS social_tokens (dest TEXT PRIMARY KEY, token TEXT NOT NULL, expires TEXT, refreshed TEXT, seed TEXT)').run();
+  try { await DB.prepare('ALTER TABLE social_tokens ADD COLUMN seed TEXT').run(); } catch (e) {}   // 2026-11-25 の最初の版には seed の列がない
+  readyDBs.add(DB);
 }
 
 // キューの中身を確かめて入れる。入れた件数と、断った理由を返す
@@ -72,6 +77,7 @@ export async function socialTick(env, now = new Date(), fetcher = fetch) {
   if (env.SOCIAL_PAUSE) return { paused: true };
   await setupSocial(env.DB);
   const DB = env.DB, iso = now.toISOString(), out = {};
+  if (configured(env, 'threads')) { try { out.threadsToken = await refreshThreadsToken(env, now, fetcher); } catch (e) { out.threadsToken = 'error'; } }
   for (const d of DESTS) {
     if (!configured(env, d)) continue;
     const max = dailyMax(env, d);
@@ -172,4 +178,46 @@ async function sendMastodon(env, row, fetcher) {
   const s = await r.json();
   return s.id ? { id: s.id, url: s.url || null } : { error: 'id がない' };
 }
-const SEND = { bsky: sendBsky, misskey: sendMisskey, mastodon: sendMastodon };
+// Threads：長期トークンは60日で切れる。最初の1回だけ Secret の THREADS_TOKEN を使い、以後は週1回 refresh_access_token で新しくして D1 に持つ（docs/growth.md）。
+// 運営者・Muse が Secret を入れ直したら（値が変わったら）、そちらを使い直す
+const THREADS_API = 'https://graph.threads.net';
+const REFRESH_DAYS = 7;
+async function shortHash(t) { const b = await crypto.subtle.digest('SHA-256', enc.encode(String(t))); return [...new Uint8Array(b)].slice(0, 8).map(x => x.toString(16).padStart(2, '0')).join(''); }
+export async function threadsToken(env) {
+  const seed = await shortHash(env.THREADS_TOKEN);
+  const row = await env.DB.prepare("SELECT token, expires, refreshed, seed FROM social_tokens WHERE dest = 'threads'").first();
+  if (row && row.seed === seed) return { token: row.token, refreshed: row.refreshed, seed };
+  return { token: env.THREADS_TOKEN, refreshed: null, seed };
+}
+export async function refreshThreadsToken(env, now = new Date(), fetcher = fetch) {
+  const t = await threadsToken(env);
+  if (t.refreshed && +now - Date.parse(t.refreshed) < REFRESH_DAYS * 864e5) return 'fresh';
+  // まだ1回も更新していない Secret の値は、登録した直後（24時間以内）だと更新できないことがある。失敗しても次の回でやり直す
+  const last = await env.DB.prepare("SELECT refreshed FROM social_tokens WHERE dest = 'threads:try'").first();
+  if (last && +now - Date.parse(last.refreshed) < 6 * 3600e3) return 'wait';
+  await env.DB.prepare("INSERT INTO social_tokens (dest, token, refreshed) VALUES ('threads:try', '-', ?) ON CONFLICT(dest) DO UPDATE SET refreshed = excluded.refreshed").bind(now.toISOString()).run();
+  const r = await fetcher(`${THREADS_API}/refresh_access_token?grant_type=th_refresh_token&access_token=${encodeURIComponent(t.token)}`);
+  if (!r.ok) { console.error(JSON.stringify({ at: 'threads_refresh', status: r.status })); return 'error'; }
+  const j = await r.json();
+  if (!j.access_token) return 'error';
+  const expires = j.expires_in ? new Date(+now + j.expires_in * 1000).toISOString() : null;
+  await env.DB.prepare(`INSERT INTO social_tokens (dest, token, expires, refreshed, seed) VALUES ('threads', ?, ?, ?, ?)
+    ON CONFLICT(dest) DO UPDATE SET token = excluded.token, expires = excluded.expires, refreshed = excluded.refreshed, seed = excluded.seed`).bind(j.access_token, expires, now.toISOString(), t.seed).run();
+  return 'refreshed';
+}
+async function sendThreads(env, row, fetcher) {
+  const { token } = await threadsToken(env);
+  const uid = encodeURIComponent(env.THREADS_USER_ID);
+  const q = new URLSearchParams({ media_type: 'TEXT', text: row.text, access_token: token });
+  if (row.url) q.set('link_attachment', row.url);   // リンクのプレビューを付ける（本文に URL は入れない）
+  const r1 = await fetcher(`${THREADS_API}/v1.0/${uid}/threads`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: q });
+  if (!r1.ok) return { error: `threads ${r1.status} ${(await r1.text()).slice(0, 200)}` };
+  const c = await r1.json();
+  if (!c.id) return { error: 'コンテナの id がない' };
+  const r2 = await fetcher(`${THREADS_API}/v1.0/${uid}/threads_publish`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ creation_id: c.id, access_token: token }) });
+  if (!r2.ok) return { error: `threads_publish ${r2.status} ${(await r2.text()).slice(0, 200)}` };
+  const p = await r2.json();
+  return p.id ? { id: p.id } : { error: '投稿の id がない' };
+}
+const SEND = { bsky: sendBsky, misskey: sendMisskey, mastodon: sendMastodon, threads: sendThreads };

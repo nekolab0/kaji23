@@ -116,6 +116,40 @@ ok('fire.html・ボット・おかしなパスは数えない', !sc.some(x => x.
 r = await handle(req('GET', '/api/share-clicks?days=3'), env, t0); j = await r.json();
 ok('share-clicks の API に出る', j.byInc.some(x => x.inc.startsWith('p:') && x.src === 'bsky'), JSON.stringify(j.byInc));
 
+// Threads（G5）：コンテナを作って公開する・トークンを週1回更新して D1 に持つ
+{
+  const { env: e2, db: db2 } = makeEnv();
+  e2.THREADS_USER_ID = '123'; e2.THREADS_TOKEN = 'seed-token';
+  const tc = [];
+  let refreshOk = true;
+  const tf = async (u, o = {}) => {
+    tc.push({ u, o });
+    if (u.startsWith('https://graph.threads.net/refresh_access_token')) return refreshOk ? Response.json({ access_token: 'tok-' + tc.length, token_type: 'bearer', expires_in: 5184000 }) : new Response('{}', { status: 400 });
+    if (u === 'https://graph.threads.net/v1.0/123/threads') return Response.json({ id: 'c1' });
+    if (u === 'https://graph.threads.net/v1.0/123/threads_publish') return Response.json({ id: 'th1' });
+    return new Response('', { status: 404 });
+  };
+  await enqueue(e2, { items: [item(8, -5, 600)] }, t0);
+  let o2 = await socialTick(e2, t0, tf);
+  const cont = tc.find(c => c.u.endsWith('/threads'));
+  const tok1 = db2.prepare("SELECT token, seed FROM social_tokens WHERE dest='threads'").get();
+  ok('Threads：最初の回にトークンを更新して D1 に持つ', o2.threadsToken === 'refreshed' && tok1 && tok1.token.startsWith('tok-'), JSON.stringify(o2));
+  ok('Threads：本文・リンクの添付・更新したトークンで投稿し、公開する', o2.threads === 'ok' && cont.o.body.get('link_attachment').includes('utm_source=threads') && cont.o.body.get('access_token') === tok1.token
+    && tc.find(c => c.u.endsWith('/threads_publish')).o.body.get('creation_id') === 'c1', JSON.stringify(o2));
+  o2 = await socialTick(e2, at(60 * 24), tf);
+  ok('Threads：7日たつまでは更新しない', o2.threadsToken === 'fresh', JSON.stringify(o2));
+  const n0 = tc.length;
+  o2 = await socialTick(e2, at(60 * 24 * 8), tf);
+  ok('Threads：7日たったら更新する', o2.threadsToken === 'refreshed' && tc.length > n0 && db2.prepare("SELECT token FROM social_tokens WHERE dest='threads'").get().token !== tok1.token, JSON.stringify(o2));
+  e2.THREADS_TOKEN = 'new-seed';
+  const t2 = await (await import('./src/social.js')).threadsToken(e2);
+  ok('Threads：Secret を入れ直したら、その値を使い直す', t2.token === 'new-seed' && !t2.refreshed);
+  refreshOk = false;
+  o2 = await socialTick(e2, at(60 * 24 * 9), tf);
+  const o3 = await socialTick(e2, at(60 * 24 * 9 + 30), tf);
+  ok('Threads：更新に失敗しても止まらず、6時間はやり直さない', o2.threadsToken === 'error' && o3.threadsToken === 'wait', JSON.stringify([o2, o3]));
+}
+
 const bad = results.filter(x => !x.ok);
 for (const x of results) console.log((x.ok ? 'OK  ' : 'NG  ') + x.name + (x.ok ? '' : '  → ' + x.detail));
 console.log(`\n${results.length - bad.length}/${results.length} 合格`);
