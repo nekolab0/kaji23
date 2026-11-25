@@ -264,23 +264,38 @@ def featured_block():
     return ('<section class="section" aria-labelledby="feat"><h2 id="feat">直近24時間の主な火事</h2>'
             + news_list_jp(xs)
             + '<p class="small muted">けが人・亡くなった方がいると報じられた火事と、複数の報道があった火事から、新しい順ではなく目立つ順に3件まで出しています。</p></section>')
-def x_post_text(x):
-    """X 用の投稿文（煽らない・けが人の有無や見出しは書かない。場所・時刻・ページの URL だけ）"""
+def x_post_text(x, form='one'):
+    """X 用の投稿文（煽らない・けが人の有無や見出しは書かない。場所・時刻・ページの URL だけ）
+    form: 'one'＝リンクつきの1投稿（A）／'body'＝リンクなしの本文（B の1つ目）／'reply'＝B の返信（URL だけ）"""
     xp = x.get('pref', '東京都'); xc = x.get('city', x['ward'])
     place = ('' if is23(xp, xc) else xp) + xc + ((x['town'] + (f'{x["chome"]}丁目' if x.get('chome') else '')) if x.get('town') else '')
     b = '' if x.get('building') in (None, '', '建物不明') else f'（{x["building"]}）'
     url = f'{SITE_URL}/{quote(fire_href(news_fire_id(x)))}'
     tag = re.sub(r'[市区町村]$', '', WARD_PARENT.get((xp, xc)) or xc)   # 名古屋市中村区 → 名古屋、四日市市 → 四日市
-    return (f'【火事】{jtime(x["first"])}ごろ、{place}で火事{b}が報道されました。'
-            f'近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら\n{url}\n#火事 #{tag}')
+    head = f'【火事】{jtime(x["first"])}ごろ、{place}で火事{b}が報道されました。近くの方は煙や通行止めにご注意ください。'
+    if form == 'reply': return f'町名ごとの情報・目撃の共有はこちら\n{url}'
+    if form == 'body': return f'{head}町名ごとの情報は返信のリンクから\n#火事 #{tag}'
+    return f'{head}町名ごとの情報・目撃の共有はこちら\n{url}\n#火事 #{tag}'
+# リンクつきの1投稿（A）と、本文はリンクなし・URL は返信（B）を、日本時間の ISO 週で1週ずつ交互に試す（backlog 2026-11-23 週次）。
+# 偶数週＝A、奇数週＝B。比べる数字は、その週の t.co からの PV（ops/analytics/latest.json の top_referers）。
+def x_week_form(now=None):
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    w = now.astimezone(JST).isocalendar()[1]
+    return ('A', w) if w % 2 == 0 else ('B', w)
 def x_drafts_md(now=None):
     xs = featured_fires(n=5, now=now)
+    form, week = x_week_form(now)
     lines = ['# X 用の投稿文（自動で毎回作り直す・直近24時間の主な火事）', '',
              '`site/nation.py` の `x_post_text` が作る。投稿する前に、リンク先のページと報道で場所を確かめる。',
-             'けが人・亡くなった方のことは書かない（煽らない・二次被害を避ける）。', '']
+             'けが人・亡くなった方のことは書かない（煽らない・二次被害を避ける）。', '',
+             f'**今週（ISO 第{week}週）の形：{form}**　'
+             + ('A＝リンクつきの1投稿。' if form == 'A' else 'B＝本文はリンクなしで投稿し、すぐ自分の投稿への返信で URL を送る。')
+             + 'A と B を1週ずつ交互に試し、週ごとの t.co からの PV で比べる。今週の形だけを使う。', '']
     if not xs: lines.append('いま出す火事はありません。')
     for x in xs:
-        lines += [f'## {x.get("pref", "")}{x.get("city", x["ward"])}{x.get("town") or ""}（{jtime(x["first"])}）', '', '```', x_post_text(x), '```', '']
+        lines += [f'## {x.get("pref", "")}{x.get("city", x["ward"])}{x.get("town") or ""}（{jtime(x["first"])}）', '']
+        if form == 'A': lines += ['```', x_post_text(x), '```', '']
+        else: lines += ['本文：', '```', x_post_text(x, 'body'), '```', '', '返信：', '```', x_post_text(x, 'reply'), '```', '']
     return '\n'.join(lines)
 
 # ---------- 都道府県 ----------
