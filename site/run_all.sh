@@ -7,3 +7,4 @@ node og.js
 node verify.js || true
 python3 build.py
 node verify.js
+python3 check_social.py   # X 以外の SNS への投稿キューが文のきまりを守っているか（docs/growth.md）
