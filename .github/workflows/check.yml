@@ -37,7 +37,7 @@ jobs:
         if: steps.scope.outputs.heavy == 'true'
       - name: 受付サーバーのテスト
         if: steps.scope.outputs.heavy == 'true'
-        run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs && node --no-warnings worker/mail.test.mjs && node --no-warnings worker/xposts.test.mjs && node --no-warnings worker/phone.test.mjs && node --no-warnings worker/push.test.mjs
+        run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs && node --no-warnings worker/mail.test.mjs && node --no-warnings worker/xposts.test.mjs && node --no-warnings worker/phone.test.mjs && node --no-warnings worker/push.test.mjs && node --no-warnings worker/social.test.mjs
       - name: 生成・検査
         if: steps.scope.outputs.heavy == 'true'
         env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}', CF_BEACON_TOKEN: '${{ vars.CF_BEACON_TOKEN }}' }

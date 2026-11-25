@@ -325,7 +325,8 @@ def social_fire_item(x, now=None):
     u = lambda d: social_utm(url, d)
     posts = {
         # Bluesky：URL は本文に入れず、受付サーバーがリンクカード（embed）にする。ハッシュタグは受付サーバーが facet を付ける
-        'bsky': {'text': f'{head}\n#火事 #{tag}', 'url': u('bsky'), 'image': image},
+        'bsky': {'text': f'{head}\n#火事 #{tag}', 'url': u('bsky'), 'image': image,
+                 'title': f'{place}の火事｜{SITE_NAME}', 'desc': f'{jtime(x["first"])}ごろ発生、報道されました。町名ごとの情報・目撃の共有は{SITE_NAME}で。'},
         'misskey': {'text': f'{head}町名ごとの情報・目撃の共有はこちら\n{u("misskey")}\n#火事 #{tag}'},
         'mastodon': {'text': f'{head}町名ごとの情報・目撃の共有はこちら\n{u("mastodon")}\n#火事 #{tag}'},
         # Threads：ハッシュタグは1つだけ。URL は link_attachment で付ける

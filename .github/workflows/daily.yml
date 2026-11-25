@@ -53,6 +53,8 @@ jobs:
         run: node collector/indexnow.mjs || true
       - uses: actions/upload-artifact@v7
         with: { name: indexnow, path: indexnow/urls.json, if-no-files-found: ignore, retention-days: 1 }
+      - uses: actions/upload-artifact@v7   # X 以外の SNS への投稿キュー（公開のあとに受付サーバーへ送る。docs/growth.md の C3）
+        with: { name: social, path: ops/social/queue.json, if-no-files-found: ignore, retention-days: 1 }
       - name: データを保存
         # 作り直しの途中で main が進んでいる（PR のマージなど）と push が断られる。取り込み直して最大3回試し、
         # それでもだめならデータの保存だけ見送って公開は続ける（次の回で保存される）
@@ -103,6 +105,21 @@ jobs:
         with: { name: indexnow, path: indexnow }
       - env: { SITE_URL: '${{ vars.SITE_URL }}' }
         run: node collector/indexnow.mjs --send || true
+
+  # X 以外の SNS への投稿キューを、公開が済んでから受付サーバーへ送る（ページが公開される前にリンクを投稿しないため。docs/growth.md）
+  # SOCIAL_KEY（GitHub の Secret。受付サーバーの Secret と同じ値）がないあいだは何もしない。送れなくても公開は失敗にしない
+  social:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        continue-on-error: true
+        with: { name: social, path: social }
+      - env: { SOCIAL_KEY: '${{ secrets.SOCIAL_KEY }}', WORKER_URL: '${{ vars.WORKER_URL }}' }
+        run: |
+          [ -n "$SOCIAL_KEY" ] || { echo 'SOCIAL_KEY がないので送らない'; exit 0; }
+          [ -s social/queue.json ] || { echo 'キューがない'; exit 0; }
+          curl -sS -m 30 -X POST "${WORKER_URL:-https://api.kajisoku.jp}/api/social/enqueue" -H "Authorization: Bearer $SOCIAL_KEY" -H 'Content-Type: application/json' --data-binary @social/queue.json || echo '::warning::投稿キューを送れませんでした'
 
   # 本番（受付サーバー・消防本部の読み取り・報道の収集）の監視。失敗するとメールが届くが、サイトの公開（deploy）は止めない
   monitor:

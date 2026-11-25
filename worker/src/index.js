@@ -25,6 +25,7 @@ import { parseMail, mailText, decodeHeader } from './mail.js';
 import { pollX, snsFor } from './xposts.js';
 import { phoneTick, onRecording, onCallStatus, phoneLog, phoneKey } from './phone.js';
 import { vapidKeys, subscribe, unsubscribe, myAreas, pushTick } from './push.js';
+import { enqueue as socialEnqueue, socialTick, socialStatus } from './social.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
@@ -226,6 +227,15 @@ export async function handle(request, env, now = new Date()) {
   };
   const body = async () => { try { return await request.json(); } catch { return null; } };
   const P = url.pathname;
+
+  // ---- X 以外の SNS への自動投稿（docs/growth.md）。キューはサイトの生成が公開のあとに送る ----
+  if (P === '/api/social/enqueue' && request.method === 'POST') {
+    if (!env.SOCIAL_KEY) return json(env, { error: 'SOCIAL_KEY が設定されていません' }, 503);
+    if (request.headers.get('Authorization') !== 'Bearer ' + env.SOCIAL_KEY) return json(env, { error: '認証できませんでした' }, 401);
+    const r = await socialEnqueue(env, await body(), now);
+    return json(env, r, r.status || 200);
+  }
+  if (P === '/api/social/status' && request.method === 'GET') return json(env, await socialStatus(env, Number(url.searchParams.get('days')) || 7, now));
 
   // ---- 目撃報告 ----
   if (P === '/api/report' && request.method === 'POST') {
@@ -603,6 +613,7 @@ export default {
     try { await pollX(env); } catch (e) {}
     try { await phoneTick(env); } catch (e) {}
     try { await pushTick(env); } catch (e) {}
+    try { await socialTick(env); } catch (e) { console.error(JSON.stringify({ at: 'socialTick', error: String(e && e.message || e).slice(0, 300) })); }   // X 以外の SNS への自動投稿（Secret のある先だけ・SOCIAL_PAUSE で止まる）
     // GitHub の定期実行は混雑で数時間あくことがあるため、30分ごとにこちらからサイトの作り直し（報道の取り直し）を頼む（GH_TOKEN を設定したときだけ）
     if (env.GH_TOKEN && [7, 37].includes(new Date().getUTCMinutes()) && !QUIET_KICK.includes(new Date().toISOString().slice(11, 16))) { try { await kickBuild(env); } catch (e) {} }   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
   },
