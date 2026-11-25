@@ -1129,6 +1129,10 @@ def build(report=None):
     for fn, h in pages.items(): (DIST / fn).write_text(h, encoding='utf-8')
     (ROOT / 'ops' / 'x_drafts').mkdir(parents=True, exist_ok=True)
     (ROOT / 'ops' / 'x_drafts' / 'latest.md').write_text(x_drafts_md(), encoding='utf-8')   # X 用の投稿文（E014。daily が保存する）
+    (ROOT / 'ops' / 'social').mkdir(parents=True, exist_ok=True)   # X 以外の SNS への投稿キュー（docs/growth.md の C1。daily が保存する）
+    _sq = social_queue()
+    (ROOT / 'ops' / 'social' / 'queue.json').write_text(json.dumps(_sq, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    (ROOT / 'ops' / 'social' / 'drafts.md').write_text(social_drafts_md(_sq), encoding='utf-8')
     # 公開データ（誰でも検証できるように）
     public = {'fetchedAt': tfd['fetchedAt'], 'source': tfd_file, 'population_source': pop['url'], 'daily': daily,
               'news': {'collectedAt': news['collectedAt'], 'incidents': [{k: x[k] for k in ('id', 'ward', 'town', 'chome', 'building', 'injured', 'dead', 'first', 'sources')} for x in news['incidents']]},

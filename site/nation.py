@@ -298,6 +298,66 @@ def x_drafts_md(now=None):
         else: lines += ['本文：', '```', x_post_text(x, 'body'), '```', '', '返信：', '```', x_post_text(x, 'reply'), '```', '']
     return '\n'.join(lines)
 
+# ---------- X 以外の SNS への投稿キュー（docs/growth.md の C1・backlog G1） ----------
+# 毎回の生成で ops/social/queue.json（受付サーバーが API で投稿する元）と ops/social/drafts.md（人が見て確かめる版）を書く。
+# 文のきまりは X と同じ（場所・時刻・情報源の種類・URL だけ。けが人・見出し・番地・店名は書かない。煽らない）。
+# 町名まで分かった火事だけを入れる（市までの火事は同じ文の連投に見え、スパム判定の原因になる）。
+# 同じ火事を同じ先に二度出さない・上限・間隔・古い速報を出さないのは受付サーバー側（C2）で守る。ここでは期限 expires を付ける。
+SOCIAL_DESTS = ('bsky', 'misskey', 'mastodon', 'threads', 'instagram', 'facebook')
+SOCIAL_LIMITS = {'bsky': 300, 'misskey': 3000, 'mastodon': 500, 'threads': 500, 'instagram': 2200, 'facebook': 5000}   # 本文の上限（字）
+SOCIAL_EXPIRE_HOURS = 12   # 発生（最初の報道）からこの時間を過ぎた火事は投稿しない（古い速報は出さない。報道は掲載まで中央値86分かかるので短くしすぎない）
+def social_utm(url, dest, kind='fire_post'):
+    return f'{url}{"&" if "?" in url else "?"}utm_source={dest}&utm_medium=social&utm_campaign={kind}'
+def social_fire_item(x, now=None):
+    """1件の火事を、配信先ごとの文にする。町名が分からない火事は None"""
+    if not x.get('town') or x.get('sensitive'): return None
+    xp = x.get('pref', '東京都'); xc = x.get('city', x['ward'])
+    place = ('' if is23(xp, xc) else xp) + xc + x['town'] + (f'{x["chome"]}丁目' if x.get('chome') else '')
+    b = '' if x.get('building') in (None, '', '建物不明') else f'（{x["building"]}）'
+    href = fire_href(news_fire_id(x))
+    url = f'{SITE_URL}/{quote(href)}'
+    tag = re.sub(r'[市区町村]$', '', WARD_PARENT.get((xp, xc)) or xc)
+    head = f'【火事】{jtime(x["first"])}ごろ、{place}で火事{b}が報道されました。近くの方は煙や通行止めにご注意ください。'
+    try: first = datetime.datetime.fromisoformat(x['first'].replace('Z', '+00:00'))
+    except (KeyError, TypeError, ValueError): return None
+    if first.tzinfo is None: first = first.replace(tzinfo=datetime.timezone.utc)
+    image = f'{SITE_URL}/og/f/{quote(href[:-5])}.png'   # 直近 FIRE_OG_DAYS 日の固定ページは og.js が件別の画像を作る
+    u = lambda d: social_utm(url, d)
+    posts = {
+        # Bluesky：URL は本文に入れず、受付サーバーがリンクカード（embed）にする。ハッシュタグは受付サーバーが facet を付ける
+        'bsky': {'text': f'{head}\n#火事 #{tag}', 'url': u('bsky'), 'image': image},
+        'misskey': {'text': f'{head}町名ごとの情報・目撃の共有はこちら\n{u("misskey")}\n#火事 #{tag}'},
+        'mastodon': {'text': f'{head}町名ごとの情報・目撃の共有はこちら\n{u("mastodon")}\n#火事 #{tag}'},
+        # Threads：ハッシュタグは1つだけ。URL は link_attachment で付ける
+        'threads': {'text': f'{head}町名ごとの情報はリンクから #火事', 'url': u('threads')},
+        # Instagram：本文のリンクは押せないので、プロフィールのリンクへ案内する。画像は必須（JPEG への変換は G9 で）
+        'instagram': {'text': f'{head}町名ごとの情報は、プロフィールのリンクから町名で検索できます。\n#火事 #{tag}', 'image': image},
+        'facebook': {'text': f'{head}町名ごとの情報・目撃の共有はこちら', 'url': u('facebook')},
+    }
+    for d, p in posts.items():
+        if len(p['text']) > SOCIAL_LIMITS[d]: p['text'] = p['text'][:SOCIAL_LIMITS[d] - 1] + '…'
+    return {'id': news_fire_id(x), 'kind': 'fire_post', 'first': first.isoformat(),
+            'expires': (first + datetime.timedelta(hours=SOCIAL_EXPIRE_HOURS)).isoformat(),
+            'page': f'{SITE_URL}/{quote(href)}', 'place': place, 'posts': posts}
+def social_queue(now=None):
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    items = [it for it in (social_fire_item(x, now) for x in featured_fires(n=8, now=now)) if it]
+    items = [it for it in items if datetime.datetime.fromisoformat(it['expires']) > now]
+    return {'generatedAt': now.isoformat(timespec='seconds'), 'version': 1, 'dests': list(SOCIAL_DESTS), 'items': items}
+def social_drafts_md(q):
+    lines = ['# X 以外の SNS への投稿キュー（自動で毎回作り直す）', '',
+             '`site/nation.py` の `social_queue` が作る。中身は `ops/social/queue.json` と同じで、受付サーバーが API で投稿する（`docs/growth.md`）。',
+             '受付サーバーの投稿の仕組み（G2）と各配信先の Secret が入るまで、ここに出ても**投稿はされない**。',
+             f'町名まで分かった「目立つ火事」だけ。発生から{SOCIAL_EXPIRE_HOURS}時間を過ぎた火事は外す。X の文は `ops/x_drafts/latest.md`。', '',
+             'Muse の手で投稿する TikTok・YouTube ショート・note・はてなブログの週の素材は、週のまとめ（G8）ができたら `ops/social/weekly/` に出る。', '']
+    if not q['items']: lines.append('いま出す火事はありません。')
+    for it in q['items']:
+        lines += [f'## {it["place"]}（{jtime(it["first"])}・期限 {jtime(it["expires"])}）', '']
+        for d in q['dests']:
+            p = it['posts'][d]
+            lines += [f'**{d}**' + (f'（リンク：{p["url"]}）' if p.get('url') else '') + ('（画像あり）' if p.get('image') else ''), '```', p['text'], '```', '']
+    return '\n'.join(lines)
+
 # ---------- 都道府県 ----------
 def pref_page(p):
     par = {name: wards_ for name, wards_ in PARENTS.get(p, [])}
