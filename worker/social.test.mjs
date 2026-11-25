@@ -100,6 +100,22 @@ j = await r.json();
 ok('状況：配信先ごとの数だけ返す（本文は返さない）', r.status === 200 && j.active.length === 3 && j.byDay.some(x => x.dest === 'bsky' && x.status === 'ok') && !JSON.stringify(j).includes('【火事】'), JSON.stringify(j));
 ok('facet：タグがなければ空', bskyFacets('タグなし').length === 0);
 
+// 静的なページへの来訪（sendBeacon）を share_clicks に数える（G4）
+const beacon = (qs, ua = 'Mozilla/5.0 (iPhone)') => new Request('https://w.example/api/visit?' + qs, { method: 'POST', headers: { 'User-Agent': ua } });
+const enc2 = encodeURIComponent('/f-n-宮城県-仙台市青葉区-錦町-2026-11-24.html');
+r = await handle(beacon(`p=${enc2}&utm_source=bsky&utm_campaign=fire_post`), env, t0);
+await handle(beacon(`p=${enc2}&utm_source=bsky&utm_campaign=fire_post`), env, t0);
+await handle(beacon(`p=%2Fquiz.html&utm_source=threads&utm_campaign=quiz`), env, t0);
+await handle(beacon(`p=%2Ffire.html&utm_source=x`), env, t0);
+await handle(beacon(`p=%2Fg-119.html&utm_source=bsky`, 'Bluesky Cardyb/1.1'), env, t0);
+await handle(beacon(`p=%2Fg-119.html&utm_source=bsky`, 'Twitterbot/1.0'), env, t0);
+await handle(beacon(`p=%2F%3Cscript%3E.html&utm_source=bsky`), env, t0);
+const sc = db.prepare('SELECT inc, src, campaign, n FROM share_clicks ORDER BY inc').all();
+ok('静的なページの来訪を数える（204・日本時間の日付・ページごと）', r.status === 204 && sc.some(x => x.inc === 'p:f-n-宮城県-仙台市青葉区-錦町-2026-11-24.html' && x.src === 'bsky' && x.n === 2) && sc.some(x => x.inc === 'p:quiz.html' && x.campaign === 'quiz'), JSON.stringify(sc));
+ok('fire.html・ボット・おかしなパスは数えない', !sc.some(x => x.inc === 'p:fire.html' || /script/.test(x.inc)) && sc.filter(x => x.inc === 'p:g-119.html').length <= 1, JSON.stringify(sc));
+r = await handle(req('GET', '/api/share-clicks?days=3'), env, t0); j = await r.json();
+ok('share-clicks の API に出る', j.byInc.some(x => x.inc.startsWith('p:') && x.src === 'bsky'), JSON.stringify(j.byInc));
+
 const bad = results.filter(x => !x.ok);
 for (const x of results) console.log((x.ok ? 'OK  ' : 'NG  ') + x.name + (x.ok ? '' : '  → ' + x.detail));
 console.log(`\n${results.length - bad.length}/${results.length} 合格`);

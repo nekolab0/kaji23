@@ -183,6 +183,20 @@ export function shareClickOf(request, now = new Date()) {
   const day = new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
   return { day, inc, src, campaign };
 }
+// 静的なページ（報道・消防の火事のページ f-n-/f-o-・読み物 g-・quiz.html など）は Cloudflare のルートを通らないので、
+// ページの JavaScript（assets/site.js）が utm つきで開かれたときだけ POST /api/visit?p=<パス>&utm_source=…（sendBeacon）で知らせる（docs/growth.md の C5・G4）。
+// fire.html は siteFirePage で数えているので数えない。数えるのは日・ページ・流入元・種類ごとの回数だけ（人の情報は残さない）
+export function visitOf(request, now = new Date()) {
+  const u = new URL(request.url), ua = request.headers.get('User-Agent') || '';
+  const src = (u.searchParams.get('utm_source') || '').toLowerCase().slice(0, 20);
+  let path = u.searchParams.get('p') || '';
+  try { path = decodeURIComponent(path); } catch (e) { return null; }
+  if (!src || !/^[a-z0-9_-]+$/.test(src) || BOT_UA.test(ua) || request.method !== 'POST') return null;
+  if (!/^\/[^\s<>"'?#]{0,160}$/.test(path) || path === '/fire.html' || !(path === '/' || /\.html$/.test(path))) return null;
+  const campaign = (u.searchParams.get('utm_campaign') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+  const day = new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
+  return { day, inc: 'p:' + (path.slice(1) || 'index.html'), src, campaign };
+}
 async function countShareClick(request, env, now) {
   const c = shareClickOf(request, now); if (!c) return;
   if (!ready || ready.env !== env) { const p = setup(env); ready = { env, p }; p.catch(() => { ready = null; }); }
@@ -393,6 +407,11 @@ export async function handle(request, env, now = new Date()) {
   }
 
   // X などの投稿から来た人の数（日ごと・流入元ごとの合計と、火事ごとの内訳）。X の投稿の表示回数と割ってクリック率を見る（2026-11-23）
+  if (P === '/api/visit') {
+    const c = visitOf(request, now);
+    if (c) await DB.prepare('INSERT INTO share_clicks (day, inc, src, campaign, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(day, inc, src, campaign) DO UPDATE SET n = n + 1').bind(c.day, c.inc, c.src, c.campaign).run();
+    return cors(env, new Response(null, { status: 204 }));
+  }
   if (P === '/api/share-clicks' && request.method === 'GET') {
     const days = Math.min(60, Math.max(1, parseInt(url.searchParams.get('days') || '14', 10) || 14));
     const since = new Date(now.getTime() + 9 * 3600e3 - (days - 1) * 864e5).toISOString().slice(0, 10);
