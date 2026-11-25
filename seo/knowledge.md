@@ -219,3 +219,7 @@
 - PulsePoint：米国アルバカーキ消防が契約をやめた。10年で、通知で現場に来たと報告されたのは2件。通報者の正確な住所が出るのもプライバシーの問題とした（[KRQE / Yahoo News（2025-04-25）](https://www.yahoo.com/news/platform-become-obsolete-albuquerque-fire-224331263.html)）。**火事速での読み替え**：町の単位で出す今の決まりは正しい。機能は使われているかを数える
 
 **kaji.news**：今回はトップページを読み込めなかった（取得の許可が下りなかった）。変化は**不明**
+
+## 14. フィードと WebSub（2026-11-25 確認）
+- Google Discover の「フォロー」（フィードを使う。2021年に Chrome で始まった）の説明は、2025-11 に Google の文書から消えた（https://www.seroundtable.com/google-discover-drops-follow-feature-40463.html ）。今の Discover の説明（最終更新 2026-03-09）にもフィード・フォローの記述はない。フィードで Discover の入口を作る、という根拠はなくなった
+- サイトマップの説明（https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap ）を開き直し、「RSS・Atom のフィードはサイトマップとして送れるが、新しい URL しか入らない」「Atom・RSS なら WebSub で Google を含む検索エンジンに変更を知らせられる」が今も書かれていることを確かめた

@@ -314,6 +314,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=N
 <meta property="og:image" content="{esc(ogimg)}">
 <meta property="og:url" content="{esc(canon)}">
 <link rel="canonical" href="{esc(canon)}">
+<link rel="alternate" type="application/atom+xml" title="火事速 全国の新しい火事" href="{esc(SITE_URL)}/feed.xml">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="robots" content="max-image-preview:large">
@@ -1204,7 +1205,20 @@ def build(report=None):
     # 索引に加えて、型ごとのサイトマップも1本ずつ書く。Google が索引を読んでも子を読みに来ないため（実験 E006・2026-11-17）。
     # robots.txt のサイトマップの行は何本でも書け、索引と個別の両方を知らせてよい（seo/knowledge.md の11章）
     (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nDisallow: /data/_guides.json\nDisallow: /data/_fires_og.json\nSitemap: {SITE_URL}/sitemap.xml\n'
-        + ''.join(f'Sitemap: {SITE_URL}/{n}\n' for n, _ in files), encoding='utf-8')
+        + ''.join(f'Sitemap: {SITE_URL}/{n}\n' for n, _ in files) + f'Sitemap: {SITE_URL}/feed.xml\n', encoding='utf-8')
+    # Atom フィード（新しい火事だけの短いサイトマップ。docs/growth.md の C8・seo/decisions.md 2026-11-25）。
+    # 中身（entry の id と updated）が前の回から変わったときだけ websub/ping.txt を書き、daily.yml の公開後のジョブがハブに知らせる
+    _listed = {fn for fn, _, _ in urls}
+    _titles = {fn: html.unescape(m.group(1)) for fn in _listed if fn.startswith('f-') for m in [re.search(r'<title>(.*?)</title>', pages[fn])] if m}
+    _entries = feed_entries(_listed, _titles)
+    (DIST / 'feed.xml').write_text(feed_xml(_entries), encoding='utf-8')
+    _sig = sorted(f"{e['id']} {e['updated']}" for e in _entries)
+    _sp = ROOT / 'data' / 'raw' / 'feed_sig.json'
+    _old = json.loads(_sp.read_text(encoding='utf-8')) if _sp.exists() else None
+    if _old != _sig:
+        _sp.write_text(json.dumps(_sig, ensure_ascii=False, indent=0) + '\n', encoding='utf-8')
+        (ROOT / 'websub').mkdir(exist_ok=True)
+        (ROOT / 'websub' / 'ping.txt').write_text(f'{SITE_URL}/feed.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:
         (DIST / 'ads.txt').write_text(f"google.com, {ADS_CLIENT.replace('ca-pub-', 'pub-')}, DIRECT, f08c47fec0942fa0\n", encoding='utf-8')

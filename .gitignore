@@ -6,3 +6,4 @@ verify/tmp/
 __pycache__/
 verify/monitor_fail.txt
 indexnow/
+websub/
