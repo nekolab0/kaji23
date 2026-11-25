@@ -22,7 +22,7 @@ Q = '''query($acc: String!, $f: AccountRumPageloadEventsAdaptiveGroupsFilter_Inp
   viewer { accounts(filter: {accountTag: $acc}) {
     daily: rumPageloadEventsAdaptiveGroups(limit: 10, filter: $f, orderBy: [date_ASC]) { count sum { visits } dimensions { date } }
     paths: rumPageloadEventsAdaptiveGroups(limit: 30, filter: $f, orderBy: [count_DESC]) { count sum { visits } dimensions { requestPath } }
-    refs: rumPageloadEventsAdaptiveGroups(limit: 15, filter: $f, orderBy: [count_DESC]) { count dimensions { refererHost } }
+    refs: rumPageloadEventsAdaptiveGroups(limit: 40, filter: $f, orderBy: [count_DESC]) { count dimensions { refererHost } }
   } } }'''
 flt = {'siteTag': site, 'datetime_geq': since.isoformat().replace('+00:00', 'Z'), 'datetime_lt': until.isoformat().replace('+00:00', 'Z'), 'bot': 0}
 r = requests.post('https://api.cloudflare.com/client/v4/graphql', timeout=60,

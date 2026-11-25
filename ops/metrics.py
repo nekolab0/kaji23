@@ -5,7 +5,7 @@
           ops/analytics/latest.json（Cloudflare Web Analytics。なければ回遊は「不明」）
 書くもの：ops/metrics/latest.json・latest.md（今日の数字と今の段階）、ops/metrics/history.csv（1日1行）
 """
-import csv, datetime, json, re, statistics
+import csv, datetime, json, os, re, statistics, urllib.request
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -94,6 +94,28 @@ else:
     m['pageviews_7d'] = m['visits_7d'] = m['pages_per_visit_7d'] = None
 
 m['rpm'] = None   # AdSense の数字はまだ取っていない
+
+# ---- 3b. 配信先ごとの来訪（docs/growth.md の C5）：utm つきのリンクから来た回数（受付サーバーの share_clicks）と、参照元のホスト（Web Analytics）
+SOCIAL_SRC = ['x', 'bsky', 'misskey', 'mastodon', 'threads', 'instagram', 'facebook', 'tiktok', 'youtube', 'note', 'hatena']
+REF_HOSTS = {'x': ['t.co', 'x.com', 'twitter.com'], 'bsky': ['bsky.app'], 'misskey': ['misskey.io'], 'threads': ['threads.com', 'threads.net', 'l.threads.com'],
+             'instagram': ['l.instagram.com', 'instagram.com'], 'facebook': ['l.facebook.com', 'm.facebook.com', 'facebook.com', 'lm.facebook.com'],
+             'tiktok': ['tiktok.com'], 'youtube': ['youtube.com', 'm.youtube.com'], 'note': ['note.com'], 'hatena': ['b.hatena.ne.jp', 'hatenablog.com']}
+AI_HOSTS = ['chatgpt.com', 'chat.openai.com', 'perplexity.ai', 'www.perplexity.ai', 'gemini.google.com', 'copilot.microsoft.com', 'claude.ai', 'search.brave.com']
+def social_clicks():
+    try:
+        url = (os.environ.get('WORKER_URL') or 'https://api.kajisoku.jp').rstrip('/') + '/api/share-clicks?days=7'
+        with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'kaji23-metrics'}), timeout=20) as r:
+            return json.load(r)
+    except Exception:
+        return None
+sc = social_clicks()
+refs = {x['host']: x['pageviews'] for x in ((an or {}).get('top_referers') or [])}
+m['social_visits_7d'] = None if sc is None else {k: 0 for k in SOCIAL_SRC}
+if sc is not None:
+    for row in sc.get('byDay', []):
+        m['social_visits_7d'][row['src']] = m['social_visits_7d'].get(row['src'], 0) + row['n']
+m['social_referer_pv_7d'] = None if an is None else {k: sum(refs.get(h, 0) for h in hs) for k, hs in REF_HOSTS.items()}
+m['ai_referer_pv_7d'] = None if an is None else {h: refs[h] for h in AI_HOSTS if refs.get(h)}
 
 # ---- D. 有事の速さ（情報源の時刻 → 火事のページが最初に生成されるまで）
 seen = load('data/raw/fire_first_seen.json', {})
@@ -220,6 +242,14 @@ md = f"""# 今日の数字（{m['date']}）
 
 守る数字の警告：{'、'.join(g) if g else 'なし'}
 {('' if not m['sources_failing'] else chr(10) + '読めていない出動情報ページ：' + '、'.join(m['sources_failing'][:15]) + chr(10))}
+
+## 配信先ごとの来訪（直近7日）
+「utm つきの来訪」は、投稿のリンク（utm_source つき）から開かれた回数（受付サーバーの share_clicks。ボットは除く）。「参照元の PV」は Cloudflare Web Analytics の参照元のホストで数えた PV（アプリ内のブラウザでは参照元が落ちるので少なめに出る）。2週続けて両方0の配信先は、投稿の上限を半分にする（docs/growth.md 5章）。
+
+| 配信先 | utm つきの来訪 | 参照元の PV |
+|---|---|---|
+""" + ''.join(f"| {k} | {'不明' if m['social_visits_7d'] is None else m['social_visits_7d'].get(k, 0)} | {'不明' if m['social_referer_pv_7d'] is None else m['social_referer_pv_7d'].get(k, '―')} |\n" for k in SOCIAL_SRC) + f"""
+AI からの来訪（参照元の PV）：{'不明' if m['ai_referer_pv_7d'] is None else ('、'.join(f'{h} {n}' for h, n in m['ai_referer_pv_7d'].items()) or 'なし')}
 
 ## 型ごとの登録（URL 検査）
 「知っている」は、登録・検出・クロール済みなど、Google が URL を知っている数。「読みに来た」は、クロールの日付がある数。

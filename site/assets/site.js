@@ -5,6 +5,18 @@
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
   var meta = $('meta[name="kaji23-api"]');
   var API = meta && meta.content ? meta.content.replace(/\/$/, '') : '';
+  // SNS の投稿（utm つきのリンク）から来た回数を数える（docs/growth.md の C5）。fire.html は受付サーバーが数えるので送らない。
+  // 同じタブで開き直したときは数えない。送るのはページのパス・流入元・種類だけ
+  (function () {
+    try {
+      var q = new URLSearchParams(location.search), src = q.get('utm_source');
+      if (!API || !src || location.pathname === '/fire.html' || !navigator.sendBeacon) return;
+      var key = 'kv:' + location.pathname + ':' + src;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+      navigator.sendBeacon(API + '/api/visit?p=' + encodeURIComponent(location.pathname) + '&utm_source=' + encodeURIComponent(src) + '&utm_campaign=' + encodeURIComponent(q.get('utm_campaign') || ''));
+    } catch (e) {}
+  })();
   var FLAGGED = {};   // このページで通報した口コミ（id → true）
   var KIND = { siren: 'サイレン', smoke: '煙・におい', fire: '火' };
   var AREAS = window.KAJI_AREAS || { prefs: {}, codes: {} };   // 全国の都道府県・市区町村（assets/areas.js）
