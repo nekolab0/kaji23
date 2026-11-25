@@ -1,9 +1,9 @@
 {
- "date": "2026-11-24",
+ "date": "2026-11-25",
  "indexed": 1,
- "inspected": 4760,
- "sitemap_urls": 4760,
- "gsc_fetched_at": "2026-11-24T18:04+09:00",
+ "inspected": 4843,
+ "sitemap_urls": 4843,
+ "gsc_fetched_at": "2026-11-25T14:56+09:00",
  "index_by_kind": {
   "main": {
    "sitemap": 40,
@@ -27,22 +27,22 @@
    "known": 0
   },
   "city": {
-   "sitemap": 1556,
-   "inspected": 1556,
+   "sitemap": 1558,
+   "inspected": 1558,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "town": {
-   "sitemap": 1199,
-   "inspected": 1199,
+   "sitemap": 1215,
+   "inspected": 1215,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "fire": {
-   "sitemap": 1871,
-   "inspected": 1871,
+   "sitemap": 1936,
+   "inspected": 1936,
    "indexed": 0,
    "crawled": 0,
    "known": 0
@@ -52,38 +52,38 @@
  "sitemap_index_downloaded": "2026-11-13",
  "sitemap_index_submitted_urls": 9170,
  "clicks_7d": 0,
- "impressions_7d": 9,
+ "impressions_7d": 13,
  "clicks_per_day_7d": 0.0,
- "gsc_last_day": "2026-11-21",
- "pageviews_7d": 312,
- "visits_7d": 274,
- "pages_per_visit_7d": 1.14,
+ "gsc_last_day": "2026-11-22",
+ "pageviews_7d": 478,
+ "visits_7d": 415,
+ "pages_per_visit_7d": 1.15,
  "rpm": null,
- "publish_samples_7d": 367,
- "news_samples_7d": 269,
- "news_over_6h_7d": 0.23,
+ "publish_samples_7d": 401,
+ "news_samples_7d": 291,
+ "news_over_6h_7d": 0.21,
  "publish_minutes_median_7d": 66,
- "publish_minutes_p90_7d": 1046,
+ "publish_minutes_p90_7d": 942,
  "publish_within_30m_7d": 0.2,
- "fires_per_day_7d": 58.9,
- "fires_per_day_prev7d": 66.9,
+ "fires_per_day_7d": 63.6,
+ "fires_per_day_prev7d": 63.0,
  "misread_suspects": [],
  "news_reused_articles": [
   "山形県-山形市-印役町-2026-11-20",
   "東京都-墨田区-向島-2026-11-19"
  ],
- "sources_status_at": "2026-11-24T05:15:49.761Z",
+ "sources_status_at": "2026-11-25T04:08:59.478Z",
  "sources_total": 79,
  "sources_failing": [
-  "kyoto（HTTP 522・32回続けて）"
+  "kyoto（HTTP 522・35回続けて）"
  ],
  "fire_mail_senders": 60,
- "news_query_runs_7d": 45,
+ "news_query_runs_7d": 63,
  "news_saturated_last": [
   "火事 when:1d",
   "火災 when:1d"
  ],
- "news_failed_runs_7d": 12,
+ "news_failed_runs_7d": 16,
  "verify_ok": true,
  "verify_failed": [],
  "stage": 1,

@@ -1,17 +1,12 @@
 {
- "fetchedAt": "2026-11-24T09:04+00:00",
+ "fetchedAt": "2026-11-25T05:56+00:00",
  "range": [
-  "2026-11-17",
-  "2026-11-23"
+  "2026-11-18",
+  "2026-11-24"
  ],
- "pageviews_7d": 312,
- "visits_7d": 274,
+ "pageviews_7d": 478,
+ "visits_7d": 415,
  "daily": [
-  {
-   "date": "2026-11-17",
-   "pageviews": 31,
-   "visits": 29
-  },
   {
    "date": "2026-11-18",
    "pageviews": 52,
@@ -41,17 +36,22 @@
    "date": "2026-11-23",
    "pageviews": 53,
    "visits": 49
+  },
+  {
+   "date": "2026-11-24",
+   "pageviews": 197,
+   "visits": 170
   }
  ],
  "top_paths": [
   {
    "path": "/fire.html",
-   "pageviews": 263,
-   "visits": 254
+   "pageviews": 410,
+   "visits": 397
   },
   {
    "path": "/index.html",
-   "pageviews": 16,
+   "pageviews": 25,
    "visits": 0
   },
   {
@@ -61,12 +61,12 @@
   },
   {
    "path": "/map.html",
-   "pageviews": 4,
+   "pageviews": 6,
    "visits": 0
   },
   {
    "path": "/town.html",
-   "pageviews": 3,
+   "pageviews": 4,
    "visits": 0
   },
   {
@@ -75,8 +75,23 @@
    "visits": 3
   },
   {
+   "path": "/c-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E3%81%95%E3%81%84%E3%81%9F%E3%81%BE%E5%B8%82%E8%A6%8B%E6%B2%BC%E5%8C%BA.html",
+   "pageviews": 2,
+   "visits": 0
+  },
+  {
+   "path": "/c-%E5%BA%83%E5%B3%B6%E7%9C%8C-%E7%86%8A%E9%87%8E%E7%94%BA.html",
+   "pageviews": 2,
+   "visits": 0
+  },
+  {
    "path": "/p-%E5%8D%83%E8%91%89%E7%9C%8C.html",
    "pageviews": 2,
+   "visits": 0
+  },
+  {
+   "path": "/f-n-%E6%84%9B%E7%9F%A5%E7%9C%8C-%E5%90%8D%E5%8F%A4%E5%B1%8B%E5%B8%82%E4%B8%AD%E6%9D%91%E5%8C%BA-x-2026-11-22.html",
+   "pageviews": 1,
    "visits": 0
   },
   {
@@ -85,14 +100,19 @@
    "visits": 1
   },
   {
+   "path": "/p-%E6%84%9B%E7%9F%A5%E7%9C%8C.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
    "path": "/about.html",
    "pageviews": 1,
    "visits": 1
   },
   {
-   "path": "/f-n-%E6%96%B0%E6%BD%9F%E7%9C%8C-%E6%96%B0%E6%BD%9F%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA-%E9%B3%A5%E5%B1%8B%E9%87%8E1%E4%B8%81%E7%9B%AE-2026-11-18.html",
+   "path": "/p-%E5%9F%BC%E7%8E%89%E7%9C%8C.html",
    "pageviews": 1,
-   "visits": 1
+   "visits": 0
   },
   {
    "path": "/p-%E9%95%B7%E9%87%8E%E7%9C%8C.html",
@@ -100,7 +120,7 @@
    "visits": 0
   },
   {
-   "path": "/c-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E3%81%95%E3%81%84%E3%81%9F%E3%81%BE%E5%B8%82%E8%A6%8B%E6%B2%BC%E5%8C%BA.html",
+   "path": "/c-%E5%AE%AE%E5%9F%8E%E7%9C%8C-%E4%BB%99%E5%8F%B0%E5%B8%82%E9%9D%92%E8%91%89%E5%8C%BA.html",
    "pageviews": 1,
    "visits": 0
   },
@@ -115,23 +135,28 @@
    "visits": 0
   },
   {
-   "path": "/f-n-%E6%96%B0%E6%BD%9F%E7%9C%8C-%E6%96%B0%E6%BD%9F%E5%B8%82%E4%B8%AD%E5%A4%AE%E5%8C%BA-%E9%B3%A5%E5%B1%8B%E9%87%8E1%E4%B8%81%E7%9B%AE-2026-11-17.html",
+   "path": "/c-%E6%84%9B%E7%9F%A5%E7%9C%8C-%E4%B8%80%E5%AE%AE%E5%B8%82.html",
    "pageviews": 1,
-   "visits": 1
+   "visits": 0
+  },
+  {
+   "path": "/p-%E6%96%B0%E6%BD%9F%E7%9C%8C.html",
+   "pageviews": 1,
+   "visits": 0
   }
  ],
  "top_referers": [
   {
    "host": "t.co",
-   "pageviews": 242
+   "pageviews": 374
   },
   {
    "host": "kajisoku.jp",
-   "pageviews": 38
+   "pageviews": 63
   },
   {
    "host": "",
-   "pageviews": 32
+   "pageviews": 41
   }
  ]
 }
