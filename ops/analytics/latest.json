@@ -1,17 +1,12 @@
 {
- "fetchedAt": "2026-11-25T05:56+00:00",
+ "fetchedAt": "2026-11-26T06:59+00:00",
  "range": [
-  "2026-11-18",
-  "2026-11-24"
+  "2026-11-19",
+  "2026-11-25"
  ],
- "pageviews_7d": 478,
- "visits_7d": 415,
+ "pageviews_7d": 546,
+ "visits_7d": 474,
  "daily": [
-  {
-   "date": "2026-11-18",
-   "pageviews": 52,
-   "visits": 46
-  },
   {
    "date": "2026-11-19",
    "pageviews": 40,
@@ -41,38 +36,73 @@
    "date": "2026-11-24",
    "pageviews": 197,
    "visits": 170
+  },
+  {
+   "date": "2026-11-25",
+   "pageviews": 120,
+   "visits": 105
   }
  ],
  "top_paths": [
   {
    "path": "/fire.html",
-   "pageviews": 410,
-   "visits": 397
+   "pageviews": 449,
+   "visits": 431
   },
   {
    "path": "/index.html",
-   "pageviews": 25,
+   "pageviews": 22,
    "visits": 0
   },
   {
    "path": "/",
-   "pageviews": 13,
-   "visits": 13
-  },
-  {
-   "path": "/map.html",
-   "pageviews": 6,
-   "visits": 0
+   "pageviews": 18,
+   "visits": 18
   },
   {
    "path": "/town.html",
-   "pageviews": 4,
+   "pageviews": 8,
+   "visits": 1
+  },
+  {
+   "path": "/p-%E4%BA%AC%E9%83%BD%E5%BA%9C.html",
+   "pageviews": 7,
+   "visits": 7
+  },
+  {
+   "path": "/map.html",
+   "pageviews": 7,
    "visits": 0
   },
   {
-   "path": "/quiz.html",
+   "path": "/p-%E6%84%9B%E7%9F%A5%E7%9C%8C.html",
+   "pageviews": 4,
+   "visits": 2
+  },
+  {
+   "path": "/c-%E5%BA%83%E5%B3%B6%E7%9C%8C-%E7%86%8A%E9%87%8E%E7%94%BA.html",
+   "pageviews": 3,
+   "visits": 1
+  },
+  {
+   "path": "/p-%E5%9F%BC%E7%8E%89%E7%9C%8C.html",
+   "pageviews": 3,
+   "visits": 2
+  },
+  {
+   "path": "/p-%E5%8C%97%E6%B5%B7%E9%81%93.html",
    "pageviews": 3,
    "visits": 3
+  },
+  {
+   "path": "/p-%E6%9D%B1%E4%BA%AC%E9%83%BD.html",
+   "pageviews": 2,
+   "visits": 2
+  },
+  {
+   "path": "/f-n-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E3%81%95%E3%81%84%E3%81%9F%E3%81%BE%E5%B8%82%E5%8D%97%E5%8C%BA-x-2026-11-09.html",
+   "pageviews": 2,
+   "visits": 2
   },
   {
    "path": "/c-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E3%81%95%E3%81%84%E3%81%9F%E3%81%BE%E5%B8%82%E8%A6%8B%E6%B2%BC%E5%8C%BA.html",
@@ -80,9 +110,9 @@
    "visits": 0
   },
   {
-   "path": "/c-%E5%BA%83%E5%B3%B6%E7%9C%8C-%E7%86%8A%E9%87%8E%E7%94%BA.html",
+   "path": "/p-%E5%85%B5%E5%BA%AB%E7%9C%8C.html",
    "pageviews": 2,
-   "visits": 0
+   "visits": 2
   },
   {
    "path": "/p-%E5%8D%83%E8%91%89%E7%9C%8C.html",
@@ -90,17 +120,7 @@
    "visits": 0
   },
   {
-   "path": "/f-n-%E6%84%9B%E7%9F%A5%E7%9C%8C-%E5%90%8D%E5%8F%A4%E5%B1%8B%E5%B8%82%E4%B8%AD%E6%9D%91%E5%8C%BA-x-2026-11-22.html",
-   "pageviews": 1,
-   "visits": 0
-  },
-  {
-   "path": "/live/gmxk683",
-   "pageviews": 1,
-   "visits": 1
-  },
-  {
-   "path": "/p-%E6%84%9B%E7%9F%A5%E7%9C%8C.html",
+   "path": "/p-%E9%95%B7%E9%87%8E%E7%9C%8C.html",
    "pageviews": 1,
    "visits": 0
   },
@@ -108,16 +128,6 @@
    "path": "/about.html",
    "pageviews": 1,
    "visits": 1
-  },
-  {
-   "path": "/p-%E5%9F%BC%E7%8E%89%E7%9C%8C.html",
-   "pageviews": 1,
-   "visits": 0
-  },
-  {
-   "path": "/p-%E9%95%B7%E9%87%8E%E7%9C%8C.html",
-   "pageviews": 1,
-   "visits": 0
   },
   {
    "path": "/c-%E5%AE%AE%E5%9F%8E%E7%9C%8C-%E4%BB%99%E5%8F%B0%E5%B8%82%E9%9D%92%E8%91%89%E5%8C%BA.html",
@@ -140,23 +150,52 @@
    "visits": 0
   },
   {
+   "path": "/live/gmxk683",
+   "pageviews": 1,
+   "visits": 1
+  },
+  {
+   "path": "/c-%E5%85%B5%E5%BA%AB%E7%9C%8C-%E6%B7%A1%E8%B7%AF%E5%B8%82.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
+   "path": "/f-n-%E7%A5%9E%E5%A5%88%E5%B7%9D%E7%9C%8C-%E8%97%A4%E6%B2%A2%E5%B8%82-x-2026-11-25.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
    "path": "/p-%E6%96%B0%E6%BD%9F%E7%9C%8C.html",
    "pageviews": 1,
    "visits": 0
+  },
+  {
+   "path": "/f-n-%E6%84%9B%E7%9F%A5%E7%9C%8C-%E5%90%8D%E5%8F%A4%E5%B1%8B%E5%B8%82%E4%B8%AD%E6%9D%91%E5%8C%BA-x-2026-11-22.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
+   "path": "/g-taika-itoigawa.html",
+   "pageviews": 1,
+   "visits": 1
   }
  ],
  "top_referers": [
   {
    "host": "t.co",
-   "pageviews": 374
+   "pageviews": 404
   },
   {
    "host": "kajisoku.jp",
-   "pageviews": 63
+   "pageviews": 72
   },
   {
    "host": "",
-   "pageviews": 41
+   "pageviews": 61
+  },
+  {
+   "host": "www.bing.com",
+   "pageviews": 9
   }
  ]
 }
