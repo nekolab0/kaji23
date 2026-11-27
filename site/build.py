@@ -921,6 +921,7 @@ if _auto.exists():
 exec((SITE / 'nation.py').read_text(encoding='utf-8'))   # 全国版（都道府県・市区町村・町のページ、検索索引）
 exec((SITE / 'guides.py').read_text(encoding='utf-8'))   # 読み物（ガイド記事）と案内ダイヤルの一覧
 exec((SITE / 'quiz.py').read_text(encoding='utf-8'))   # 火事・防災クイズ（quiz.html）
+exec((SITE / 'weekly.py').read_text(encoding='utf-8'))   # 週の火事まとめ（w-YYYY-MM-DD.html・weekly.html）
 exec((SITE / 'mapview.py').read_text(encoding='utf-8'))   # 火事マップ（map.html）
 
 # サイトマップの lastmod：ページの中身が実際に変わった日を記録する（data/raw/sitemap_lastmod.json）
@@ -1123,6 +1124,7 @@ def build(report=None):
     pages.update(national_pages())
     pages.update(guide_pages())
     pages.update(quiz_pages())
+    pages.update(weekly_pages())
     pages['404.html'] = not_found_page()
     pages['map.html'], mapdata = map_page()
     (DIST / 'data' / 'map.js').write_text('window.KAJI_MAP = ' + json.dumps(mapdata, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')   # ファイルのままでも読めるよう script で
