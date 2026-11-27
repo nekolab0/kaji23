@@ -28,9 +28,22 @@ def weekly_weeks(today=None):
     while d <= last: out.append(d); d += datetime.timedelta(days=7)
     return out
 
+def _jst_day(r):
+    """火事の日付（日本時間）。r['day'] は報道・発表の時刻（UTC）の先頭10文字なので、日本時間の 0〜9時の火事は前の日になる。
+    週と曜日は日本時間で数えたいので、時刻があれば日本時間に直す（検証役の指摘 2026-11-27）"""
+    t = (r['x'] or {}).get('first') or (r.get('official') or {}).get('at')
+    if t:
+        try:
+            d = datetime.datetime.fromisoformat(str(t).replace('Z', '+00:00'))
+            if d.tzinfo is None: d = d.replace(tzinfo=datetime.timezone.utc)
+            return d.astimezone(JST).date().isoformat()
+        except (TypeError, ValueError):
+            pass
+    return r['day']
+
 def _week_recs(mon):
     a, b = mon.isoformat(), (mon + datetime.timedelta(days=6)).isoformat()
-    return [r for r in RECORDS if a <= r['day'] <= b]
+    return [r for r in RECORDS if a <= _jst_day(r) <= b]
 
 def _wrange(mon):
     sun = mon + datetime.timedelta(days=6)
@@ -59,7 +72,7 @@ def weekly_summary(mon):
     rs = _week_recs(mon)
     prefs = collections.Counter(r['pref'] for r in rs)
     days = [0] * 7
-    for r in rs: days[datetime.date.fromisoformat(r['day']).weekday()] += 1
+    for r in rs: days[datetime.date.fromisoformat(_jst_day(r)).weekday()] += 1
     kinds = collections.Counter((rec_kind(r) or '').removesuffix('火災') or '種類不明' for r in rs)   # 「車両火災」と「車両」を1つに数える
     return {'n': len(rs), 'prefs': prefs, 'days': days, 'kinds': kinds, 'notable': _notable(rs), 'n_town': sum(1 for r in rs if r['town'])}
 
@@ -83,7 +96,7 @@ def week_page(mon, prev_mon, next_mon):
     pref_links = ''.join(f'<a href="{esc(pref_file(p))}">{esc(p)}<span class="cnt">{v}</span></a>' for p, v in s['prefs'].most_common())
     kd = '・'.join(f'{esc(k)} {v:,}件' for k, v in sorted(s['kinds'].most_common(8), key=lambda kv: kv[0] == '種類不明'))   # 不明は最後に
     ntb = ''.join(f'<li class="news-item"><div class="row"><a class="place" href="{esc(fire_href(r["fid"]))}"><b>{esc(place_of(r["pref"], r["city"], r["town"]))}</b></a>'
-                  + (f'<span class="tag">{esc(rec_kind(r))}</span>' if rec_kind(r) else '') + f'</div><span class="small muted">{jday(r["day"])}</span></li>'
+                  + (f'<span class="tag">{esc(rec_kind(r))}</span>' if rec_kind(r) else '') + f'</div><span class="small muted">{jday(_jst_day(r))}</span></li>'
                   for r in s['notable'])
     cmp_ = (f'<p class="small muted">前の週（{_wrange(prev_mon)}）は{prev["n"]:,}件でした。収録している情報源が増え続けているため、週ごとの件数は単純には比べられません。</p>' if prev else '')
     nav = ''.join([f'<a class="btn" href="{esc(week_file(prev_mon))}">← 前の週（{_wrange(prev_mon)}）</a>' if prev_mon else '',
