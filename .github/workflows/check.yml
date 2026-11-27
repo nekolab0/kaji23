@@ -38,6 +38,9 @@ jobs:
       - name: 受付サーバーのテスト
         if: steps.scope.outputs.heavy == 'true'
         run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs && node --no-warnings worker/mail.test.mjs && node --no-warnings worker/xposts.test.mjs && node --no-warnings worker/phone.test.mjs && node --no-warnings worker/push.test.mjs && node --no-warnings worker/social.test.mjs
+      - name: 報道の読み取りのテスト（daily でも報道の取り直しの前に動く。落ちると取り直しが止まるので、PR の段階で止める。2026-11-27〜）
+        if: steps.scope.outputs.heavy == 'true'
+        run: node collector/news_jp.test.mjs
       - name: 生成・検査
         if: steps.scope.outputs.heavy == 'true'
         env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}', CF_BEACON_TOKEN: '${{ vars.CF_BEACON_TOKEN }}' }

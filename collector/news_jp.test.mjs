@@ -113,6 +113,28 @@ let extra = 0;
   const n3 = dropReattributed(r3, [{ id: '東京都-墨田区-向島-2026-11-01', sources: [{ name: 'B', link: L }] }]);
   extra++;
   if (n3 === 1 && r3.length === 1 && r3[0].sources.length === 1 && r3[0].sources[0].name === 'D') ok++; else fails.push('使用済みの記事だけ外す ' + n3 + ' ' + JSON.stringify(r3));
+  // 外した記事の「死亡」・時刻・町名を残さない（2026-11-21 PR #49 の検証役の再現。2026-11-27 に直した）
+  const LD = 'https://news.google.com/rss/articles/DEAD?oc=5';
+  const its4 = [{ title: '墨田区向島で住宅火災 1人死亡', link: LD, pubDate: t(40), source: 'B' },
+    { title: '墨田区で住宅火災 1人けが', link: 'https://news.google.com/rss/articles/INJ4?oc=5', pubDate: t(6), source: 'E' }];
+  const r4 = extractFireNewsJP(its4, geo, { now, maxAgeHours: 48 });
+  const before4 = r4.length === 1 && r4[0].dead && r4[0].town === '向島' && r4[0].id === '東京都-墨田区-向島-2026-11-01';
+  const n4 = dropReattributed(r4, [{ id: '東京都-墨田区-向島-2026-10-31', sources: [{ name: 'B', link: LD }] }]);
+  extra++;
+  const x4 = r4[0] || {};
+  if (before4 && n4 === 1 && r4.length === 1 && !x4.dead && x4.injured && x4.town === null && x4.first === new Date(t(6)).toISOString() &&
+    x4.id === '東京都-墨田区-x-2026-11-03' && x4.sources.length === 1 && x4.sources[0].name === 'E' && x4.confidence === 'low' && JSON.parse(JSON.stringify(x4)).members === undefined) ok++;
+  else fails.push('外した記事から作り直す ' + before4 + ' ' + n4 + ' ' + JSON.stringify(r4));
+  // 残った記事が前の回のこの火事のものなら、id を変えない（前の火事の更新。別の id の二重を作らない）
+  const LK = 'https://news.google.com/rss/articles/KEEP5?oc=5';
+  const its5 = [{ title: '墨田区向島で住宅火災 1人死亡', link: LD, pubDate: t(40), source: 'B' },
+    { title: '墨田区向島で住宅火災 けが人', link: LK, pubDate: t(6), source: 'F' }];
+  const r5 = extractFireNewsJP(its5, geo, { now, maxAgeHours: 48 });
+  const id5 = r5[0] && r5[0].id;
+  const n5 = dropReattributed(r5, [{ id: '東京都-墨田区-向島-2026-10-31', sources: [{ name: 'B', link: LD }] }, { id: id5, sources: [{ name: 'F', link: LK }] }]);
+  extra++;
+  if (n5 === 1 && r5.length === 1 && r5[0].id === id5 && r5[0].town === '向島' && !r5[0].dead && r5[0].sources.map(s => s.name).join() === 'F') ok++;
+  else fails.push('前の火事の更新は id を変えない ' + n5 + ' ' + JSON.stringify(r5));
 }
 console.log(`${ok}/${cases.length + 1 + HARM_CASES.length + extra} 合格`); fails.forEach(f => console.log('FAIL ' + f));
 process.exit(fails.length ? 1 : 0);

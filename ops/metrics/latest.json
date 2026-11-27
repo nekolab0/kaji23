@@ -1,9 +1,9 @@
 {
- "date": "2026-11-25",
+ "date": "2026-11-26",
  "indexed": 1,
- "inspected": 4843,
- "sitemap_urls": 4843,
- "gsc_fetched_at": "2026-11-25T14:56+09:00",
+ "inspected": 4896,
+ "sitemap_urls": 4896,
+ "gsc_fetched_at": "2026-11-26T15:59+09:00",
  "index_by_kind": {
   "main": {
    "sitemap": 40,
@@ -27,63 +27,90 @@
    "known": 0
   },
   "city": {
-   "sitemap": 1558,
-   "inspected": 1558,
+   "sitemap": 1560,
+   "inspected": 1560,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "town": {
-   "sitemap": 1215,
-   "inspected": 1215,
+   "sitemap": 1223,
+   "inspected": 1223,
    "indexed": 0,
    "crawled": 0,
    "known": 0
   },
   "fire": {
-   "sitemap": 1936,
-   "inspected": 1936,
+   "sitemap": 1979,
+   "inspected": 1979,
    "indexed": 0,
    "crawled": 0,
-   "known": 0
+   "known": 3
   }
  },
  "sitemap_children_downloaded": {},
  "sitemap_index_downloaded": "2026-11-13",
  "sitemap_index_submitted_urls": 9170,
  "clicks_7d": 0,
- "impressions_7d": 13,
+ "impressions_7d": 12,
  "clicks_per_day_7d": 0.0,
- "gsc_last_day": "2026-11-22",
- "pageviews_7d": 478,
- "visits_7d": 415,
+ "gsc_last_day": "2026-11-23",
+ "pageviews_7d": 546,
+ "visits_7d": 474,
  "pages_per_visit_7d": 1.15,
  "rpm": null,
- "publish_samples_7d": 401,
- "news_samples_7d": 291,
+ "social_visits_7d": {
+  "x": 334,
+  "bsky": 0,
+  "misskey": 0,
+  "mastodon": 0,
+  "threads": 0,
+  "instagram": 4,
+  "facebook": 0,
+  "tiktok": 0,
+  "youtube": 0,
+  "note": 0,
+  "hatena": 0
+ },
+ "social_referer_pv_7d": {
+  "x": 404,
+  "bsky": 0,
+  "misskey": 0,
+  "threads": 0,
+  "instagram": 0,
+  "facebook": 0,
+  "tiktok": 0,
+  "youtube": 0,
+  "note": 0,
+  "hatena": 0
+ },
+ "ai_referer_pv_7d": {},
+ "publish_samples_7d": 405,
+ "news_samples_7d": 299,
  "news_over_6h_7d": 0.21,
- "publish_minutes_median_7d": 66,
+ "publish_minutes_median_7d": 63,
  "publish_minutes_p90_7d": 942,
  "publish_within_30m_7d": 0.2,
- "fires_per_day_7d": 63.6,
- "fires_per_day_prev7d": 63.0,
+ "fires_per_day_7d": 63.7,
+ "fires_per_day_prev7d": 60.3,
  "misread_suspects": [],
  "news_reused_articles": [
   "山形県-山形市-印役町-2026-11-20",
   "東京都-墨田区-向島-2026-11-19"
  ],
- "sources_status_at": "2026-11-25T04:08:59.478Z",
+ "sources_status_at": "2026-11-26T03:43:51.503Z",
  "sources_total": 79,
  "sources_failing": [
-  "kyoto（HTTP 522・35回続けて）"
+  "kyoto（HTTP 522・39回続けて）"
  ],
- "fire_mail_senders": 60,
- "news_query_runs_7d": 63,
+ "fire_mail_senders": 65,
+ "news_query_runs_7d": 81,
  "news_saturated_last": [
   "火事 when:1d",
-  "火災 when:1d"
+  "火災 when:1d",
+  "全焼 when:1d"
  ],
- "news_failed_runs_7d": 16,
+ "news_failed_runs_7d": 20,
  "verify_ok": true,
  "verify_failed": [],
  "stage": 1,
