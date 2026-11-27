@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-27T08:58:20+00:00",
+ "generatedAt": "2026-11-27T09:38:23+00:00",
  "version": 1,
  "dests": [
   "bsky",
@@ -11,37 +11,37 @@
  ],
  "items": [
   {
-   "id": "n-鹿児島県-鹿児島市-吉野町-2026-11-27",
+   "id": "n-静岡県-静岡市清水区-村松-2026-11-27",
    "kind": "fire_post",
-   "first": "2026-11-27T06:58:00+00:00",
-   "expires": "2026-11-27T18:58:00+00:00",
-   "page": "https://kajisoku.jp/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%E5%B3%B6%E5%B8%82-%E5%90%89%E9%87%8E%E7%94%BA-2026-11-27.html",
-   "place": "鹿児島県鹿児島市吉野町",
+   "first": "2026-11-27T06:29:13+00:00",
+   "expires": "2026-11-27T18:29:13+00:00",
+   "page": "https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html",
+   "place": "静岡県静岡市清水区村松",
    "posts": {
     "bsky": {
-     "text": "【火事】11月27日 15:58ごろ、鹿児島県鹿児島市吉野町で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。\n#火事 #鹿児島",
-     "url": "https://kajisoku.jp/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%E5%B3%B6%E5%B8%82-%E5%90%89%E9%87%8E%E7%94%BA-2026-11-27.html?utm_source=bsky&utm_medium=social&utm_campaign=fire_post",
-     "image": "https://kajisoku.jp/og/f/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%E5%B3%B6%E5%B8%82-%E5%90%89%E9%87%8E%E7%94%BA-2026-11-27.png",
-     "title": "鹿児島県鹿児島市吉野町の火事｜火事速",
-     "desc": "11月27日 15:58ごろ発生、報道されました。町名ごとの情報・目撃の共有は火事速で。"
+     "text": "【火事】11月27日 15:29ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。\n#火事 #静岡",
+     "url": "https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=bsky&utm_medium=social&utm_campaign=fire_post",
+     "image": "https://kajisoku.jp/og/f/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.png",
+     "title": "静岡県静岡市清水区村松の火事｜火事速",
+     "desc": "11月27日 15:29ごろ発生、報道されました。町名ごとの情報・目撃の共有は火事速で。"
     },
     "misskey": {
-     "text": "【火事】11月27日 15:58ごろ、鹿児島県鹿児島市吉野町で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら\nhttps://kajisoku.jp/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%E5%B3%B6%E5%B8%82-%E5%90%89%E9%87%8E%E7%94%BA-2026-11-27.html?utm_source=misskey&utm_medium=social&utm_campaign=fire_post\n#火事 #鹿児島"
+     "text": "【火事】11月27日 15:29ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら\nhttps://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=misskey&utm_medium=social&utm_campaign=fire_post\n#火事 #静岡"
     },
     "mastodon": {
-     "text": "【火事】11月27日 15:58ごろ、鹿児島県鹿児島市吉野町で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら\nhttps://kajisoku.jp/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%E5%B3%B6%E5%B8%82-%E5%90%89%E9%87%8E%E7%94%BA-2026-11-27.html?utm_source=mastodon&utm_medium=social&utm_campaign=fire_post\n#火事 #鹿児島"
+     "text": "【火事】11月27日 15:29ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら\nhttps://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=mastodon&utm_medium=social&utm_campaign=fire_post\n#火事 #静岡"
     },
     "threads": {
-     "text": "【火事】11月27日 15:58ごろ、鹿児島県鹿児島市吉野町で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報はリンクから #火事",
-     "url": "https://kajisoku.jp/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%E5%B3%B6%E5%B8%82-%E5%90%89%E9%87%8E%E7%94%BA-2026-11-27.html?utm_source=threads&utm_medium=social&utm_campaign=fire_post"
+     "text": "【火事】11月27日 15:29ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報はリンクから #火事",
+     "url": "https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=threads&utm_medium=social&utm_campaign=fire_post"
     },
     "instagram": {
-     "text": "【火事】11月27日 15:58ごろ、鹿児島県鹿児島市吉野町で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報は、プロフィールのリンクから町名で検索できます。\n#火事 #鹿児島",
-     "image": "https://kajisoku.jp/og/f/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%E5%B3%B6%E5%B8%82-%E5%90%89%E9%87%8E%E7%94%BA-2026-11-27.png"
+     "text": "【火事】11月27日 15:29ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報は、プロフィールのリンクから町名で検索できます。\n#火事 #静岡",
+     "image": "https://kajisoku.jp/og/f/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.png"
     },
     "facebook": {
-     "text": "【火事】11月27日 15:58ごろ、鹿児島県鹿児島市吉野町で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら",
-     "url": "https://kajisoku.jp/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%E5%B3%B6%E5%B8%82-%E5%90%89%E9%87%8E%E7%94%BA-2026-11-27.html?utm_source=facebook&utm_medium=social&utm_campaign=fire_post"
+     "text": "【火事】11月27日 15:29ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら",
+     "url": "https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=facebook&utm_medium=social&utm_campaign=fire_post"
     }
    }
   },
