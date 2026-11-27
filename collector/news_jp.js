@@ -110,6 +110,24 @@ const BUILDING = [['共同住宅', /共同住宅|アパート|マンション|�
 const PRI = /NHK|TBS|テレ朝|日テレ|FNN|フジ|テレビ東京|共同|時事|産経|読売|朝日新聞|毎日|東京新聞|ABEMA|新聞|放送|テレビ/;
 const TOKYO_AMBIG = ['北区', '中央区', '港区'];
 
+// 火事にまとめた記事（x.members・公開時刻の順）から、町名・建物・けが人などの欄と媒体・id を作る。
+// 町名・丁目・建物は、最初にわかった記事のもの（まとめるときの決め方と同じ）。final のとき媒体を主な報道の順に3つまでにし、id を付ける
+function summarizeIncident(x, final = false) {
+  const ms = x.members;
+  x.town = (ms.find(m => m.town) || {}).town || null;
+  x.chome = (ms.find(m => m.chome) || {}).chome || null;
+  x.building = (ms.find(m => m.building !== '建物不明') || ms[0]).building;
+  x.injured = ms.some(m => m.injured); x.dead = ms.some(m => m.dead); x.sensitive = ms.some(m => m.sensitive);
+  x.first = ms[0].pub; x.last = ms[ms.length - 1].pub;
+  const sources = [];
+  for (const m of ms) if (!sources.some(s => s.name === m.source)) sources.push({ name: m.source, link: m.link, pub: m.pub });
+  x.sources = sources;
+  if (!final) return x;
+  x.sources.sort((a, b) => (PRI.test(b.name) ? 1 : 0) - (PRI.test(a.name) ? 1 : 0)); x.sources = x.sources.slice(0, 3);
+  x.confidence = x.sources.length >= 2 || x.town ? 'high' : 'low';
+  x.id = `${x.pref}-${x.city}-${x.town || 'x'}-${x.first.slice(0, 10)}`;
+  return x;
+}
 function extractFireNewsJP(items, geo, opts = {}) {
   const now = opts.now ? new Date(opts.now) : new Date();
   const maxAgeH = opts.maxAgeHours || 72;
@@ -178,20 +196,14 @@ function extractFireNewsJP(items, geo, opts = {}) {
   for (const n of out) {
     const hit = incidents.find(x => x.pref === n.pref && x.city === n.city && (!x.town || !n.town || x.town === n.town) &&
       (x.building === n.building || x.building === '建物不明' || n.building === '建物不明') && Math.abs(new Date(n.pub) - new Date(x.first)) / 36e5 < (x.town && n.town ? 72 : 36));
-    if (hit) {
-      hit.town = hit.town || n.town; hit.chome = hit.chome || n.chome;
-      if (hit.building === '建物不明') hit.building = n.building;
-      hit.injured ||= n.injured; hit.dead ||= n.dead; hit.sensitive ||= n.sensitive;
-      if (!hit.sources.some(s => s.name === n.source)) hit.sources.push({ name: n.source, link: n.link, pub: n.pub });
-      hit.last = n.pub;
-    } else incidents.push({ pref: n.pref, city: n.city, ward: n.city, parent: n.parent, town: n.town, chome: n.chome, building: n.building, injured: n.injured, dead: n.dead,
-      sensitive: n.sensitive, first: n.pub, last: n.pub, sources: [{ name: n.source, link: n.link, pub: n.pub }] });
+    if (hit) { hit.members.push(n); summarizeIncident(hit); }
+    else {
+      const x = { pref: n.pref, city: n.city, ward: n.city, parent: n.parent };
+      Object.defineProperty(x, 'members', { value: [n], writable: true });   // 火事にまとめた記事（JSON には出ない。dropReattributed が作り直しに使う）
+      summarizeIncident(x); incidents.push(x);
+    }
   }
-  incidents.forEach(x => {
-    x.sources.sort((a, b) => (PRI.test(b.name) ? 1 : 0) - (PRI.test(a.name) ? 1 : 0)); x.sources = x.sources.slice(0, 3);
-    x.confidence = x.sources.length >= 2 || x.town ? 'high' : 'low';
-    x.id = `${x.pref}-${x.city}-${x.town || 'x'}-${x.first.slice(0, 10)}`;
-  });
+  incidents.forEach(x => summarizeIncident(x, true));
   incidents.reverse();
   // 取り出した記事（link・公開時刻）。news_run.mjs が「一度見た記事」の記録（data/raw/news_links.json）に使う。JSON には出ない
   Object.defineProperty(incidents, 'articles', { value: out.map(n => [n.link, n.pub]) });
@@ -265,11 +277,18 @@ function dropReattributed(fresh, prev) {
   }
   let n = 0;
   for (let i = fresh.length - 1; i >= 0; i--) {
-    const x = fresh[i];
-    const keep = x.sources.filter(s => { const o = owner.get(newsLinkKey(s.link)); return !o || o.has(x.id); });
-    n += x.sources.length - keep.length;
-    if (keep.length) x.sources = keep;
-    else fresh.splice(i, 1);
+    const x = fresh[i], ms = x.members || x.sources;
+    const own = m => owner.get(newsLinkKey(m.link));
+    const keep = ms.filter(m => { const o = own(m); return !o || o.has(x.id); });
+    if (keep.length === ms.length) continue;
+    n += ms.length - keep.length;
+    if (!keep.length) { fresh.splice(i, 1); continue; }
+    if (!x.members) { x.sources = keep; continue; }
+    // 外した記事の時刻・町名・「死亡」などを残さないよう、残った記事から作り直す（2026-11-27。PR #49 の検証役の指摘）
+    const oldId = x.id, same = keep.some(m => (own(m) || new Set()).has(oldId)), town = x.town, chome = x.chome;
+    x.members = keep; summarizeIncident(x, true);
+    // 残った記事が前の回のこの火事のものなら、前の火事の更新として id（と町名）を変えない（変えると同じ火事が別の id で二重になる）
+    if (same) { x.id = oldId; x.town = town; x.chome = chome; x.confidence = x.sources.length >= 2 || x.town ? 'high' : 'low'; }
   }
   return n;
 }
