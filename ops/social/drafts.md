@@ -43,3 +43,41 @@ https://kajisoku.jp/f-n-%E9%B9%BF%E5%85%90%E5%B3%B6%E7%9C%8C-%E9%B9%BF%E5%85%90%
 ```
 【火事】11月27日 15:58ごろ、鹿児島県鹿児島市吉野町で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら
 ```
+
+## 静岡県静岡市清水区村松（11月27日 15:24・期限 11月28日 3:24）
+
+**bsky**（リンク：https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=bsky&utm_medium=social&utm_campaign=fire_post）（画像あり）
+```
+【火事】11月27日 15:24ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。
+#火事 #静岡
+```
+
+**misskey**
+```
+【火事】11月27日 15:24ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら
+https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=misskey&utm_medium=social&utm_campaign=fire_post
+#火事 #静岡
+```
+
+**mastodon**
+```
+【火事】11月27日 15:24ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら
+https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=mastodon&utm_medium=social&utm_campaign=fire_post
+#火事 #静岡
+```
+
+**threads**（リンク：https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=threads&utm_medium=social&utm_campaign=fire_post）
+```
+【火事】11月27日 15:24ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報はリンクから #火事
+```
+
+**instagram**（画像あり）
+```
+【火事】11月27日 15:24ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報は、プロフィールのリンクから町名で検索できます。
+#火事 #静岡
+```
+
+**facebook**（リンク：https://kajisoku.jp/f-n-%E9%9D%99%E5%B2%A1%E7%9C%8C-%E9%9D%99%E5%B2%A1%E5%B8%82%E6%B8%85%E6%B0%B4%E5%8C%BA-%E6%9D%91%E6%9D%BE-2026-11-27.html?utm_source=facebook&utm_medium=social&utm_campaign=fire_post）
+```
+【火事】11月27日 15:24ごろ、静岡県静岡市清水区村松で火事（住宅）が報道されました。近くの方は煙や通行止めにご注意ください。町名ごとの情報・目撃の共有はこちら
+```
