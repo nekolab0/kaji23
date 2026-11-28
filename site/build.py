@@ -276,17 +276,30 @@ NAV = [('index', 'いまの火事'), ('map', '火事マップ'), ('index#regions
 ADS = json.loads((SITE / 'ads.json').read_text(encoding='utf-8'))
 ADS_CLIENT = (ADS.get('client') or '').strip()
 ADS_SLOT = (ADS.get('slot') or '').strip()
+# 予備の広告（忍者AdMax）。AdSense の slot が空のあいだだけ使う。タグは管理画面のものをそのまま貼る
+ADMAX = ADS.get('admax') or {}
+ADMAX_TAG = (ADMAX.get('tag') or '').strip()
+if ADMAX_TAG:
+    # 貼ってよいのは忍者AdMax の配信元の script だけ（ほかの script・iframe・イベント属性が混じったら止める）
+    _srcs = re.findall(r'<script\b[^>]*\bsrc="([^"]+)"', ADMAX_TAG, re.I)
+    _bad = [u for u in _srcs if not re.match(r'^https://[a-z0-9.-]*\.shinobi\.jp/', u)]
+    if _bad or re.search(r'<iframe|\son[a-z]+\s*=|javascript:', ADMAX_TAG, re.I) or not _srcs:
+        raise SystemExit(f'ads.json の admax.tag に忍者AdMax 以外の中身があります: {_bad or "iframe/イベント属性/script なし"}')
+ADS_PROVIDER = 'adsense' if (ADS_CLIENT and ADS_SLOT) else ('admax' if ADMAX_TAG else '')
 # 広告は「区切りの間」にだけ置く（ポップアップ・画面下固定・全画面は使わない）。ボタンのすぐ近くには置かない
 AD_AFTER = ('recent', 'news', 'rg', 'cities', 'wl', 'tl', 'near', 'st')  # 報告・投稿ボタンのある「いまの火事」の直後は避ける（誤クリック防止）。1ページ2つまで
 AD_AFTER_FIRE = ('com',)                      # 火事のページは口コミの後だけ（報告・共有ボタンから離す）
 NO_AD_PAGES = ('policy', 'rules', 'about', 'dial')
 def ad_unit():
+    if ADS_PROVIDER == 'admax':
+        return (f'<aside class="ad ad-admax" aria-label="広告"><div class="ad-label">スポンサーリンク</div>'
+                f'{ADMAX_TAG}</aside>')
     return (f'<aside class="ad" aria-label="広告"><div class="ad-label">スポンサーリンク</div>'
             f'<ins class="adsbygoogle" style="display:block" data-ad-client="{esc(ADS_CLIENT)}" data-ad-slot="{esc(ADS_SLOT)}" '
             f'data-ad-format="auto" data-full-width-responsive="true"></ins>'
             f'<script>(adsbygoogle=window.adsbygoogle||[]).push({{}});</script></aside>')
 def insert_ads(name, body):
-    if not (ADS_CLIENT and ADS_SLOT) or name in NO_AD_PAGES:
+    if not ADS_PROVIDER or name in NO_AD_PAGES:
         return body
     keys = AD_AFTER_FIRE if name == 'fire' or name.startswith('f-') else AD_AFTER
     n = 0
@@ -895,7 +908,7 @@ def policy_page():
 <h3>4. 第三者への提供</h3>
 <p>法令に基づく場合を除き、集めた情報を第三者に提供しません。本サイトはGitHub（ページの配信）とCloudflare（報告・口コミの受付）を利用しており、各社のサーバーにアクセスの記録が残ることがあります。</p>
 <h3>5. 外部サービス・広告</h3>
-<p>本サイトは{"" if ADS_CLIENT else "今後、"}第三者配信の広告サービス「Google AdSense」を利用{"しています" if ADS_CLIENT else "する予定です"}。Google などの第三者配信事業者は、Cookie を使って、利用者が本サイトや他のサイトに過去にアクセスした情報に基づいて広告を配信することがあります。Google が広告 Cookie を使うことで、Google やそのパートナーは本サイトや他のサイトへのアクセス情報に基づいて適切な広告を表示できます。利用者は <a href="https://adssettings.google.com/" rel="noopener" target="_blank">Google の広告設定</a> でパーソナライズ広告を無効にできます。また <a href="https://www.aboutads.info/choices/" rel="noopener" target="_blank">www.aboutads.info</a> で、第三者配信事業者の Cookie を無効にできます。詳しくは <a href="https://policies.google.com/technologies/ads?hl=ja" rel="noopener" target="_blank">Google の広告に関するポリシー</a> をご覧ください。広告はページの区切りの間にだけ表示し、画面を覆うポップアップ型の広告は使いません。{"アクセス解析には Cloudflare Web Analytics を使っています。Cookie を使わず、個人を特定する情報は集めません。" if CF_BEACON else "アクセス解析は現在使っていません。"}</p>
+<p>本サイトは{"" if ADS_CLIENT else "今後、"}第三者配信の広告サービス「Google AdSense」を利用{"しています" if ADS_CLIENT else "する予定です"}。Google などの第三者配信事業者は、Cookie を使って、利用者が本サイトや他のサイトに過去にアクセスした情報に基づいて広告を配信することがあります。Google が広告 Cookie を使うことで、Google やそのパートナーは本サイトや他のサイトへのアクセス情報に基づいて適切な広告を表示できます。利用者は <a href="https://adssettings.google.com/" rel="noopener" target="_blank">Google の広告設定</a> でパーソナライズ広告を無効にできます。また <a href="https://www.aboutads.info/choices/" rel="noopener" target="_blank">www.aboutads.info</a> で、第三者配信事業者の Cookie を無効にできます。詳しくは <a href="https://policies.google.com/technologies/ads?hl=ja" rel="noopener" target="_blank">Google の広告に関するポリシー</a> をご覧ください。{"あわせて、第三者配信の広告サービス「忍者AdMax」（株式会社サムライファクトリー）を利用しています。忍者AdMax も Cookie を使って広告を配信することがあります。" if ADS_PROVIDER == "admax" else ""}広告はページの区切りの間にだけ表示し、画面を覆うポップアップ型の広告は使いません。{"アクセス解析には Cloudflare Web Analytics を使っています。Cookie を使わず、個人を特定する情報は集めません。" if CF_BEACON else "アクセス解析は現在使っていません。"}</p>
 <h3>6. 外部サイトへのリンク</h3>
 <p>報道記事、消防本部の公開ページ、X・Yahoo!リアルタイム検索などへのリンクがあります。リンク先での情報の扱いは各サイトの方針によります。</p></section>
 <section class="section" id="terms" aria-labelledby="tm"><h2 id="tm">利用規約</h2>
