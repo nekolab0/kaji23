@@ -1,0 +1,156 @@
+// X 以外の SNS への自動投稿のテスト（キューの受け付け・上限・間隔・期限・二重投稿の防止・各配信先への送り方）
+import { makeEnv } from './test.mjs';
+import { handle } from './src/index.js';
+import { socialTick, bskyFacets, enqueue } from './src/social.js';
+const results = []; const ok = (n, c, d = '') => results.push({ name: n, ok: !!c, detail: String(d) });
+const t0 = new Date('2026-11-25T03:00:00Z');   // 日本時間 12:00
+const at = min => new Date(+t0 + min * 60e3);
+const req = (m, p, b, key) => new Request('https://w.example' + p, { method: m, body: b && JSON.stringify(b), headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: 'Bearer ' + key } : {}) } });
+const page = n => `https://kajisoku.jp/f-n-test-${n}.html`;
+const item = (n, firstMin = -30, expMin = 600, extra = {}) => ({
+  id: 'n-test-' + n, kind: 'fire_post', first: at(firstMin).toISOString(), expires: at(expMin).toISOString(), page: page(n), place: '町' + n,
+  posts: {
+    bsky: { text: `【火事】町${n}で火事が報道されました。\n#火事 #テスト`, url: page(n) + '?utm_source=bsky&utm_medium=social&utm_campaign=fire_post', image: `https://kajisoku.jp/og/f/test-${n}.png`, title: `町${n}の火事｜火事速`, desc: '説明' },
+    misskey: { text: `【火事】町${n}で火事。\n${page(n)}?utm_source=misskey&utm_medium=social&utm_campaign=fire_post\n#火事` },
+    mastodon: { text: `【火事】町${n}で火事。\n${page(n)}?utm_source=mastodon&utm_medium=social&utm_campaign=fire_post\n#火事` },
+    threads: { text: `【火事】町${n}で火事。 #火事`, url: page(n) + '?utm_source=threads&utm_medium=social&utm_campaign=fire_post' },
+    ...extra,
+  } });
+
+const { env, db } = makeEnv();
+// 鍵がないとき・違うとき
+let r = await handle(req('POST', '/api/social/enqueue', { items: [item(1)] }), env, t0);
+ok('SOCIAL_KEY が未設定なら受け付けない（503）', r.status === 503, r.status);
+env.SOCIAL_KEY = 'k1';
+r = await handle(req('POST', '/api/social/enqueue', { items: [item(1)] }, 'wrong'), env, t0);
+ok('鍵が違えば 401', r.status === 401, r.status);
+r = await handle(req('POST', '/api/social/enqueue', { items: [item(1), item(2, -10), item(3, -500, -1)] }, 'k1'), env, t0);
+let j = await r.json();
+ok('キューを受け付ける（期限切れは断る）', r.status === 200 && j.added === 8 && j.skipped.some(s => /n-test-3: 期限切れ/.test(s)), JSON.stringify(j));
+r = await handle(req('POST', '/api/social/enqueue', { items: [item(1)] }, 'k1'), env, t0);
+j = await r.json();
+ok('同じ火事を2回送っても1回分だけ', j.added === 0, JSON.stringify(j));
+j = await enqueue(env, { items: [item(4, -10, 600, { misskey: { text: '【火事】けが人がいます https://kajisoku.jp/x.html' }, mastodon: { text: '【火事】 https://evil.example/' } })] }, t0);
+ok('書かない言葉・火事速以外のリンクは断る', j.skipped.some(s => /n-test-4\/misskey: 書かない言葉/.test(s)) && j.skipped.some(s => /n-test-4\/mastodon: 火事速以外のリンク/.test(s)), JSON.stringify(j));
+
+// Secret がないうちは何も投稿しない
+const calls = [];
+const fetcher = async (u, o = {}) => {
+  calls.push({ u, o });
+  if (u.endsWith('/xrpc/com.atproto.server.createSession')) return Response.json({ accessJwt: 'jwt', did: 'did:plc:abc' });
+  if (u.startsWith('https://kajisoku.jp/og/')) return new Response(new Uint8Array([137, 80, 78, 71]), { headers: { 'Content-Type': 'image/png' } });
+  if (u.endsWith('/xrpc/com.atproto.repo.uploadBlob')) return Response.json({ blob: { $type: 'blob', ref: { $link: 'b1' }, mimeType: 'image/png', size: 4 } });
+  if (u.endsWith('/xrpc/com.atproto.repo.createRecord')) return Response.json({ uri: 'at://did:plc:abc/app.bsky.feed.post/3kxyz', cid: 'c' });
+  if (u === 'https://misskey.io/api/notes/create') return env.MISSKEY_FAIL ? new Response('rate', { status: 429 }) : Response.json({ createdNote: { id: 'mk1' } });
+  if (u === 'https://mstdn.example/api/v1/statuses') return Response.json({ id: 'm1', url: 'https://mstdn.example/@kajisoku/m1' });
+  return new Response('', { status: 404 });
+};
+let o = await socialTick(env, t0, fetcher);
+ok('Secret がない配信先は飛ばす（何も送らない）', Object.keys(o).length === 0 && calls.length === 0, JSON.stringify(o));
+
+env.BSKY_HANDLE = 'kajisoku.jp'; env.BSKY_APP_PASSWORD = 'pw'; env.MISSKEY_HOST = 'misskey.io'; env.MISSKEY_TOKEN = 't'; env.MASTODON_HOST = 'https://mstdn.example/'; env.MASTODON_TOKEN = 't2';
+env.SOCIAL_PAUSE = '1';
+o = await socialTick(env, t0, fetcher);
+ok('SOCIAL_PAUSE で全部止まる', o.paused && calls.length === 0);
+delete env.SOCIAL_PAUSE;
+
+o = await socialTick(env, t0, fetcher);
+ok('3つの配信先に1件ずつ投稿する', o.bsky === 'ok' && o.misskey === 'ok' && o.mastodon === 'ok' && !o.threads, JSON.stringify(o));
+const rec = JSON.parse(calls.find(c => c.u.endsWith('createRecord')).o.body);
+ok('Bluesky：新しい火事から・リンクカード（画像つき）・ハッシュタグ', /町2/.test(rec.record.text) && rec.record.embed.external.uri.includes('utm_source=bsky') && rec.record.embed.external.thumb.ref.$link === 'b1'
+  && rec.record.facets.length === 2 && rec.record.facets[0].features[0].tag === '火事', JSON.stringify(rec.record));
+const tagStart = new TextEncoder().encode(rec.record.text).length - new TextEncoder().encode('#火事 #テスト').length;
+ok('Bluesky：ハッシュタグの位置は UTF-8 のバイトで数える', rec.record.facets[0].index.byteStart === tagStart && rec.record.facets[0].index.byteEnd === tagStart + 7, JSON.stringify(rec.record.facets));
+const mk = calls.find(c => c.u.includes('notes/create'));
+ok('Misskey：公開範囲は「ホーム」・トークンは見出しで送る', JSON.parse(mk.o.body).visibility === 'home' && mk.o.headers.Authorization === 'Bearer t');
+const ms = calls.find(c => c.u.includes('/api/v1/statuses'));
+ok('Mastodon：未収載・二重送信の防止キー', ms.o.body.get('visibility') === 'unlisted' && ms.o.headers['Idempotency-Key'] === 'n-test-2|mastodon');
+
+o = await socialTick(env, at(10), fetcher);
+ok('20分たつまでは次を投稿しない', o.bsky === 'gap' && o.misskey === 'gap', JSON.stringify(o));
+env.MISSKEY_FAIL = '1';
+o = await socialTick(env, at(21), fetcher);
+const left = db.prepare("SELECT id FROM social_posts WHERE dest = 'bsky' ORDER BY at").all().map(x => x.id);
+ok('20分たったら次の火事（発生の新しい順）・同じ火事は二度出さない', o.bsky === 'ok' && left.join() === 'n-test-2,n-test-4', left.join());
+ok('失敗は記録してエラーにしない', o.misskey === 'error' && db.prepare("SELECT tries FROM social_posts WHERE dest='misskey' AND id='n-test-1'").get().tries === 1, JSON.stringify(o));
+delete env.MISSKEY_FAIL;
+o = await socialTick(env, at(42), fetcher);
+ok('失敗した投稿はもう1回だけやり直す', o.misskey === 'ok' && db.prepare("SELECT status, tries FROM social_posts WHERE dest='misskey' AND id='n-test-1'").get().tries === 2, JSON.stringify(o));
+o = await socialTick(env, at(63), fetcher);
+ok('出すものがなくなったら何もしない（n-test-4 は Misskey・Mastodon では断ったので入っていない）', o.misskey === 'empty' && o.mastodon === 'empty', JSON.stringify(o));
+
+// 1日の上限（変数で変えられる）と期限
+env.SOCIAL_MAX_BSKY = '3';
+await enqueue(env, { items: [item(5, 60, 2000), item(6, 61, 2000)] }, at(62));
+const bsCount = () => db.prepare("SELECT COUNT(*) AS n FROM social_posts WHERE dest='bsky' AND status='ok'").get().n;
+o = await socialTick(env, at(84), fetcher);   // 3件目
+o = await socialTick(env, at(105), fetcher);
+ok('1日の上限に達したら投稿しない（SOCIAL_MAX_BSKY=3）', bsCount() === 3 && o.bsky === 'limit', `${bsCount()} ${JSON.stringify(o)}`);
+o = await socialTick(env, new Date('2026-11-25T15:30:00Z'), fetcher);   // 日本時間 翌 0:30 → 日が変わる
+ok('日本時間で日が変わると上限が戻る', o.bsky === 'ok', JSON.stringify(o));
+await enqueue(env, { items: [item(7, 0, 30)] }, at(0));
+db.prepare("DELETE FROM social_posts WHERE dest='mastodon'").run();
+db.prepare("DELETE FROM social_queue WHERE dest='mastodon' AND id != 'n-test-7'").run();
+o = await socialTick(env, at(40), fetcher);
+ok('期限を過ぎた火事は投稿しない', o.mastodon === 'empty', JSON.stringify(o));
+
+// 状況の API
+r = await handle(req('GET', '/api/social/status?days=3'), env, at(120));
+j = await r.json();
+ok('状況：配信先ごとの数だけ返す（本文は返さない）', r.status === 200 && j.active.length === 3 && j.byDay.some(x => x.dest === 'bsky' && x.status === 'ok') && !JSON.stringify(j).includes('【火事】'), JSON.stringify(j));
+ok('facet：タグがなければ空', bskyFacets('タグなし').length === 0);
+
+// 静的なページへの来訪（sendBeacon）を share_clicks に数える（G4）
+const beacon = (qs, ua = 'Mozilla/5.0 (iPhone)') => new Request('https://w.example/api/visit?' + qs, { method: 'POST', headers: { 'User-Agent': ua } });
+const enc2 = encodeURIComponent('/f-n-宮城県-仙台市青葉区-錦町-2026-11-24.html');
+r = await handle(beacon(`p=${enc2}&utm_source=bsky&utm_campaign=fire_post`), env, t0);
+await handle(beacon(`p=${enc2}&utm_source=bsky&utm_campaign=fire_post`), env, t0);
+await handle(beacon(`p=%2Fquiz.html&utm_source=threads&utm_campaign=quiz`), env, t0);
+await handle(beacon(`p=%2Ffire.html&utm_source=x`), env, t0);
+await handle(beacon(`p=%2Fg-119.html&utm_source=bsky`, 'Bluesky Cardyb/1.1'), env, t0);
+await handle(beacon(`p=%2Fg-119.html&utm_source=bsky`, 'Twitterbot/1.0'), env, t0);
+await handle(beacon(`p=%2F%3Cscript%3E.html&utm_source=bsky`), env, t0);
+const sc = db.prepare('SELECT inc, src, campaign, n FROM share_clicks ORDER BY inc').all();
+ok('静的なページの来訪を数える（204・日本時間の日付・ページごと）', r.status === 204 && sc.some(x => x.inc === 'p:f-n-宮城県-仙台市青葉区-錦町-2026-11-24.html' && x.src === 'bsky' && x.n === 2) && sc.some(x => x.inc === 'p:quiz.html' && x.campaign === 'quiz'), JSON.stringify(sc));
+ok('fire.html・ボット・おかしなパスは数えない', !sc.some(x => x.inc === 'p:fire.html' || /script/.test(x.inc)) && sc.filter(x => x.inc === 'p:g-119.html').length <= 1, JSON.stringify(sc));
+r = await handle(req('GET', '/api/share-clicks?days=3'), env, t0); j = await r.json();
+ok('share-clicks の API に出る', j.byInc.some(x => x.inc.startsWith('p:') && x.src === 'bsky'), JSON.stringify(j.byInc));
+
+// Threads（G5）：コンテナを作って公開する・トークンを週1回更新して D1 に持つ
+{
+  const { env: e2, db: db2 } = makeEnv();
+  e2.THREADS_USER_ID = '123'; e2.THREADS_TOKEN = 'seed-token';
+  const tc = [];
+  let refreshOk = true;
+  const tf = async (u, o = {}) => {
+    tc.push({ u, o });
+    if (u.startsWith('https://graph.threads.net/refresh_access_token')) return refreshOk ? Response.json({ access_token: 'tok-' + tc.length, token_type: 'bearer', expires_in: 5184000 }) : new Response('{}', { status: 400 });
+    if (u === 'https://graph.threads.net/v1.0/123/threads') return Response.json({ id: 'c1' });
+    if (u === 'https://graph.threads.net/v1.0/123/threads_publish') return Response.json({ id: 'th1' });
+    return new Response('', { status: 404 });
+  };
+  await enqueue(e2, { items: [item(8, -5, 600)] }, t0);
+  let o2 = await socialTick(e2, t0, tf);
+  const cont = tc.find(c => c.u.endsWith('/threads'));
+  const tok1 = db2.prepare("SELECT token, seed FROM social_tokens WHERE dest='threads'").get();
+  ok('Threads：最初の回にトークンを更新して D1 に持つ', o2.threadsToken === 'refreshed' && tok1 && tok1.token.startsWith('tok-'), JSON.stringify(o2));
+  ok('Threads：本文・リンクの添付・更新したトークンで投稿し、公開する', o2.threads === 'ok' && cont.o.body.get('link_attachment').includes('utm_source=threads') && cont.o.body.get('access_token') === tok1.token
+    && tc.find(c => c.u.endsWith('/threads_publish')).o.body.get('creation_id') === 'c1', JSON.stringify(o2));
+  o2 = await socialTick(e2, at(60 * 24), tf);
+  ok('Threads：7日たつまでは更新しない', o2.threadsToken === 'fresh', JSON.stringify(o2));
+  const n0 = tc.length;
+  o2 = await socialTick(e2, at(60 * 24 * 8), tf);
+  ok('Threads：7日たったら更新する', o2.threadsToken === 'refreshed' && tc.length > n0 && db2.prepare("SELECT token FROM social_tokens WHERE dest='threads'").get().token !== tok1.token, JSON.stringify(o2));
+  e2.THREADS_TOKEN = 'new-seed';
+  const t2 = await (await import('./src/social.js')).threadsToken(e2);
+  ok('Threads：Secret を入れ直したら、その値を使い直す', t2.token === 'new-seed' && !t2.refreshed);
+  refreshOk = false;
+  o2 = await socialTick(e2, at(60 * 24 * 9), tf);
+  const o3 = await socialTick(e2, at(60 * 24 * 9 + 30), tf);
+  ok('Threads：更新に失敗しても止まらず、6時間はやり直さない', o2.threadsToken === 'error' && o3.threadsToken === 'wait', JSON.stringify([o2, o3]));
+}
+
+const bad = results.filter(x => !x.ok);
+for (const x of results) console.log((x.ok ? 'OK  ' : 'NG  ') + x.name + (x.ok ? '' : '  → ' + x.detail));
+console.log(`\n${results.length - bad.length}/${results.length} 合格`);
+if (bad.length) process.exit(1);

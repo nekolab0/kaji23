@@ -207,6 +207,7 @@ def index_page(full=True):
   {national_search()}
   {ALERT_JP}
 </section>
+{featured_block()}
 <section class="section" aria-labelledby="now">
   <div class="sec-head"><h2 id="now">いま・直近24時間の火事</h2><span class="small muted live-updated"></span><a class="map-link" href="map.html">地図で見る →</a></div>
   <div class="two-col">
@@ -232,12 +233,131 @@ def index_page(full=True):
 <section class="section" aria-labelledby="gd">
   <h2 id="gd">火事の調べ方・備え</h2>
   <ul class="plain"><li><a href="g-kajidoko.html">近くで火事？今どこで火事か調べる方法5つ</a></li><li><a href="g-siren.html">消防車のサイレン「ウーウーカンカン」の意味</a></li>
-  <li><a href="g-119.html">火事を見つけたら：119番通報の伝え方</a></li><li><a href="g-cause.html">火事の原因ランキング（消防白書）</a></li><li><a href="g-taika-itoigawa.html">糸魚川大火（2016年）とは？原因・被害とその後</a></li><li><a href="g-stats.html">火事が多い月・時間帯・曜日は？</a></li><li><a href="map.html">火事マップ（全国）</a></li><li><a href="dial-list.html">都道府県別 火災の案内ダイヤル一覧</a></li></ul>
+  <li><a href="g-119.html">火事を見つけたら：119番通報の伝え方</a></li><li><a href="g-cause.html">火事の原因ランキング（消防白書）</a></li><li><a href="g-taika-itoigawa.html">糸魚川大火（2016年）とは？原因・被害とその後</a></li><li><a href="g-stats.html">火事が多い月・時間帯・曜日は？</a></li><li><a href="weekly.html">週の火事まとめ（全国の件数・都道府県別）</a></li><li><a href="map.html">火事マップ（全国）</a></li><li><a href="dial-list.html">都道府県別 火災の案内ダイヤル一覧</a></li></ul>
 </section>
 </div>'''
     title = f'{SITE_NAME}｜今どこで火事？全国の火事の目撃情報・速報を町名でリアルタイムに'
     desc = '今どこで火事？サイレンや煙に気づいたら地名で検索。全国の火事の目撃報告・口コミ・報道を、都道府県・市区町村・町ごとにリアルタイムでまとめています。'
     return page('index', title, desc, body, full=full)
+
+# ---------- 直近24時間の主な火事と、X 用の投稿文（自動改善 E014） ----------
+# PV の多くは X で共有された火事のページから来る（2026-11-18 の top_paths）。目立つ火事をトップの上に出し、
+# 投稿の下書きを毎回の生成で ops/x_drafts/latest.md に書き出して、投稿の手間を減らす。
+# 見出し文は使わない（CLAUDE.md の情報源の方針）。自殺などに関わる記事（sensitive）は出さない。
+def featured_fires(n=3, hours=24, now=None):
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    since = now - datetime.timedelta(hours=hours)
+    cand = []
+    for x in news['incidents']:
+        if x.get('sensitive'): continue
+        try: t = datetime.datetime.fromisoformat(x['first'].replace('Z', '+00:00'))
+        except (KeyError, TypeError, ValueError): continue
+        if t.tzinfo is None: t = t.replace(tzinfo=datetime.timezone.utc)   # 時刻帯のない値で生成全体が止まらないように
+        if t < since or t > now + datetime.timedelta(minutes=10): continue
+        score = 4 * bool(x.get('dead')) + 2 * bool(x.get('injured')) + min(len(x['sources']), 3)
+        if score >= 4: cand.append((score, x['first'], x))
+    cand.sort(key=lambda c: (c[0], c[1]), reverse=True)
+    return [x for _, _, x in cand[:n]]
+def featured_block():
+    xs = featured_fires()
+    if not xs: return ''
+    return ('<section class="section" aria-labelledby="feat"><h2 id="feat">直近24時間の主な火事</h2>'
+            + news_list_jp(xs)
+            + '<p class="small muted">けが人・亡くなった方がいると報じられた火事と、複数の報道があった火事から、新しい順ではなく目立つ順に3件まで出しています。</p></section>')
+def x_post_text(x, form='one'):
+    """X 用の投稿文（煽らない・けが人の有無や見出しは書かない。場所・時刻・ページの URL だけ）
+    form: 'one'＝リンクつきの1投稿（A）／'body'＝リンクなしの本文（B の1つ目）／'reply'＝B の返信（URL だけ）"""
+    xp = x.get('pref', '東京都'); xc = x.get('city', x['ward'])
+    place = ('' if is23(xp, xc) else xp) + xc + ((x['town'] + (f'{x["chome"]}丁目' if x.get('chome') else '')) if x.get('town') else '')
+    b = '' if x.get('building') in (None, '', '建物不明') else f'（{x["building"]}）'
+    url = f'{SITE_URL}/{quote(fire_href(news_fire_id(x)))}'
+    tag = re.sub(r'[市区町村]$', '', WARD_PARENT.get((xp, xc)) or xc)   # 名古屋市中村区 → 名古屋、四日市市 → 四日市
+    head = f'【火事】{jtime(x["first"])}ごろ、{place}で火事{b}が報道されました。近くの方は煙や通行止めにご注意ください。'
+    if form == 'reply': return f'町名ごとの情報・目撃の共有はこちら\n{url}'
+    if form == 'body': return f'{head}町名ごとの情報は返信のリンクから\n#火事 #{tag}'
+    return f'{head}町名ごとの情報・目撃の共有はこちら\n{url}\n#火事 #{tag}'
+# リンクつきの1投稿（A）と、本文はリンクなし・URL は返信（B）を、日本時間の ISO 週で1週ずつ交互に試す（backlog 2026-11-23 週次）。
+# 偶数週＝A、奇数週＝B。比べる数字は、その週の t.co からの PV（ops/analytics/latest.json の top_referers）。
+def x_week_form(now=None):
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    w = now.astimezone(JST).isocalendar()[1]
+    return ('A', w) if w % 2 == 0 else ('B', w)
+def x_drafts_md(now=None):
+    xs = featured_fires(n=5, now=now)
+    form, week = x_week_form(now)
+    lines = ['# X 用の投稿文（自動で毎回作り直す・直近24時間の主な火事）', '',
+             '`site/nation.py` の `x_post_text` が作る。投稿する前に、リンク先のページと報道で場所を確かめる。',
+             'けが人・亡くなった方のことは書かない（煽らない・二次被害を避ける）。', '',
+             f'**今週（ISO 第{week}週）の形：{form}**　'
+             + ('A＝リンクつきの1投稿。' if form == 'A' else 'B＝本文はリンクなしで投稿し、すぐ自分の投稿への返信で URL を送る。')
+             + 'A と B を1週ずつ交互に試し、週ごとの t.co からの PV で比べる。今週の形だけを使う。', '']
+    if not xs: lines.append('いま出す火事はありません。')
+    for x in xs:
+        lines += [f'## {x.get("pref", "")}{x.get("city", x["ward"])}{x.get("town") or ""}（{jtime(x["first"])}）', '']
+        if form == 'A': lines += ['```', x_post_text(x), '```', '']
+        else: lines += ['本文：', '```', x_post_text(x, 'body'), '```', '', '返信：', '```', x_post_text(x, 'reply'), '```', '']
+    return '\n'.join(lines)
+
+# ---------- X 以外の SNS への投稿キュー（docs/growth.md の C1・backlog G1） ----------
+# 毎回の生成で ops/social/queue.json（受付サーバーが API で投稿する元）と ops/social/drafts.md（人が見て確かめる版）を書く。
+# 文のきまりは X と同じ（場所・時刻・情報源の種類・URL だけ。けが人・見出し・番地・店名は書かない。煽らない）。
+# 町名まで分かった火事だけを入れる（市までの火事は同じ文の連投に見え、スパム判定の原因になる）。
+# 同じ火事を同じ先に二度出さない・上限・間隔・古い速報を出さないのは受付サーバー側（C2）で守る。ここでは期限 expires を付ける。
+SOCIAL_DESTS = ('bsky', 'misskey', 'mastodon', 'threads', 'instagram', 'facebook')
+SOCIAL_LIMITS = {'bsky': 300, 'misskey': 3000, 'mastodon': 500, 'threads': 500, 'instagram': 2200, 'facebook': 5000}   # 本文の上限（字）
+SOCIAL_EXPIRE_HOURS = 12   # 発生（最初の報道）からこの時間を過ぎた火事は投稿しない（古い速報は出さない。報道は掲載まで中央値86分かかるので短くしすぎない）
+def social_utm(url, dest, kind='fire_post'):
+    return f'{url}{"&" if "?" in url else "?"}utm_source={dest}&utm_medium=social&utm_campaign={kind}'
+def social_fire_item(x, now=None):
+    """1件の火事を、配信先ごとの文にする。町名が分からない火事は None"""
+    if not x.get('town') or x.get('sensitive'): return None
+    xp = x.get('pref', '東京都'); xc = x.get('city', x['ward'])
+    place = ('' if is23(xp, xc) else xp) + xc + x['town'] + (f'{x["chome"]}丁目' if x.get('chome') else '')
+    b = '' if x.get('building') in (None, '', '建物不明') else f'（{x["building"]}）'
+    href = fire_href(news_fire_id(x))
+    url = f'{SITE_URL}/{quote(href)}'
+    tag = re.sub(r'[市区町村]$', '', WARD_PARENT.get((xp, xc)) or xc)
+    head = f'【火事】{jtime(x["first"])}ごろ、{place}で火事{b}が報道されました。近くの方は煙や通行止めにご注意ください。'
+    try: first = datetime.datetime.fromisoformat(x['first'].replace('Z', '+00:00'))
+    except (KeyError, TypeError, ValueError): return None
+    if first.tzinfo is None: first = first.replace(tzinfo=datetime.timezone.utc)
+    image = f'{SITE_URL}/og/f/{quote(href[:-5])}.png'   # 直近 FIRE_OG_DAYS 日の固定ページは og.js が件別の画像を作る
+    u = lambda d: social_utm(url, d)
+    posts = {
+        # Bluesky：URL は本文に入れず、受付サーバーがリンクカード（embed）にする。ハッシュタグは受付サーバーが facet を付ける
+        'bsky': {'text': f'{head}\n#火事 #{tag}', 'url': u('bsky'), 'image': image,
+                 'title': f'{place}の火事｜{SITE_NAME}', 'desc': f'{jtime(x["first"])}ごろ発生、報道されました。町名ごとの情報・目撃の共有は{SITE_NAME}で。'},
+        'misskey': {'text': f'{head}町名ごとの情報・目撃の共有はこちら\n{u("misskey")}\n#火事 #{tag}'},
+        'mastodon': {'text': f'{head}町名ごとの情報・目撃の共有はこちら\n{u("mastodon")}\n#火事 #{tag}'},
+        # Threads：ハッシュタグは1つだけ。URL は link_attachment で付ける
+        'threads': {'text': f'{head}町名ごとの情報はリンクから #火事', 'url': u('threads')},
+        # Instagram：本文のリンクは押せないので、プロフィールのリンクへ案内する。画像は必須（JPEG への変換は G9 で）
+        'instagram': {'text': f'{head}町名ごとの情報は、プロフィールのリンクから町名で検索できます。\n#火事 #{tag}', 'image': image},
+        'facebook': {'text': f'{head}町名ごとの情報・目撃の共有はこちら', 'url': u('facebook')},
+    }
+    for d, p in posts.items():
+        if len(p['text']) > SOCIAL_LIMITS[d]: p['text'] = p['text'][:SOCIAL_LIMITS[d] - 1] + '…'
+    return {'id': news_fire_id(x), 'kind': 'fire_post', 'first': first.isoformat(),
+            'expires': (first + datetime.timedelta(hours=SOCIAL_EXPIRE_HOURS)).isoformat(),
+            'page': f'{SITE_URL}/{quote(href)}', 'place': place, 'posts': posts}
+def social_queue(now=None):
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    items = [it for it in (social_fire_item(x, now) for x in featured_fires(n=8, now=now)) if it]
+    items = [it for it in items if datetime.datetime.fromisoformat(it['expires']) > now]
+    return {'generatedAt': now.isoformat(timespec='seconds'), 'version': 1, 'dests': list(SOCIAL_DESTS), 'items': items}
+def social_drafts_md(q):
+    lines = ['# X 以外の SNS への投稿キュー（自動で毎回作り直す）', '',
+             '`site/nation.py` の `social_queue` が作る。中身は `ops/social/queue.json` と同じで、受付サーバーが API で投稿する（`docs/growth.md`）。',
+             '受付サーバーの投稿の仕組み（G2）と各配信先の Secret が入るまで、ここに出ても**投稿はされない**。',
+             f'町名まで分かった「目立つ火事」だけ。発生から{SOCIAL_EXPIRE_HOURS}時間を過ぎた火事は外す。X の文は `ops/x_drafts/latest.md`。', '',
+             'Muse の手で投稿する TikTok・YouTube ショート・note・はてなブログの週の素材は、週のまとめ（G8）ができたら `ops/social/weekly/` に出る。', '']
+    if not q['items']: lines.append('いま出す火事はありません。')
+    for it in q['items']:
+        lines += [f'## {it["place"]}（{jtime(it["first"])}・期限 {jtime(it["expires"])}）', '']
+        for d in q['dests']:
+            p = it['posts'][d]
+            lines += [f'**{d}**' + (f'（リンク：{p["url"]}）' if p.get('url') else '') + ('（画像あり）' if p.get('image') else ''), '```', p['text'], '```', '']
+    return '\n'.join(lines)
 
 # ---------- 都道府県 ----------
 def pref_page(p):
@@ -455,6 +575,39 @@ def area_crumbs(p, c, t=None):
         items.append((t, tf if not tf.startswith('town.html') else None))
     return items
 
+# ---------- 火事のページの SNS カード（OGP）を件別にする（2026-11-23・運営者の依頼） ----------
+# <title>・description・canonical は変えず、og:title・og:description・og:image だけを件別にする。
+# 件別の OG 画像は直近 FIRE_OG_DAYS 日の火事だけ og.js で作る（X で共有されるのは新しい火事。全件作ると生成が重い）
+FIRE_OG_DAYS = 7
+FIRE_OG = []   # og.js に渡す（dist/data/_fires_og.json）
+def fire_og(r, place, k, hurt=''):
+    o = r.get('official') or {}
+    when = jtime(o['at']).split(' ') if o.get('at') else None
+    if when:
+        hh, mm = when[1].split(':')
+        at = f'{when[0]} {int(hh)}時{int(mm)}分ごろ'
+    else:
+        at = jmd(r['day'])
+    # 種別は「○○火災」の形にそろえる（報道の建物の種類「住宅」「車両」などをそのまま使うと「車両が発生」になる）
+    what = '火災' if not k or k == 'その他火災' else k if k.endswith(('火災', '火事')) else f'{k}の火災' if '・' in k else f'{k}火災'
+    title = f'{place}で{what}が発生｜{SITE_NAME}'
+    if o:
+        tail = '鎮火しました。' if o.get('status') == '鎮火' else '消防車が出動しました。'   # 固定ページは数日残るので「出動中」とは書かない
+        desc = f'{at}発生（消防の発表）。{tail}詳細は{SITE_NAME}で。'
+    else:
+        desc = f'{at}に発生、報道されました。{hurt}詳細は{SITE_NAME}で。'
+    name = fire_href(r['fid'])[:-5]
+    image = 'og/live.png'
+    try:
+        recent = (datetime.date.fromisoformat(TODAY_JST) - datetime.date.fromisoformat(r['day'])).days < FIRE_OG_DAYS
+    except Exception:
+        recent = False
+    if recent:
+        image = f'og/f/{name}.png'
+        if not any(f['name'] == name for f in FIRE_OG): FIRE_OG.append({'name': name, 'place': place, 'what': what, 'at': at, 'src': '報道' if r['x'] else '消防の発表',
+                        'status': o.get('status') or '', 'hurt': hurt})
+    return {'title': title, 'desc': desc, 'image': image}
+
 def static_fire_page(r):
     p, c, t, day, x, o = r['pref'], r['city'], r['town'], r['day'], r['x'], r.get('official')
     chome = (x or {}).get('chome')
@@ -495,7 +648,9 @@ def static_fire_page(r):
     title = f'{place}の火事（{jmd(day)}）{"・" + k if k else ""}｜{SITE_NAME}'
     desc = (f'{jday(day)}、{place}の火事。' + (f'種別：{k}。' if k else '') + hurt + ('報道元' if x else '消防本部の発表') + 'と、近所の人の目撃報告・口コミをまとめています。')
     ld = [bc_ld(cr + [(f'{jmd(day)}の火事', None)])]
+    og = fire_og(r, place, k, hurt)
     return fire_page({'name': fire_href(r['fid'])[:-5], 'title': title, 'desc': desc, 'kind': kind_label, 'h1': f'{place}の火事（{jmd(day)}）',
+                      'og_title': og['title'], 'og_desc': og['desc'], 'og_image': og['image'],
                       'lead': lead, 'news': news_html, 'crumb': crumb_html, 'after': after, 'ld': ld,
                       'id': r['fid'] if x else ('' if r['fid'].startswith('o-b-') else r['fid'][2:]), 'pref': p, 'city': c, 'town': t})   # さかのぼった分は受付サーバーに火事がない
 
@@ -585,3 +740,54 @@ def national_pages():
     pages['town.html'] = town_page()
     pages.update(static_pages())
     return pages
+
+# ---------- Atom フィード（docs/growth.md の C8。SEO 担当の決定 2026-11-25・seo/decisions.md） ----------
+# 新しい火事のページだけを並べた「短いサイトマップ」として Google に読ませ、WebSub で更新を知らせる。全国1本 /feed.xml から始める。
+# 入れるのは、その回のサイトマップに載った f-n-・f-o- のうち町名まで分かったもの（市までの -x-・noindex・移動ページ・fire.html?id= は除く）、直近3日・最大100件。
+# 見出し・けが人・番地・報道社名は書かない。id・link は utm なしの canonical。published・updated は情報源の時刻（生成時刻は使わない）
+FEED_DAYS, FEED_MAX = 3, 100
+WEBSUB_HUB = 'https://pubsubhubbub.appspot.com/'
+def _rfc3339(iso):
+    t = datetime.datetime.fromisoformat(str(iso).replace('Z', '+00:00'))
+    if t.tzinfo is None: t = t.replace(tzinfo=datetime.timezone.utc)
+    return t.astimezone(JST).isoformat(timespec='seconds')
+def feed_entries(listed, titles, now=None):
+    """listed：サイトマップに載せたファイル名の集合。titles：ファイル名 → <title> の文"""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    since = now - datetime.timedelta(days=FEED_DAYS)
+    out = []
+    for r in RECORDS:
+        if not has_page(r) or not r['town']: continue
+        fn = fire_href(r['fid'])
+        if fn not in listed or '-x-' in fn: continue
+        x, o = r['x'] or {}, r.get('official') or {}
+        if x.get('sensitive'): continue
+        times = [t for t in [o.get('at'), x.get('first')] if t]
+        if not times: continue
+        try:
+            pub = min(_rfc3339(t) for t in times)
+            upd = max([_rfc3339(t) for t in times] + [_rfc3339(s['pub']) for s in x.get('sources', []) if s.get('pub')])
+        except (TypeError, ValueError):
+            continue
+        if datetime.datetime.fromisoformat(pub) < since: continue
+        chome = x.get('chome')
+        place = place_of(r['pref'], r['city'], r['town'] + (f'{chome}丁目' if chome else ''))
+        k = rec_kind(r)
+        tm = jtime(min(times))
+        what = k if k.endswith(('火災', '火事')) else f'{k}の火事' if k else '火事'
+        summary = f'{tm}ごろ、{place}で{what}。情報源：{rec_src(r)}。' + ('鎮火しました。' if o.get('status') == '鎮火' else '')
+        title = re.sub(r'｜' + re.escape(SITE_NAME) + r'$', '', titles.get(fn) or f'{place}の火事')
+        out.append({'id': f'{SITE_URL}/{quote(fn)}', 'title': title, 'summary': summary, 'published': pub, 'updated': upd})
+    out.sort(key=lambda e: e['published'], reverse=True)
+    return out[:FEED_MAX]
+def feed_xml(entries):
+    self_url = f'{SITE_URL}/feed.xml'
+    updated = max((e['updated'] for e in entries), default=None) or datetime.datetime.now(JST).isoformat(timespec='seconds')
+    x = lambda s: html.escape(str(s), quote=True)
+    return ('<?xml version="1.0" encoding="utf-8"?>\n<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="ja">\n'
+            f'<title>{x(SITE_NAME)}｜全国の新しい火事（町名まで分かったもの）</title>\n<id>{x(self_url)}</id>\n'
+            f'<link rel="self" type="application/atom+xml" href="{x(self_url)}"/>\n<link rel="hub" href="{x(WEBSUB_HUB)}"/>\n'
+            f'<link rel="alternate" type="text/html" href="{x(SITE_URL)}/"/>\n<updated>{x(updated)}</updated>\n<author><name>{x(SITE_NAME)}</name></author>\n'
+            + ''.join(f'<entry><id>{x(e["id"])}</id><title>{x(e["title"])}</title><link rel="alternate" type="text/html" href="{x(e["id"])}"/>'
+                      f'<published>{x(e["published"])}</published><updated>{x(e["updated"])}</updated><summary>{x(e["summary"])}</summary></entry>\n' for e in entries)
+            + '</feed>\n')

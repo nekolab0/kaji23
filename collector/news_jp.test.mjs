@@ -1,7 +1,7 @@
 // 全国の報道抽出のテスト（見出しは検査用に作った架空のもの）
 import { createRequire } from 'node:module'; import fs from 'node:fs';
 const require = createRequire(import.meta.url);
-const { buildGeo, extractFireNewsJP } = require('./news_jp.js');
+const { buildGeo, extractFireNewsJP, pinKnownPubDates, rememberNews, dropReattributed } = require('./news_jp.js');
 const areas = JSON.parse(fs.readFileSync(new URL('../data/raw/areas.json', import.meta.url)));
 const towns = JSON.parse(fs.readFileSync(new URL('../data/raw/towns_jp.json', import.meta.url))).towns;
 const geo = buildGeo(areas, towns);
@@ -29,6 +29,15 @@ const cases = [
   ['山田さん宅で火事 - 新聞', null],                                  // 名字は地名にしない
   ['津波避難ビルで火災訓練 - 新聞', null],
   ['東北の山林火災 - 新聞', null],
+  // 市の名前を省いた区（区のすぐ後ろの町名で市を決める）・よく知られた地区の呼び名（2026-11-22）
+  ['「ストーブから出火」南区西長住の2階建て住宅で火災 - KBC', ['福岡県', '福岡市南区', '西長住']],
+  ['南区で住宅火災 - どこか', null],
+  ['中央区日本橋の雑居ビルで火事 - どこか', null],                    // 東京の中央区と大阪市中央区の両方にある（PR #51 の検証役の指摘）
+  ['北区赤羽西の住宅で火事 - どこか', null],
+  ['港区芝浦の倉庫で火災 - どこか', null],                                  // 町名がないと、どの市の南区か決めない
+  ['【速報】大阪・心斎橋 商店街近くの6階建てビルで火事 - MBS', ['大阪府', '大阪市中央区', null]],
+  ['「煙が充満」大阪・ミナミのビルで火事 - ABC', ['大阪府', '大阪市中央区', null]],
+  ['東心斎橋のビルで火災 - 新聞', ['大阪府', '大阪市中央区', '東心斎橋']],
 ];
 let ok = 0; const fails = [];
 for (const [title, want] of cases) {
@@ -40,6 +49,92 @@ for (const [title, want] of cases) {
 const merged = extractFireNewsJP([
   { title: '名古屋市中区栄で建物火災', link: 'https://a', pubDate: t(3), source: '中京テレビ' },
   { title: '名古屋・中区栄のビル火災 けが人なし', link: 'https://b', pubDate: t(2), source: 'NHK' }], geo, { now });
-if (merged.length === 1 && merged[0].sources.length === 2 && merged[0].town === '栄') ok++; else fails.push('同じ火事がまとまらない ' + JSON.stringify(merged.map(m => [m.city, m.town, m.sources.length])));
-console.log(`${ok}/${cases.length + 1} 合格`); fails.forEach(f => console.log('FAIL ' + f));
+if (merged.length === 1 && merged[0].sources.length === 2 && merged[0].town === '栄' && !merged[0].injured) ok++; else fails.push('同じ火事がまとまらない ' + JSON.stringify(merged.map(m => [m.city, m.town, m.sources.length])));
+// 否定の見出しを、けが人・死者ありと読まない（2026-11-23・E014 の検証役の指摘）
+const HARM_CASES = [['西立神町で住宅1棟が全焼 けが人なし - KTN', false, false], ['名古屋市中区栄で建物火災 死者はいない - NHK', false, false],
+  ['横浜市神奈川区三ツ沢下町で住宅火災 1人搬送 - tvk', true, false], ['西立神町で住宅火災 1人死亡 - KTN', false, true], ['名古屋市中区栄で火災 けが人なし 1人死亡', false, true], ['西立神町で住宅火災 けが人はありませんでした', false, false],
+  ['西立神町で住宅火災 けがはありません', false, false], ['西立神町で住宅火災 けが人がいない', false, false], ['西立神町で住宅火災 けが人は確認されず', false, false],
+  ['西立神町で住宅火災 けが人は出ず', false, false], ['西立神町で住宅火災 けが人は確認されていません', false, false],
+  ['西立神町で住宅全焼 死者、けが人なし', false, false], ['西立神町で住宅全焼 死者・けが人はいない', false, false], ['西立神町で住宅全焼 死亡者なし', false, false],
+  ['西立神町で住宅全焼 けが人・死者なし', false, false], ['西立神町で住宅全焼 けが人や死者はいない', false, false], ['西立神町で住宅火災 男性けがなく', false, false],
+  ['西立神町で住宅火災 1人死亡 けが人・重傷者なし', false, true], ['西立神町で住宅火災 女性1人が死亡 他にけが人はいない', false, true], ['西立神町で住宅火災 2人けが 死者は出ず', true, false], ['西立神町で住宅火災 2人けが、死者は出ず', true, false],
+  ['西立神町で住宅火災 2人がけがをしたが、死者はいない', true, false], ['西立神町で住宅火災 死亡1人、けが人なし', false, true],
+  ['西立神町で住宅全焼 けが人、死者ともになし', false, false], ['西立神町で住宅全焼 死者・けが人ともにいない', false, false], ['西立神町で住宅全焼 けが人・死者とも出ていない', false, false],
+  ['西立神町で住宅全焼 けが人も死者もいない', false, false], ['西立神町で住宅火災 けが人はいなかった', false, false], ['西立神町で住宅全焼 けが人・死者は出なかった', false, false],
+  ['西立神町で住宅火災 けが人は確認できていない', false, false], ['西立神町で住宅火災 負傷者や死者の情報はなし', false, false],
+  ['西立神町で住宅火災 2人けが 1人死亡', true, true], ['西立神町で住宅火災 男性がけが、死者なし', true, false], ['西立神町で住宅火災 焼け跡から遺体', false, true],
+  ['西立神町で住宅火災 3人が重傷', true, false], ['西立神町で住宅火災 1人が心肺停止', false, true], ['西立神町で住宅火災 2人がやけど', true, false],
+  ['西立神町で住宅火災 死亡は確認されていない', false, false], ['西立神町で住宅火災 けが・死亡なし', false, false], ['西立神町で住宅火災 けがや死亡はなし', false, false], ['西立神町で住宅火災 けがも死亡もなし', false, false], ['西立神町で住宅火災 死亡や負傷はなかった', false, false], ['西立神町で住宅火災 1人も死亡していない', false, false], ['西立神町で住宅火災 1人の死亡確認されず', false, false], ['西立神町で住宅火災 遺体は見つかっていない', false, false], ['西立神町で住宅火災 心肺停止の人はいない', false, false], ['西立神町で住宅火災 死者0人', false, false], ['西立神町で住宅火災 けが人0人', false, false], ['西立神町で住宅火災 けがをしていない', false, false], ['西立神町で住宅火災 けがをした人はいない', false, false], ['西立神町で住宅火災 けがを負わず', false, false], ['西立神町で住宅火災 搬送されず', false, false], ['西立神町で住宅火災 搬送された人はいない', false, false], ['西立神町で住宅火災 やけどなし', false, false], ['西立神町で住宅火災 重傷はなし', false, false], ['西立神町で住宅火災 男性が負傷', true, false], ['西立神町で住宅火災 男性重体', true, false], ['西立神町で住宅火災 男性が亡くなる', false, true], ['西立神町で住宅火災 男性けが', true, false], ['西立神町で住宅火災 3人死傷', true, false], ['西立神町で住宅火災 1人が病院に運ばれる', true, false], ['西立神町で住宅火災 男性死亡 けが人なし', false, true], ['西立神町で住宅火災 2人けが 1人死亡 けが人なし', true, true],
+  ['西立神町で住宅火災 けが人の有無を確認', false, false], ['西立神町で住宅火災 死傷者の有無確認中', false, false], ['西立神町で住宅火災 けが人は無かった', false, false],
+  ['西立神町で住宅火災 10人が死亡', false, true], ['西立神町で住宅火災 20人搬送', true, false], ['西立神町で住宅火災 1人死亡し他にけが人はなし', false, true], ['西立神町で住宅火災 けが人がいるか確認中', false, false]];
+for (const [title, inj, dead] of HARM_CASES) {
+  const r = extractFireNewsJP([{ title, link: 'https://h/' + title, pubDate: t(1), source: 'テスト' }], geo, { now })[0];
+  if (r && r.injured === inj && r.dead === dead) ok++; else fails.push('けが人・死者の読み ' + title + ' ' + JSON.stringify(r && [r.injured, r.dead]));
+}
+// 更新された古い記事（同じ link・新しい pubDate）を、今日の火事にしない（2026-11-18。豊後高田市の 11/8 の記事が 11/16 に再び出た型）
+let extra = 0;
+{
+  const known = rememberNews({}, [['https://news.google.com/rss/articles/OLD?oc=5', new Date(Date.parse(now) - 8 * 864e5).toISOString()],
+    ['https://news.google.com/rss/articles/NEW2?oc=5', new Date(Date.parse(now) - 5 * 36e5).toISOString()]], new Date(now));
+  const its = [{ title: '大分県豊後高田市で住宅全焼', link: 'https://news.google.com/rss/articles/OLD?oc=5', pubDate: t(1), source: 'A' },
+    { title: '名古屋市中区栄で建物火災', link: 'https://news.google.com/rss/articles/NEW2?oc=5', pubDate: t(1), source: 'B' },
+    { title: '札幌市北区で住宅火災', link: 'https://news.google.com/rss/articles/FRESH?oc=5', pubDate: t(1), source: 'C' }];
+  const n = pinKnownPubDates(its, known);
+  const r = extractFireNewsJP(its, geo, { now, maxAgeHours: 48 });
+  const ids = r.map(x => x.city + ':' + (Date.parse(now) - Date.parse(x.first)) / 36e5).sort();
+  extra++;
+  if (n === 2 && JSON.stringify(ids) === JSON.stringify(['名古屋市中区:5', '札幌市北区:1'])) ok++; else fails.push('更新された古い記事の扱い ' + n + ' ' + JSON.stringify(ids));
+  rememberNews(known, r.articles, new Date(now));
+  extra++;
+  if (Object.keys(known).length === 3 && JSON.parse(JSON.stringify(r)).articles === undefined && r.articles.length === 2) ok++; else fails.push('記事の記録 ' + Object.keys(known).length);
+  rememberNews(known, [], new Date(Date.parse(now) + 25 * 864e5));   // 30日より前の記録は消える
+  extra++;
+  if (Object.keys(known).length === 2) ok++; else fails.push('古い記録の削除 ' + Object.keys(known).length);
+}
+{
+  // 前の回に別の日の火事に使った続報の記事だけが残った回（2026-11-20 山形市印役町の型）。別の日の火事を作らない
+  const L = 'https://news.google.com/rss/articles/FOLLOW?oc=5';
+  const prev = [{ id: '山形県-山形市-印役町-2026-11-19', sources: [{ name: 'A', link: 'https://news.google.com/rss/articles/FIRST?oc=5' }, { name: 'B', link: L }] }];
+  const its = [{ title: '山形市印役町の車両火災 けが人', link: L, pubDate: t(1), source: 'B' },
+    { title: '札幌市北区で住宅火災', link: 'https://news.google.com/rss/articles/OTHER?oc=5', pubDate: t(1), source: 'C' }];
+  const r = extractFireNewsJP(its, geo, { now, maxAgeHours: 48 });
+  const n = dropReattributed(r, prev);
+  extra++;
+  if (n === 1 && r.length === 1 && r[0].city === '札幌市北区') ok++; else fails.push('続報の記事だけの火事 ' + n + ' ' + JSON.stringify(r.map(x => x.id)));
+  // 同じ id の火事なら、記事は外さない（前の回と同じ火事の更新）
+  const r2 = extractFireNewsJP(its.slice(0, 1), geo, { now, maxAgeHours: 48 });
+  const n2 = dropReattributed(r2, [{ id: r2[0].id, sources: [{ name: 'B', link: L }] }]);
+  extra++;
+  if (n2 === 0 && r2.length === 1) ok++; else fails.push('同じ火事の更新 ' + n2 + ' ' + r2.length);
+  // ほかの記事も持つ火事は、使用済みの記事だけ外して残す（2026-11-19 墨田区向島の型）
+  const its3 = [{ title: '墨田区向島の共同住宅で火災 1人死亡', link: L, pubDate: t(3), source: 'B' },
+    { title: '墨田区向島で火事 1人死亡', link: 'https://news.google.com/rss/articles/NEW3?oc=5', pubDate: t(2), source: 'D' }];
+  const r3 = extractFireNewsJP(its3, geo, { now, maxAgeHours: 48 });
+  const n3 = dropReattributed(r3, [{ id: '東京都-墨田区-向島-2026-11-01', sources: [{ name: 'B', link: L }] }]);
+  extra++;
+  if (n3 === 1 && r3.length === 1 && r3[0].sources.length === 1 && r3[0].sources[0].name === 'D') ok++; else fails.push('使用済みの記事だけ外す ' + n3 + ' ' + JSON.stringify(r3));
+  // 外した記事の「死亡」・時刻・町名を残さない（2026-11-21 PR #49 の検証役の再現。2026-11-27 に直した）
+  const LD = 'https://news.google.com/rss/articles/DEAD?oc=5';
+  const its4 = [{ title: '墨田区向島で住宅火災 1人死亡', link: LD, pubDate: t(40), source: 'B' },
+    { title: '墨田区で住宅火災 1人けが', link: 'https://news.google.com/rss/articles/INJ4?oc=5', pubDate: t(6), source: 'E' }];
+  const r4 = extractFireNewsJP(its4, geo, { now, maxAgeHours: 48 });
+  const before4 = r4.length === 1 && r4[0].dead && r4[0].town === '向島' && r4[0].id === '東京都-墨田区-向島-2026-11-01';
+  const n4 = dropReattributed(r4, [{ id: '東京都-墨田区-向島-2026-10-31', sources: [{ name: 'B', link: LD }] }]);
+  extra++;
+  const x4 = r4[0] || {};
+  if (before4 && n4 === 1 && r4.length === 1 && !x4.dead && x4.injured && x4.town === null && x4.first === new Date(t(6)).toISOString() &&
+    x4.id === '東京都-墨田区-x-2026-11-03' && x4.sources.length === 1 && x4.sources[0].name === 'E' && x4.confidence === 'low' && JSON.parse(JSON.stringify(x4)).members === undefined) ok++;
+  else fails.push('外した記事から作り直す ' + before4 + ' ' + n4 + ' ' + JSON.stringify(r4));
+  // 残った記事が前の回のこの火事のものなら、id を変えない（前の火事の更新。別の id の二重を作らない）
+  const LK = 'https://news.google.com/rss/articles/KEEP5?oc=5';
+  const its5 = [{ title: '墨田区向島で住宅火災 1人死亡', link: LD, pubDate: t(40), source: 'B' },
+    { title: '墨田区向島で住宅火災 けが人', link: LK, pubDate: t(6), source: 'F' }];
+  const r5 = extractFireNewsJP(its5, geo, { now, maxAgeHours: 48 });
+  const id5 = r5[0] && r5[0].id;
+  const n5 = dropReattributed(r5, [{ id: '東京都-墨田区-向島-2026-10-31', sources: [{ name: 'B', link: LD }] }, { id: id5, sources: [{ name: 'F', link: LK }] }]);
+  extra++;
+  if (n5 === 1 && r5.length === 1 && r5[0].id === id5 && r5[0].town === '向島' && !r5[0].dead && r5[0].sources.map(s => s.name).join() === 'F') ok++;
+  else fails.push('前の火事の更新は id を変えない ' + n5 + ' ' + JSON.stringify(r5));
+}
+console.log(`${ok}/${cases.length + 1 + HARM_CASES.length + extra} 合格`); fails.forEach(f => console.log('FAIL ' + f));
 process.exit(fails.length ? 1 : 0);

@@ -1,25 +1,89 @@
 {
- "fetchedAt": "2026-11-15T13:47+09:00",
+ "fetchedAt": "2026-11-28T15:52+09:00",
  "property": "sc-domain:kajisoku.jp",
  "range28d": [
-  "2026-10-17",
-  "2026-11-13"
+  "2026-10-30",
+  "2026-11-26"
  ],
- "sitemapUrls": 4179,
+ "sitemapUrls": 5068,
  "sitemapUrlsByKind": {
-  "main": 39,
+  "main": 44,
   "dial": 47,
   "pref": 47,
-  "city": 1543,
-  "town": 1080,
-  "fire": 1423
+  "city": 1564,
+  "town": 1259,
+  "fire": 2107
  },
- "inspectedUrls": 4179,
+ "inspectedUrls": 5068,
  "coverage": {
   "送信して登録されました": 1,
-  "URL が Google に認識されていません": 4178
+  "URL が Google に認識されていません": 5041,
+  "検出 - インデックス未登録": 26
  },
  "submittedSitemaps": [
+  {
+   "path": "https://kajisoku.jp/feed.xml",
+   "lastSubmitted": "2026-11-25T13:14:54.337Z",
+   "lastDownloaded": "2026-11-28T02:51:08.178Z",
+   "isPending": false,
+   "errors": "0",
+   "warnings": "0",
+   "submittedUrls": 68
+  },
+  {
+   "path": "https://kajisoku.jp/sitemap-fire.xml",
+   "lastSubmitted": "2026-11-18T06:23:01.834Z",
+   "lastDownloaded": "2026-11-18T06:23:03.707Z",
+   "isPending": false,
+   "errors": "0",
+   "warnings": "0",
+   "submittedUrls": 1565
+  },
+  {
+   "path": "https://kajisoku.jp/sitemap-town.xml",
+   "lastSubmitted": "2026-11-18T06:22:48.305Z",
+   "lastDownloaded": "2026-11-18T06:22:48.917Z",
+   "isPending": false,
+   "errors": "0",
+   "warnings": "0",
+   "submittedUrls": 1111
+  },
+  {
+   "path": "https://kajisoku.jp/sitemap-city.xml",
+   "lastSubmitted": "2026-11-18T06:22:31.617Z",
+   "lastDownloaded": "2026-11-18T06:22:33.323Z",
+   "isPending": false,
+   "errors": "0",
+   "warnings": "0",
+   "submittedUrls": 1550
+  },
+  {
+   "path": "https://kajisoku.jp/sitemap-pref.xml",
+   "lastSubmitted": "2026-11-18T06:22:16.998Z",
+   "lastDownloaded": "2026-11-18T06:22:17.564Z",
+   "isPending": false,
+   "errors": "0",
+   "warnings": "0",
+   "submittedUrls": 47
+  },
+  {
+   "path": "https://kajisoku.jp/sitemap-dial.xml",
+   "lastSubmitted": "2026-11-18T06:22:00.318Z",
+   "lastDownloaded": "2026-11-18T06:22:00.776Z",
+   "isPending": false,
+   "errors": "0",
+   "warnings": "0",
+   "submittedUrls": 47
+  },
+  {
+   "path": "https://kajisoku.jp/sitemap-main.xml",
+   "lastSubmitted": "2026-11-18T06:21:44.242Z",
+   "lastDownloaded": "2026-11-18T06:21:44.996Z",
+   "isPending": false,
+   "errors": "0",
+   "warnings": "0",
+   "submittedUrls": 39
+  },
   {
    "path": "https://kajisoku.jp/sitemap.xml",
    "lastSubmitted": "2026-11-13T03:37:34.878Z",
@@ -30,5 +94,7 @@
    "submittedUrls": 9170,
    "children": []
   }
- ]
+ ],
+ "inspectedToday": 1500,
+ "inspectionStopped": null
 }

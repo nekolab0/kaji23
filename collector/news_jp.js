@@ -39,7 +39,13 @@ function buildGeo(areas, townsJP) {
     townCount.set(n, (townCount.get(n) || 0) + 1); townAt.set(n, byCode[code]);
   }
   const uniqTowns = [...townCount].filter(([, c]) => c === 1).map(([n]) => n).sort((a, b) => b.length - a.length);
-  return { prefs, byName, names, codeOf, towns, aliases, shorts, shortNames, uniqTowns, townAt };
+  // 政令市の区を、市の名前を省いて書く見出し（「南区西長住の住宅で火災」）。区の名前 → その名前の区の一覧
+  const wardsByShort = new Map();
+  for (const e of entries) {
+    const m = !e.parent && e.code && e.city.match(/^.+市(.+区)$/); if (!m) continue;
+    (wardsByShort.get(m[1]) || wardsByShort.set(m[1], []).get(m[1])).push(e);
+  }
+  return { prefs, byName, names, codeOf, towns, aliases, shorts, shortNames, uniqTowns, townAt, wardsByShort };
 }
 // 地名以外の意味でよく使う語・人の名字に多い語（省いた形では使わない）
 const SHORT_STOP = new Set(['東北', '南部', '東海', '上野', '昭和', '朝日', '大和', '中山', '共和', '日高', '清水', '池田', '小野', '中島', '平田', '野田', '山田', '高山', '川内',
@@ -49,8 +55,54 @@ const SHORT_STOP = new Set(['東北', '南部', '東海', '上野', '昭和', '�
   '多賀', '多治見', '大津', '新田', '神戸', '府中', '光', '北', '南', '東', '西', '那須', '日光', '白馬', '伊豆', '箱根', '軽井沢', '熱海', '草津', '湯沢', '平泉', '富士', '浦安', '舞浜',
   '国見', '白石', '長井', '天童', '鹿島', '神栖', '桜', '旭', '緑', '泉', '本町', '大東', '中津', '小山', '大山', '宮古', '古賀', '久米', '国分', '大口', '日南', '高千穂', '南国', '大洲']);
 
+// 市区町村の名前が出ない、よく知られた地区の呼び名 → 市区町村（全国で1か所だけを指すものに限る）
+const LANDMARKS = [[/心斎橋|道頓堀|大阪・?ミナミ(?![ァ-ヶ])/, '大阪府', '大阪市中央区']];
+// 「南区西長住」: 区の名前のすぐ後ろの町名で、どの市の区かを決める（候補が1つに決まるときだけ）
+function wardTownHit(title, geo, prefHit) {
+  const found = [];
+  for (const [w, list] of geo.wardsByShort || []) {
+    if (geo.byName.has(w)) continue;   // 東京の中央区・北区・港区と同じ名前の区は、市の名前なしでは決めない（「中央区日本橋」）
+    let i = title.indexOf(w);
+    while (i >= 0) {
+      const prev = title[i - 1] || '';
+      if (!/[一-龥ぁ-んァ-ヶ]/.test(prev)) {   // 「○○市南区」「港南区」の一部ではない
+        const after = title.slice(i + w.length);
+        for (const e of list) {
+          if (prefHit.size && !prefHit.has(e.pref)) continue;
+          const t = (geo.towns[e.code] || []).find(t => t.length >= 2 && after.startsWith(t));
+          if (t) found.push({ ...e, at: i, name: w });
+        }
+      }
+      i = title.indexOf(w, i + 1);
+    }
+  }
+  return new Set(found.map(e => e.code)).size === 1 ? found[0] : null;
+}
+
 const KANJI_NUM = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
 const NOT_INCIDENT = /訓練|予防|啓発|呼びかけ|放送文化|時の話題|特集|振り返|判決|裁判|初公判|起訴|送検|再逮捕|年前|周年|統計|まとめ|ランキング|映画|ドラマ|イベント|消防団|表彰|防災週間|火災保険|山火事対策|クラウドファンディング|募金|支援金|寄付|再建|復興|READYFOR|CAMPFIRE|応援|バザー|コンサート|感謝状|販売再開|営業再開|教訓|防火設備|点検|閉鎖/;
+// けが人・死者の読み取り（2026-11-23・E014 の検証役の指摘を4回受けて、否定の言い方を1つずつ足す直し方をやめた）。
+// 見出しを「、」「。」・空白・「-」などで句に分け、否定（なし・ない・ず・ません・0人 など）を含む句は数えない。
+// 否定のない句に、けが・死亡などの語があるときだけ「あり」にする。迷う見出しは「なし」側に倒す（トップの「主な火事」で重さを間違えて出さない）。
+// 人の語だけの句（「けが人、死者ともになし」の「けが人」）は、次の句と1つにして読む。
+const HARM_NOUN_ONLY = /^(?:けが人|ケガ人|怪我人|けが|ケガ|怪我|負傷者|重傷者|軽傷者|死傷者|死亡者|搬送者|死者|死亡|負傷)$/;
+// 「有無を確認」「確認中」のように、わかっていない句も数えない
+const HARM_NEG = /なし|無し|無い|無かった|無く|ない|なかった|なく|ません|(?<![0-9０-９])[0０]人|ゼロ|ず$|ず(?=に|も)|されず|られず|わず|出ず|せず|有無|確認中|調べ|調査中|不明/;
+const INJ_WORD = /けが|ケガ|怪我|負傷|重傷|軽傷|重体|意識不明|搬送|運ばれ|やけど|煙を吸|煙吸|死傷/;
+const DEAD_WORD = /死亡|死者|遺体|心肺停止|焼死|亡くな|亡くし/;
+function harmClauses(title) {
+  const raw = title.split(/[\s　、。，,／/｜|\-–—]+|(?=他に|ほかに|このほか)/).filter(Boolean), out = [];   // 「1人死亡し他にけが人はなし」も2つの句に
+  for (let i = 0; i < raw.length; i++) {
+    let c = raw[i];
+    while (HARM_NOUN_ONLY.test(c) && i + 1 < raw.length) c += raw[++i];
+    out.push(c);
+  }
+  return out.filter(c => !HARM_NEG.test(c));
+}
+function harmFlags(title) {
+  const cs = harmClauses(title);
+  return { injured: cs.some(c => INJ_WORD.test(c)), dead: cs.some(c => DEAD_WORD.test(c)) };
+}
 const SENSITIVE = /自殺|死のう|心中|自ら火|焼身/; // 文言は表示しない（事実の抽出だけに使う）
 const BUILDING = [['共同住宅', /共同住宅|アパート|マンション|団地/], ['住宅', /住宅|民家|一軒家|戸建/], ['飲食店', /飲食店|店舗|ラーメン|居酒屋|レストラン/],
   ['ビル', /ビル|雑居/], ['工場・倉庫', /工場|倉庫|作業場/], ['車両', /車両|車が|乗用車|トラック|バス/], ['施設', /グループホーム|施設|病院|学校|寺|神社/],
@@ -58,6 +110,24 @@ const BUILDING = [['共同住宅', /共同住宅|アパート|マンション|�
 const PRI = /NHK|TBS|テレ朝|日テレ|FNN|フジ|テレビ東京|共同|時事|産経|読売|朝日新聞|毎日|東京新聞|ABEMA|新聞|放送|テレビ/;
 const TOKYO_AMBIG = ['北区', '中央区', '港区'];
 
+// 火事にまとめた記事（x.members・公開時刻の順）から、町名・建物・けが人などの欄と媒体・id を作る。
+// 町名・丁目・建物は、最初にわかった記事のもの（まとめるときの決め方と同じ）。final のとき媒体を主な報道の順に3つまでにし、id を付ける
+function summarizeIncident(x, final = false) {
+  const ms = x.members;
+  x.town = (ms.find(m => m.town) || {}).town || null;
+  x.chome = (ms.find(m => m.chome) || {}).chome || null;
+  x.building = (ms.find(m => m.building !== '建物不明') || ms[0]).building;
+  x.injured = ms.some(m => m.injured); x.dead = ms.some(m => m.dead); x.sensitive = ms.some(m => m.sensitive);
+  x.first = ms[0].pub; x.last = ms[ms.length - 1].pub;
+  const sources = [];
+  for (const m of ms) if (!sources.some(s => s.name === m.source)) sources.push({ name: m.source, link: m.link, pub: m.pub });
+  x.sources = sources;
+  if (!final) return x;
+  x.sources.sort((a, b) => (PRI.test(b.name) ? 1 : 0) - (PRI.test(a.name) ? 1 : 0)); x.sources = x.sources.slice(0, 3);
+  x.confidence = x.sources.length >= 2 || x.town ? 'high' : 'low';
+  x.id = `${x.pref}-${x.city}-${x.town || 'x'}-${x.first.slice(0, 10)}`;
+  return x;
+}
 function extractFireNewsJP(items, geo, opts = {}) {
   const now = opts.now ? new Date(opts.now) : new Date();
   const maxAgeH = opts.maxAgeHours || 72;
@@ -94,6 +164,11 @@ function extractFireNewsJP(items, geo, opts = {}) {
       const e = t && geo.townAt.get(t);
       if (e && (!prefHit.size || prefHit.has(e.pref))) hit = { ...e, at: title.indexOf(t), name: '' };
     }
+    if (!hit) hit = wardTownHit(title, geo, prefHit);
+    if (!hit) for (const [re, pref, name] of LANDMARKS) {
+      const m = title.match(re); const e = m && (geo.byName.get(name) || [])[0];
+      if (e && (!prefHit.size || prefHit.has(pref))) { hit = { ...e, at: m.index, name: '' }; break; }
+    }
     if (!hit) continue;
     // 町名: 市区町村名の直後、またはタイトル中の3文字以上の町名
     const after = title.slice(hit.at + hit.name.length);
@@ -112,7 +187,7 @@ function extractFireNewsJP(items, geo, opts = {}) {
     let source = (it.source || '').trim() || '報道';
     if (/^https?:\/\//.test(source)) { try { source = new URL(source).hostname.replace(/^www\./, ''); } catch (e) {} }
     out.push({ pref: hit.pref, city, parent: !code, town, chome, building,
-      injured: /けが|負傷|重傷|軽傷|搬送|やけど/.test(title), dead: /死亡|死者|遺体|心肺停止/.test(title), sensitive: SENSITIVE.test(title),
+      ...harmFlags(title), sensitive: SENSITIVE.test(title),
       pub: pub.toISOString(), source, link: it.link });
   }
   // 同じ火事をまとめる: 同じ市区町村で、町名が一致（または片方が不明）し、建物が矛盾せず、近い時刻
@@ -121,21 +196,18 @@ function extractFireNewsJP(items, geo, opts = {}) {
   for (const n of out) {
     const hit = incidents.find(x => x.pref === n.pref && x.city === n.city && (!x.town || !n.town || x.town === n.town) &&
       (x.building === n.building || x.building === '建物不明' || n.building === '建物不明') && Math.abs(new Date(n.pub) - new Date(x.first)) / 36e5 < (x.town && n.town ? 72 : 36));
-    if (hit) {
-      hit.town = hit.town || n.town; hit.chome = hit.chome || n.chome;
-      if (hit.building === '建物不明') hit.building = n.building;
-      hit.injured ||= n.injured; hit.dead ||= n.dead; hit.sensitive ||= n.sensitive;
-      if (!hit.sources.some(s => s.name === n.source)) hit.sources.push({ name: n.source, link: n.link, pub: n.pub });
-      hit.last = n.pub;
-    } else incidents.push({ pref: n.pref, city: n.city, ward: n.city, parent: n.parent, town: n.town, chome: n.chome, building: n.building, injured: n.injured, dead: n.dead,
-      sensitive: n.sensitive, first: n.pub, last: n.pub, sources: [{ name: n.source, link: n.link, pub: n.pub }] });
+    if (hit) { hit.members.push(n); summarizeIncident(hit); }
+    else {
+      const x = { pref: n.pref, city: n.city, ward: n.city, parent: n.parent };
+      Object.defineProperty(x, 'members', { value: [n], writable: true });   // 火事にまとめた記事（JSON には出ない。dropReattributed が作り直しに使う）
+      summarizeIncident(x); incidents.push(x);
+    }
   }
-  incidents.forEach(x => {
-    x.sources.sort((a, b) => (PRI.test(b.name) ? 1 : 0) - (PRI.test(a.name) ? 1 : 0)); x.sources = x.sources.slice(0, 3);
-    x.confidence = x.sources.length >= 2 || x.town ? 'high' : 'low';
-    x.id = `${x.pref}-${x.city}-${x.town || 'x'}-${x.first.slice(0, 10)}`;
-  });
-  return incidents.reverse();
+  incidents.forEach(x => summarizeIncident(x, true));
+  incidents.reverse();
+  // 取り出した記事（link・公開時刻）。news_run.mjs が「一度見た記事」の記録（data/raw/news_links.json）に使う。JSON には出ない
+  Object.defineProperty(incidents, 'articles', { value: out.map(n => [n.link, n.pub]) });
+  return incidents;
 }
 // 「市・町・村」を省いた市町村名を探す。前は区切り（文頭・記号・空白）、後ろは助詞・記号・「市」「駅」・文末のときだけ
 function shortHit(title, geo, prefHit) {
@@ -167,4 +239,57 @@ function parseRSS(xml) {
   }
   return out;
 }
-if (typeof module !== 'undefined') module.exports = { buildGeo, extractFireNewsJP, parseRSS };
+// 一度見た記事の公開時刻を、最初に見た時刻に戻す（2026-11-18）。
+// Google ニュースの RSS は、同じ記事（同じ link）の pubDate を、記事が更新されると新しい時刻に変えて返すことがある。
+// そのままだと、数日前の火事が「今日の火事」として別のページ・別の件数になっていた（11/9〜11/17 で約35件。例：豊後高田市の 11/8 の記事が 11/11・11/12・11/16 に再び出た）。
+// known は「link のキー → 最初に見た公開時刻（ISO）」。同じ記事なら古いほうの時刻を使うので、48時間より前の記事は取り込みの対象から外れ、
+// 48時間以内なら元の火事（同じ id）にまとまる。戻した件数を返す
+function newsLinkKey(link) {
+  const s = String(link || '').replace(/[?#].*$/, '');
+  let h1 = 0x811c9dc5, h2 = 0x01000193;   // FNV 系の簡単なハッシュ2本（64bit 相当）。記録のファイルを小さくするため link そのものは保存しない
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619) >>> 0; h2 = Math.imul(h2 ^ c, 2246822519) >>> 0; }
+  return h1.toString(36) + h2.toString(36);
+}
+function pinKnownPubDates(items, known) {
+  let n = 0;
+  for (const it of items) {
+    const was = known[newsLinkKey(it.link)];
+    if (!was) continue;
+    const pub = new Date(it.pubDate);
+    if (!isNaN(pub) && pub - new Date(was) > 60e3) { it.pubDate = new Date(was).toUTCString(); n++; }
+  }
+  return n;
+}
+// 記録に足す（古いほうの時刻を残す）。keepDays より前の記録は消す
+function rememberNews(known, pairs, now = new Date(), keepDays = 30) {
+  for (const [link, pub] of pairs) { const k = newsLinkKey(link); if (!known[k] || pub < known[k]) known[k] = pub; }
+  const cut = new Date(+new Date(now) - keepDays * 864e5).toISOString();
+  for (const k of Object.keys(known)) if (known[k] < cut) delete known[k];
+  return known;
+}
+// 前の回までに別の火事（別の id）に使った記事を、今回の火事から外す。外したら記事が残らない火事は捨てる。
+// 続報の記事だけが検索結果に残った回に、その記事の公開日で同じ火事を別の日の火事として作っていた（2026-11-19 墨田区向島・11-20 山形市印役町。
+// ops/metrics.py の「同じ記事が別の日の火事になっている」）。prev は news.json の火事、fresh は今回の extractFireNewsJP の結果。外した記事の数を返す
+function dropReattributed(fresh, prev) {
+  const owner = new Map();
+  for (const x of prev) for (const s of x.sources || []) {
+    const k = newsLinkKey(s.link); if (!owner.has(k)) owner.set(k, new Set()); owner.get(k).add(x.id);
+  }
+  let n = 0;
+  for (let i = fresh.length - 1; i >= 0; i--) {
+    const x = fresh[i], ms = x.members || x.sources;
+    const own = m => owner.get(newsLinkKey(m.link));
+    const keep = ms.filter(m => { const o = own(m); return !o || o.has(x.id); });
+    if (keep.length === ms.length) continue;
+    n += ms.length - keep.length;
+    if (!keep.length) { fresh.splice(i, 1); continue; }
+    if (!x.members) { x.sources = keep; continue; }
+    // 外した記事の時刻・町名・「死亡」などを残さないよう、残った記事から作り直す（2026-11-27。PR #49 の検証役の指摘）
+    const oldId = x.id, same = keep.some(m => (own(m) || new Set()).has(oldId)), town = x.town, chome = x.chome;
+    x.members = keep; summarizeIncident(x, true);
+    // 残った記事が前の回のこの火事のものなら、前の火事の更新として id（と町名）を変えない（変えると同じ火事が別の id で二重になる）
+    if (same) { x.id = oldId; x.town = town; x.chome = chome; x.confidence = x.sources.length >= 2 || x.town ? 'high' : 'low'; }
+  }
+  return n;
+}
+if (typeof module !== 'undefined') module.exports = { buildGeo, extractFireNewsJP, parseRSS, newsLinkKey, pinKnownPubDates, rememberNews, dropReattributed };

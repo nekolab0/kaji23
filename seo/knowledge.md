@@ -144,3 +144,82 @@
 **日本の検索エンジンのシェア**｜出典：[総務省 令和8年版 情報通信白書 検索サービス](https://www.soumu.go.jp/johotsusintokei/whitepaper/ja/r08/html/nd217300.html)（StatCounter、2026年3月）
 - スマートフォン・タブレットは Google が7割以上。パソコンは Google 47.5％・Bing 46.9％で、Bing が伸びている
 - Yahoo! JAPAN は 2010年に Google の検索エンジンの採用を発表している（[INTERNET Watch](https://internet.watch.impress.co.jp/docs/news/383638.html)）。今も同じかは公式ページで確かめていない。Yahoo! 経由の検索には IndexNow は効かず、Google 向けの対策がそのまま効く前提で考える
+
+## 11. 週次の「外を見る」で確かめたこと（2026-11-16）
+確認日 2026-11-16
+
+**2026年11月コアアップデート**｜出典：[Google 検索ステータス ダッシュボード](https://status.search.google.com/products/rGHU1u87FJnkP6W2GwMi/history)
+- 2026-11-10（米国太平洋時間）に開始。終わりの日は、確認した時点では載っていない
+- 6章の一覧のあとに出たもの：6月スパムアップデート（6/24〜）、8月スパムアップデート（8/18〜）、9月スパムアップデート（9/24〜、約2週間）
+- 火事速の表示回数が減りはじめたのは 11/6 で、開始より前。重なるのは 11/10 以降の「0回」の期間だけ。関係は不明
+
+**サイトマップが読まれないとき**｜出典：[PPC Land（Google の番組 Search Off the Record 第114回・2026-10-01 の要約）](https://ppc.land/google-may-skip-sitemaps-on-sites-it-deems-low-quality/)
+- John Mueller 氏の説明：サイトマップが取得されない理由は、XML の誤りとは限らない。サーバーの負荷の見込みと、クロールの需要の2つがある。クロールの需要は「サイトの質の見え方」に左右されることが多い
+- `lastmod` は、日付が信頼できそうなときだけ使う。正しくなくても罰はない。`priority`・`changefreq` は使わない
+- RSS フィードは短いサイトマップとして使え、Search Console に送信できる
+- 記事の見出しの「質が低いと見たサイトのサイトマップは飛ばす」は、記事を書いた側のまとめ方。Mueller 氏がそう言い切ったわけではない
+
+**フィードと WebSub**｜出典：[Build and submit a sitemap](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap)
+- RSS 2.0・Atom 1.0 のフィードをサイトマップとして送信できる。Atom・RSS を使うなら、WebSub で Google を含む検索エンジンに変更を知らせられる
+- `robots.txt` のサイトマップの行は何本でも書ける。索引と個別のサイトマップを両方送ってよい（サイトマップごとの成績を Search Console で見たいときに役立つ、とある）
+- サイトマップの送信は「ヒント」で、Google が読むこと・使うことは保証されない
+
+**優先するソース（Preferred Sources）**｜出典：[ウェブ パブリッシャー向けガイド](https://developers.google.com/search/docs/appearance/preferred-sources?hl=ja)（2026-09-26 更新）
+- 利用者が、トップニュースの枠で優先して見たいサイトを選べる機能。Google 検索を使える地域のすべての言語で提供
+- 対象は、設定の画面（ソース設定ツール）に出るサイトだけ。ドメイン・サブドメインの単位
+- サイト側は `https://www.google.com/preferences/source?q=ドメイン名` のリンクやボタンを置ける。置くことは必須ではない
+- 火事速が設定の画面に出るかは未確認（登録が1ページのうちは出ない見込み）
+
+**速報と Discover**｜出典：[Press Gazette（2026-03-18。Define Media Group の集計）](https://pressgazette.co.uk/media-audience-and-business-data/us-publishers-see-traffic-boost-for-breaking-news-from-google-discover/)
+- 米国の大手・地方の報道15社で、伸びたのは速報だけ。速報への Discover からの流入は 2024年11月から168%増。調べ方・解説などの長く読まれる記事への検索流入は40%減
+- 別の集計（Chartbeat）では Discover からの流入は減っていて、数字は食い違う。米国の報道機関の話で、火事速にそのまま当てはまるとは言えない
+
+**競合 kaji.news の観察**｜トップページを1ページだけ目で確認
+- 説明文に「過去の火事 50,497件」。口コミは 2,387件と表示
+- 「65の自治体がオープンデータの活用事例として掲載（室蘭市・郡山市など）」と表示している。**自治体のサイトからのリンクを集めている**
+- メニュー：今日の火事速報・近くの火事・火事マップ・地域別・火事統計・案内ダイヤル・防災情報。「新しく記録が始まった地域（48時間）」の枠がある
+- プッシュ通知の登録、SNS の共有ボタン、アプリの案内は、トップでは見当たらなかった（火事速にはプッシュ通知と共有ボタンがある）
+
+**新しいドメインの登録**｜出典：[dev.to の実務者の記事](https://dev.to/mrtd/how-to-get-a-new-site-indexed-by-google-in-2026-what-works-whats-a-waste-8do)（個人の経験。数字の裏づけはない）
+- 効くとされるもの：Search Console の登録リクエスト、よく巡回されるページからのリンク（nofollow でも見つけるきっかけになる、という主張）、正しい `lastmod`、内部リンク
+- むだとされるもの：サイトマップの ping（Google が 2023年に廃止）、Indexing API を記事に使うこと（求人・ライブ配信だけが対象）、一括登録の代行サービス
+
+## 12. サイトの品質の見え方とクロールの需要（2026-11-18）
+確認日 2026-11-18｜出典：[PPC Land（Search Off the Record 第114回の要約）](https://ppc.land/google-may-skip-sitemaps-on-sites-it-deems-low-quality/)、[Google 有用なコンテンツの更新](https://developers.google.com/search/blog/2022/08/helpful-content-update?hl=ja)
+
+- Mueller 氏（2026-10-01）：クロールの需要は「サイトの品質の見え方」に大きく左右される。全体の品質が低いと見られたサイトは、サイトマップがしばらく無視され、品質がよくなれば戻る
+- Google：有用でないコンテンツを比較的多く含むサイトは、ほかのページの順位も下がる。有用でないコンテンツを外すと、ほかのページの順位がよくなる場合がある
+- **火事速での読み替え**：サイトマップから外すだけでは、Google はリンクをたどって定型文のページも見る。外したページには noindex を付け、評価の対象をサイトマップに載せたページに寄せる（E009）。noindex は読みに来たページにしか効かないので、外からの入口づくりと組み合わせる
+
+## 13. 週次の「外を見る」で確かめたこと（2026-11-23）
+確認日 2026-11-23
+
+**Google の変更**｜出典：[Search Engine Roundtable 2026年11月の月例まとめ（2026-11-02）](https://seroundtable.com/november-2026-google-webmaster-report-42431.html)
+- 9月スパムアップデートは10月に終わった。11/2 の時点では「次のコアアップデートを待っている」とある（11章の 11/10 開始と食い違わない）
+- 11月コアアップデートの終わりの日は、今回は確かめられなかった（**不明**）
+- Search Console の検索パフォーマンスに、国の絞り込み（複数選択）が入った。日付は記事にない
+- サイトマップ・登録の決まりの変更は、見出しの範囲では見当たらなかった
+
+**X のリンク付き投稿**｜出典：[GIGAZINE（2026-04-10。Nieman Lab の18媒体の分析の紹介）](https://gigazine.net/news/20260410-x-post-with-link-low-engagement-with-link/)
+- 反応の中央値：BBC（全投稿リンク付き）71、CNN（9割リンク付き）706、unusual whales（リンク付き11%）1,767、Globe Eye News（リンクなし）8,418
+- 分析の結論は「投稿の中のリンクが反応を下げている」。X は公式には認めていない。リンクを返信に置く回避策は、マスク氏が示唆した程度
+- 反対の立場：[Screenhance（2026-08-31 更新）](https://screenhance.com/blog/og-image-best-practices) は「確かめられていない規則に合わせてリンクを返信に隠すべきではない」とする
+- **火事速での読み替え**：PV の大半が X からなので、投稿の形（本文にリンク／返信にリンク）を交互に試して t.co の PV で比べる（backlog）
+
+**共有画像（OG 画像）**｜出典：[Screenhance](https://screenhance.com/blog/og-image-best-practices)
+- 大きいカードの目安は 1.91:1・約1200×630。600×315 未満は小さいサムネイルになる。どれも出典の記載はない
+- 「クリックを何倍にする決まった方法はない」と明記。A/B で測るよう勧めている
+
+**国内の別分野：Yahoo!防災速報の写真投稿**｜出典：[LINEヤフー（2026-03-09）](https://www.lycorp.co.jp/ja/news/release/020171/)
+- 災害マップに、利用者が現地の写真を投稿できる機能。投稿できるのは災害の発生時・警戒時の、決まった期間と地域だけ。虚偽などは削除・利用制限
+- 2022年1月から、X の投稿を災害マップに出している（[AppBank](https://www.appbank.net/2026/03/09/iphone-news/2946042.php)）
+
+**海外：Citizen と PulsePoint**
+- Citizen：利用者900万人・通知100億回以上（2024年10月）。有料版は月 $5.99〜$19.99。特定の地域・利用者層に絞った入口づくり（[Contrary Research（2024-10-18）](https://research.contrary.com/report/citizen)。数字の一部は取得時の要約によるもので、原文で確かめていない）
+- PulsePoint：米国アルバカーキ消防が契約をやめた。10年で、通知で現場に来たと報告されたのは2件。通報者の正確な住所が出るのもプライバシーの問題とした（[KRQE / Yahoo News（2025-04-25）](https://www.yahoo.com/news/platform-become-obsolete-albuquerque-fire-224331263.html)）。**火事速での読み替え**：町の単位で出す今の決まりは正しい。機能は使われているかを数える
+
+**kaji.news**：今回はトップページを読み込めなかった（取得の許可が下りなかった）。変化は**不明**
+
+## 14. フィードと WebSub（2026-11-25 確認）
+- Google Discover の「フォロー」（フィードを使う。2021年に Chrome で始まった）の説明は、2025-11 に Google の文書から消えた（https://www.seroundtable.com/google-discover-drops-follow-feature-40463.html ）。今の Discover の説明（最終更新 2026-03-09）にもフィード・フォローの記述はない。フィードで Discover の入口を作る、という根拠はなくなった
+- サイトマップの説明（https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap ）を開き直し、「RSS・Atom のフィードはサイトマップとして送れるが、新しい URL しか入らない」「Atom・RSS なら WebSub で Google を含む検索エンジンに変更を知らせられる」が今も書かれていることを確かめた

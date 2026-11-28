@@ -5,8 +5,8 @@
           ops/analytics/latest.json（Cloudflare Web Analytics。なければ回遊は「不明」）
 書くもの：ops/metrics/latest.json・latest.md（今日の数字と今の段階）、ops/metrics/history.csv（1日1行）
 """
-import csv, datetime, json, re, statistics
-from collections import Counter
+import csv, datetime, json, os, re, statistics, urllib.request
+from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -95,6 +95,28 @@ else:
 
 m['rpm'] = None   # AdSense の数字はまだ取っていない
 
+# ---- 3b. 配信先ごとの来訪（docs/growth.md の C5）：utm つきのリンクから来た回数（受付サーバーの share_clicks）と、参照元のホスト（Web Analytics）
+SOCIAL_SRC = ['x', 'bsky', 'misskey', 'mastodon', 'threads', 'instagram', 'facebook', 'tiktok', 'youtube', 'note', 'hatena']
+REF_HOSTS = {'x': ['t.co', 'x.com', 'twitter.com'], 'bsky': ['bsky.app'], 'misskey': ['misskey.io'], 'threads': ['threads.com', 'threads.net', 'l.threads.com'],
+             'instagram': ['l.instagram.com', 'instagram.com'], 'facebook': ['l.facebook.com', 'm.facebook.com', 'facebook.com', 'lm.facebook.com'],
+             'tiktok': ['tiktok.com'], 'youtube': ['youtube.com', 'm.youtube.com'], 'note': ['note.com'], 'hatena': ['b.hatena.ne.jp', 'hatenablog.com']}
+AI_HOSTS = ['chatgpt.com', 'chat.openai.com', 'perplexity.ai', 'www.perplexity.ai', 'gemini.google.com', 'copilot.microsoft.com', 'claude.ai', 'search.brave.com']
+def social_clicks():
+    try:
+        url = (os.environ.get('WORKER_URL') or 'https://api.kajisoku.jp').rstrip('/') + '/api/share-clicks?days=7'
+        with urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': 'kaji23-metrics'}), timeout=20) as r:
+            return json.load(r)
+    except Exception:
+        return None
+sc = social_clicks()
+refs = {x['host']: x['pageviews'] for x in ((an or {}).get('top_referers') or [])}
+m['social_visits_7d'] = None if sc is None else {k: 0 for k in SOCIAL_SRC}
+if sc is not None:
+    for row in sc.get('byDay', []):
+        m['social_visits_7d'][row['src']] = m['social_visits_7d'].get(row['src'], 0) + row['n']
+m['social_referer_pv_7d'] = None if an is None else {k: sum(refs.get(h, 0) for h in hs) for k, hs in REF_HOSTS.items()}
+m['ai_referer_pv_7d'] = None if an is None else {h: refs[h] for h in AI_HOSTS if refs.get(h)}
+
 # ---- D. 有事の速さ（情報源の時刻 → 火事のページが最初に生成されるまで）
 seen = load('data/raw/fire_first_seen.json', {})
 week = set(days_back(7))
@@ -110,6 +132,14 @@ for fn, v in seen.items():
     d = (b - a).total_seconds() / 60
     if 0 <= d <= 24 * 60: mins.append(d)   # 1日以上あとに見つけたもの（さかのぼり取り込み）は速さに数えない
 m['publish_samples_7d'] = len(mins)
+# 報道のページ（f-n-）だけの「掲載まで6時間超」の割合（2026-11-18・E008 の判定に使う。11/18 は 229件中68件＝0.30）
+_nm = []
+for fn, v in seen.items():
+    if not fn.startswith('f-n-') or len(v) > 3 or v[2] not in week or not v[0] or not v[1]: continue
+    d = (datetime.datetime.fromisoformat(v[0].replace('Z', '+00:00')) - datetime.datetime.fromisoformat(v[1].replace('Z', '+00:00'))).total_seconds() / 60
+    if 0 <= d <= 24 * 60: _nm.append(d)
+m['news_samples_7d'] = len(_nm)
+m['news_over_6h_7d'] = round(sum(1 for x in _nm if x > 360) / len(_nm), 2) if _nm else None
 m['publish_minutes_median_7d'] = round(statistics.median(mins)) if mins else None
 m['publish_minutes_p90_7d'] = round(sorted(mins)[int(len(mins) * 0.9) - 1]) if len(mins) >= 10 else None
 m['publish_within_30m_7d'] = round(sum(1 for x in mins if x <= 30) / len(mins), 2) if mins else None
@@ -121,6 +151,41 @@ for v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).val
     if v[2] != '過去': per_day[v[3]] += 1   # 「過去」は火事ではない取り込み（site/nation.py の NOT_A_FIRE_TOWN）
 m['fires_per_day_7d'] = round(sum(per_day[d] for d in days_back(7)) / 7, 1)
 m['fires_per_day_prev7d'] = round(sum(per_day[d] for d in days_back(7, today - datetime.timedelta(days=8))) / 7, 1)
+
+# ---- 守る数字：読み誤りの疑い（2026-11-14 の茨城の件を、次からは数字で気づけるようにした）
+# 同じ市区町村・同じ町名・同じ時刻（分まで）の発表が、直近14日のうち3日以上あるのは、
+# 火事ではなくページの決まった文言（「過去の火災・事故発生情報」など）を毎日読んでいる疑いが強い
+_rep = defaultdict(set)
+_d14 = set(days_back(14))
+for v in (load('data/raw/official_archive.json', {}) or {}).get('fires', {}).values():
+    if v[2] in ('過去',) or v[3] not in _d14 or not v[5]: continue   # 「過去」は対処済み（site/nation.py の NOT_A_FIRE_TOWN）
+    _rep[(v[0], v[1], v[2] or '', v[5][11:16])].add(v[3])
+m['misread_suspects'] = sorted(f"{k[0]}{k[1]} {k[2] or '（町名なし）'} 毎日{k[3]}UTC（{len(d)}日）" for k, d in _rep.items() if len(d) >= 3)
+
+# ---- 守る数字：同じ記事が別の日の火事になっている（2026-11-18 に直した型。collector/news_jp.js の pinKnownPubDates）
+# Google ニュースの RSS は、更新された記事の公開時刻を新しくして返すことがあり、数日前の火事が「今日の火事」として二重に載っていた。
+# 直した日（11/19）より後の日付の火事で、同じ記事（link）が別の日の火事にも使われていたら警告に出す
+_by_link = defaultdict(set)
+for x in (load('data/raw/news.json', {}) or {}).get('incidents', []):
+    for s_ in x.get('sources', []): _by_link[s_['link']].add(x['id'])
+m['news_reused_articles'] = sorted({max(ids) for ids in _by_link.values()
+    if len({i[-10:] for i in ids}) > 1 and max(i[-10:] for i in ids) >= '2026-11-19'})
+
+# ---- 収集元の読み取り状況（verify/sources_status.json。collector/official_run.mjs が毎回の生成で記録）
+_ss = load('verify/sources_status.json', {}) or {}
+_src = _ss.get('sources', [])
+m['sources_status_at'] = _ss.get('at')
+m['sources_total'] = len(_src) or None
+m['sources_failing'] = sorted(f"{x['id']}（{x['status']}・{x['fails']}回続けて）" for x in _src if x.get('status') and x['status'] != 'ok') if _src else None
+m['fire_mail_senders'] = len(_ss.get('mails', [])) if _ss else None
+
+# ---- 報道の検索の取りこぼし（data/raw/news_queries.json。collector/news_run.mjs が毎回記録。2026-11-22〜）
+# 「掲載件数が減った」とき、検索が100件で頭打ち・取得失敗で取りこぼしたのか、火事そのものが少ないのかを分ける
+_nq = load('data/raw/news_queries.json', {}) or {}
+_nr = [r for r in _nq.get('runs', []) if r.get('at', '')[:10] >= (today - datetime.timedelta(days=7)).isoformat()]   # 今日の回も含める
+m['news_query_runs_7d'] = len(_nr) or None
+m['news_saturated_last'] = _nq.get('saturated')
+m['news_failed_runs_7d'] = sum(1 for r in _nr if r.get('failed')) if _nr else None
 
 # ---- 守る数字：検査
 rep = load('verify/report.json', {})
@@ -147,6 +212,10 @@ if m['fires_per_day_prev7d'] and m['fires_per_day_7d'] < m['fires_per_day_prev7d
     g.append(f"掲載件数が減った（{m['fires_per_day_prev7d']}→{m['fires_per_day_7d']}件/日）")
 if m['gsc_fetched_at'] and m['gsc_fetched_at'][:10] < (today - datetime.timedelta(days=2)).isoformat():
     g.append(f"Search Console の取得が止まっている可能性（最終 {m['gsc_fetched_at']}）")
+if m['misread_suspects']:
+    g.append(f"読み誤りの疑い {len(m['misread_suspects'])}件（同じ町・同じ時刻の発表が毎日続く）：" + '・'.join(m['misread_suspects'][:3]))
+if m['news_reused_articles']:
+    g.append(f"同じ記事が別の日の火事になっている {len(m['news_reused_articles'])}件（更新された古い記事を新しい火事として取り込んだ疑い）：" + '・'.join(m['news_reused_articles'][:3]))
 m['guard_alerts'] = g
 
 OUT.mkdir(parents=True, exist_ok=True)
@@ -165,10 +234,22 @@ md = f"""# 今日の数字（{m['date']}）
 | 検索クリック（直近7日） | {m['clicks_7d']}（1日 {m['clicks_per_day_7d']}、表示 {m['impressions_7d']}、最終日 {f(m['gsc_last_day'])}） |
 | PV・訪問（直近7日） | {f(m['pageviews_7d'])}・{f(m['visits_7d'])}（1訪問 {f(m['pages_per_visit_7d'])} ページ） |
 | 掲載までの分数（中央値・90%） | {f(m['publish_minutes_median_7d'], '分')}・{f(m['publish_minutes_p90_7d'], '分')}（30分以内 {f(m['publish_within_30m_7d'])}、{m['publish_samples_7d']}件） |
+| 報道のページの掲載まで6時間超（7日） | {f(m['news_over_6h_7d'])}（{m['news_samples_7d']}件） |
 | 掲載件数（7日平均） | {m['fires_per_day_7d']}件/日（前の7日 {m['fires_per_day_prev7d']}） |
+| 報道の検索の取りこぼし | {'不明（data/raw/news_queries.json がまだない）' if m['news_saturated_last'] is None else f"直近の回で100件の頭打ち {len(m['news_saturated_last'])}本{'（' + '・'.join(m['news_saturated_last'][:6]) + '）' if m['news_saturated_last'] else ''}・7日で取得失敗のあった回 {f(m['news_failed_runs_7d'])}/{f(m['news_query_runs_7d'])}"} |
 | 検査 | {'合格' if m['verify_ok'] else '不合格' if m['verify_ok'] is False else '不明'} |
+| 出動情報ページの読み取り | {f'{m["sources_total"] - len(m["sources_failing"])}/{m["sources_total"]} ページが読めている（{m["sources_status_at"]}）' if m['sources_total'] else '不明（verify/sources_status.json がまだない）'} |
 
 守る数字の警告：{'、'.join(g) if g else 'なし'}
+{('' if not m['sources_failing'] else chr(10) + '読めていない出動情報ページ：' + '、'.join(m['sources_failing'][:15]) + chr(10))}
+
+## 配信先ごとの来訪（直近7日）
+「utm つきの来訪」は、投稿のリンク（utm_source つき）から開かれた回数（受付サーバーの share_clicks。ボットは除く）。「参照元の PV」は Cloudflare Web Analytics の参照元のホストで数えた PV（アプリ内のブラウザでは参照元が落ちるので少なめに出る）。2週続けて両方0の配信先は、投稿の上限を半分にする（docs/growth.md 5章）。
+
+| 配信先 | utm つきの来訪 | 参照元の PV |
+|---|---|---|
+""" + ''.join(f"| {k} | {'不明' if m['social_visits_7d'] is None else m['social_visits_7d'].get(k, 0)} | {'不明' if m['social_referer_pv_7d'] is None else m['social_referer_pv_7d'].get(k, '―')} |\n" for k in SOCIAL_SRC) + f"""
+AI からの来訪（参照元の PV）：{'不明' if m['ai_referer_pv_7d'] is None else ('、'.join(f'{h} {n}' for h, n in m['ai_referer_pv_7d'].items()) or 'なし')}
 
 ## 型ごとの登録（URL 検査）
 「知っている」は、登録・検出・クロール済みなど、Google が URL を知っている数。「読みに来た」は、クロールの日付がある数。
@@ -182,7 +263,7 @@ md += f"\n索引（sitemap.xml）を Google が読んだ日：{m['sitemap_index_
 
 # 1日1行（同じ日は上書き）
 cols = ['date', 'stage', 'indexed', 'inspected', 'clicks_7d', 'impressions_7d', 'pageviews_7d', 'visits_7d', 'pages_per_visit_7d',
-        'publish_minutes_median_7d', 'publish_within_30m_7d', 'fires_per_day_7d', 'verify_ok']
+        'publish_minutes_median_7d', 'publish_within_30m_7d', 'fires_per_day_7d', 'verify_ok', 'news_over_6h_7d']
 hp = OUT / 'history.csv'
 hist = [r for r in csv.DictReader(hp.open(encoding='utf-8'))] if hp.exists() else []
 hist = [r for r in hist if r['date'] != m['date']] + [{c: ('' if m.get(c) is None else m.get(c)) for c in cols}]

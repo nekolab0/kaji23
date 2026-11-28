@@ -163,6 +163,7 @@ def chg(cur, prev):
     return f'<span class="chg {cls}">前年同時期 {prev}件 → {sign}{d}</span>'
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
+TODAY_JST = datetime.datetime.now(JST).date().isoformat()   # 件別の OG 画像を作る範囲（nation.py の fire_og）
 def jtime(iso):
     t = datetime.datetime.fromisoformat(iso.replace('Z', '+00:00')).astimezone(JST)
     return f'{t.month}月{t.day}日 {t.hour}:{t.minute:02d}'
@@ -275,17 +276,30 @@ NAV = [('index', 'いまの火事'), ('map', '火事マップ'), ('index#regions
 ADS = json.loads((SITE / 'ads.json').read_text(encoding='utf-8'))
 ADS_CLIENT = (ADS.get('client') or '').strip()
 ADS_SLOT = (ADS.get('slot') or '').strip()
+# 予備の広告（忍者AdMax）。AdSense の slot が空のあいだだけ使う。タグは管理画面のものをそのまま貼る
+ADMAX = ADS.get('admax') or {}
+ADMAX_TAG = (ADMAX.get('tag') or '').strip()
+if ADMAX_TAG:
+    # 貼ってよいのは忍者AdMax の配信元の script だけ（ほかの script・iframe・イベント属性が混じったら止める）
+    _srcs = re.findall(r'<script\b[^>]*\bsrc="([^"]+)"', ADMAX_TAG, re.I)
+    _bad = [u for u in _srcs if not re.match(r'^https://[a-z0-9.-]*\.shinobi\.jp/', u)]
+    if _bad or re.search(r'<iframe|\son[a-z]+\s*=|javascript:', ADMAX_TAG, re.I) or not _srcs:
+        raise SystemExit(f'ads.json の admax.tag に忍者AdMax 以外の中身があります: {_bad or "iframe/イベント属性/script なし"}')
+ADS_PROVIDER = 'adsense' if (ADS_CLIENT and ADS_SLOT) else ('admax' if ADMAX_TAG else '')
 # 広告は「区切りの間」にだけ置く（ポップアップ・画面下固定・全画面は使わない）。ボタンのすぐ近くには置かない
 AD_AFTER = ('recent', 'news', 'rg', 'cities', 'wl', 'tl', 'near', 'st')  # 報告・投稿ボタンのある「いまの火事」の直後は避ける（誤クリック防止）。1ページ2つまで
 AD_AFTER_FIRE = ('com',)                      # 火事のページは口コミの後だけ（報告・共有ボタンから離す）
 NO_AD_PAGES = ('policy', 'rules', 'about', 'dial')
 def ad_unit():
+    if ADS_PROVIDER == 'admax':
+        return (f'<aside class="ad ad-admax" aria-label="広告"><div class="ad-label">スポンサーリンク</div>'
+                f'{ADMAX_TAG}</aside>')
     return (f'<aside class="ad" aria-label="広告"><div class="ad-label">スポンサーリンク</div>'
             f'<ins class="adsbygoogle" style="display:block" data-ad-client="{esc(ADS_CLIENT)}" data-ad-slot="{esc(ADS_SLOT)}" '
             f'data-ad-format="auto" data-full-width-responsive="true"></ins>'
             f'<script>(adsbygoogle=window.adsbygoogle||[]).push({{}});</script></aside>')
 def insert_ads(name, body):
-    if not (ADS_CLIENT and ADS_SLOT) or name in NO_AD_PAGES:
+    if not ADS_PROVIDER or name in NO_AD_PAGES:
         return body
     keys = AD_AFTER_FIRE if name == 'fire' or name.startswith('f-') else AD_AFTER
     n = 0
@@ -297,21 +311,23 @@ def insert_ads(name, body):
     pat = re.compile(r'<section class="section[^"]*"[^>]*? aria-labelledby="(?:' + '|'.join(keys) + r')"[^>]*>.*?</section>', re.S)
     return pat.sub(rep, body)
 
-def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=None):
+def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=None, og_title=None, og_desc=None):
+    """og_title・og_desc：SNS のカードにだけ出す件別の文（<title>・description は変えない。火事のページで使う）"""
     body = insert_ads(name, body)
     nav = ''.join(f'<a href="{k.split("#")[0]}.html{("#" + k.split("#")[1]) if "#" in k else ""}"{" aria-current=\"page\"" if k == name else ""}>{esc(v)}</a>' for k, v in NAV)
     canon = f'{SITE_URL}/{quote(name)}.html' if name != 'index' else f'{SITE_URL}/'
-    ogimg = f'{SITE_URL}/{og_image}'
+    ogimg = f'{SITE_URL}/{quote(og_image)}'   # 火事のページの画像名には日本語が入る（X は生の日本語の URL を読めないことがある）
     head = f'''<title>{esc(title)}</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="description" content="{esc(desc)}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="{SITE_NAME}">
-<meta property="og:title" content="{esc(title)}">
-<meta property="og:description" content="{esc(desc)}">
+<meta property="og:title" content="{esc(og_title or title)}">
+<meta property="og:description" content="{esc(og_desc or desc)}">
 <meta property="og:image" content="{esc(ogimg)}">
 <meta property="og:url" content="{esc(canon)}">
 <link rel="canonical" href="{esc(canon)}">
+<link rel="alternate" type="application/atom+xml" title="火事速 全国の新しい火事" href="{esc(SITE_URL)}/feed.xml">
 <meta property="og:locale" content="ja_JP">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="robots" content="max-image-preview:large">
@@ -349,7 +365,7 @@ def page(name, title, desc, body, og_image='og/index.png', full=True, ld_extra=N
   <div><h3>さがす</h3><ul>
     <li><a href="index.html">いまの火事</a></li><li><a href="index.html#regions">地域から探す</a></li><li><a href="p-東京都.html#t23">東京23区</a></li><li><a href="ranking.html">23区の火災件数</a></li></ul></div>
   <div><h3>確かめる</h3><ul>
-    <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="guide.html">火事の調べ方・備え</a></li><li><a href="dial-list.html">案内ダイヤル一覧（全国）</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="policy.html">運営者情報・プライバシーポリシー・利用規約</a></li><li><a href="about.html">データの出典と集め方</a></li>
+    <li><a href="dial.html">サイレンが聞こえたら</a></li><li><a href="guide.html">火事の調べ方・備え</a></li><li><a href="quiz.html">火事・防災クイズ</a></li><li><a href="dial-list.html">案内ダイヤル一覧（全国）</a></li><li><a href="rules.html">投稿のルール・削除依頼</a></li><li><a href="policy.html">運営者情報・プライバシーポリシー・利用規約</a></li><li><a href="about.html">データの出典と集め方</a></li>
     <li><a href="{TFD}/" rel="noopener" target="_blank">東京消防庁 ↗</a></li><li><a href="https://disaportal.gsi.go.jp/" rel="noopener" target="_blank">ハザードマップポータル ↗</a></li></ul></div>
 </div><div class="wrap small muted" style="padding-block:0 20px">市区町村：総務省 全国地方公共団体コード／町名と位置：Geolonia 住所データ（CC BY 4.0）／23区の火災件数：東京消防庁 各消防署ページ（{FETCHED_LABEL}取得）　© {THIS_YEAR} {SITE_NAME}</div></footer>
 <script src="assets/areas.js" defer></script>
@@ -644,6 +660,18 @@ def make_icons(dist):
         im.save(dist / f'icon-{n}.png')
 
 # ---------- 火事のページ ----------
+# 目撃報告の火事（fire.html?id=）だけに置く欄。X から来た人の多くが1ページで帰るので、
+# 同じ地域のほかの火事と、その町の通知への入口を出す（中身は assets/site.js の showNear）。固定ページは nation.py の after に同じ役の欄がある
+NEAR_SECS = '''<section class="section f-push-sec" aria-labelledby="fpush" hidden>
+  <h2 id="fpush" class="f-push-h">この町の次の火事を知らせる</h2>
+  <div class="f-push"></div>
+</section>
+<section class="section f-near-sec" aria-labelledby="fnear" hidden>
+  <h2 id="fnear" class="f-near-h">近くのほかの火事</h2>
+  <div class="f-near"></div>
+</section>
+'''
+
 def fire_page(pre=None):
     """pre を渡すと、報道された火事の固定ページ（中身をHTMLに書き込み済み。JSが報告・口コミを足す）"""
     pre = pre or {}
@@ -680,7 +708,7 @@ def fire_page(pre=None):
   <h2 id="src">報道</h2>
   <div class="f-news">{pre.get('news', '')}</div>
 </section>
-<section class="section" aria-labelledby="sns">
+{'' if pre else NEAR_SECS}<section class="section" aria-labelledby="sns">
   <h2 id="sns">SNS・ニュースで確かめる</h2>
   <div class="f-sns"></div>
 </section>
@@ -689,7 +717,8 @@ def fire_page(pre=None):
 </div>
 '''
     if pre:
-        return page(pre['name'], pre['title'], pre['desc'], body, og_image='og/live.png', ld_extra=pre.get('ld'))
+        return page(pre['name'], pre['title'], pre['desc'], body, og_image=pre.get('og_image', 'og/live.png'), ld_extra=pre.get('ld'),
+                    og_title=pre.get('og_title'), og_desc=pre.get('og_desc'))
     title = f'火事の目撃情報｜{SITE_NAME}'
     desc = '近所の人から寄せられたサイレン・煙・火の目撃報告と、現場の口コミ。全国の火事を町名ごとにリアルタイムで。'
     return page('fire', title, desc, body, og_image='og/live.png')
@@ -879,7 +908,7 @@ def policy_page():
 <h3>4. 第三者への提供</h3>
 <p>法令に基づく場合を除き、集めた情報を第三者に提供しません。本サイトはGitHub（ページの配信）とCloudflare（報告・口コミの受付）を利用しており、各社のサーバーにアクセスの記録が残ることがあります。</p>
 <h3>5. 外部サービス・広告</h3>
-<p>本サイトは{"" if ADS_CLIENT else "今後、"}第三者配信の広告サービス「Google AdSense」を利用{"しています" if ADS_CLIENT else "する予定です"}。Google などの第三者配信事業者は、Cookie を使って、利用者が本サイトや他のサイトに過去にアクセスした情報に基づいて広告を配信することがあります。Google が広告 Cookie を使うことで、Google やそのパートナーは本サイトや他のサイトへのアクセス情報に基づいて適切な広告を表示できます。利用者は <a href="https://adssettings.google.com/" rel="noopener" target="_blank">Google の広告設定</a> でパーソナライズ広告を無効にできます。また <a href="https://www.aboutads.info/choices/" rel="noopener" target="_blank">www.aboutads.info</a> で、第三者配信事業者の Cookie を無効にできます。詳しくは <a href="https://policies.google.com/technologies/ads?hl=ja" rel="noopener" target="_blank">Google の広告に関するポリシー</a> をご覧ください。広告はページの区切りの間にだけ表示し、画面を覆うポップアップ型の広告は使いません。{"アクセス解析には Cloudflare Web Analytics を使っています。Cookie を使わず、個人を特定する情報は集めません。" if CF_BEACON else "アクセス解析は現在使っていません。"}</p>
+<p>本サイトは{"" if ADS_CLIENT else "今後、"}第三者配信の広告サービス「Google AdSense」を利用{"しています" if ADS_CLIENT else "する予定です"}。Google などの第三者配信事業者は、Cookie を使って、利用者が本サイトや他のサイトに過去にアクセスした情報に基づいて広告を配信することがあります。Google が広告 Cookie を使うことで、Google やそのパートナーは本サイトや他のサイトへのアクセス情報に基づいて適切な広告を表示できます。利用者は <a href="https://adssettings.google.com/" rel="noopener" target="_blank">Google の広告設定</a> でパーソナライズ広告を無効にできます。また <a href="https://www.aboutads.info/choices/" rel="noopener" target="_blank">www.aboutads.info</a> で、第三者配信事業者の Cookie を無効にできます。詳しくは <a href="https://policies.google.com/technologies/ads?hl=ja" rel="noopener" target="_blank">Google の広告に関するポリシー</a> をご覧ください。{"あわせて、第三者配信の広告サービス「忍者AdMax」（株式会社サムライファクトリー）を利用しています。忍者AdMax も Cookie を使って広告を配信することがあります。" if ADS_PROVIDER == "admax" else ""}広告はページの区切りの間にだけ表示し、画面を覆うポップアップ型の広告は使いません。{"アクセス解析には Cloudflare Web Analytics を使っています。Cookie を使わず、個人を特定する情報は集めません。" if CF_BEACON else "アクセス解析は現在使っていません。"}</p>
 <h3>6. 外部サイトへのリンク</h3>
 <p>報道記事、消防本部の公開ページ、X・Yahoo!リアルタイム検索などへのリンクがあります。リンク先での情報の扱いは各サイトの方針によります。</p></section>
 <section class="section" id="terms" aria-labelledby="tm"><h2 id="tm">利用規約</h2>
@@ -904,6 +933,8 @@ if _auto.exists():
     OFFICIAL_SOURCES = list(dict.fromkeys(OFFICIAL_SOURCES + [(x['name'], x['url']) for x in _aj]))
 exec((SITE / 'nation.py').read_text(encoding='utf-8'))   # 全国版（都道府県・市区町村・町のページ、検索索引）
 exec((SITE / 'guides.py').read_text(encoding='utf-8'))   # 読み物（ガイド記事）と案内ダイヤルの一覧
+exec((SITE / 'quiz.py').read_text(encoding='utf-8'))   # 火事・防災クイズ（quiz.html）
+exec((SITE / 'weekly.py').read_text(encoding='utf-8'))   # 週の火事まとめ（w-YYYY-MM-DD.html・weekly.html）
 exec((SITE / 'mapview.py').read_text(encoding='utf-8'))   # 火事マップ（map.html）
 
 # サイトマップの lastmod：ページの中身が実際に変わった日を記録する（data/raw/sitemap_lastmod.json）
@@ -1105,11 +1136,20 @@ def build(report=None):
     for t in TOWN_LIST: pages[t['file']] = machi_page(t)
     pages.update(national_pages())
     pages.update(guide_pages())
+    pages.update(quiz_pages())
+    pages.update(weekly_pages())
     pages['404.html'] = not_found_page()
     pages['map.html'], mapdata = map_page()
     (DIST / 'data' / 'map.js').write_text('window.KAJI_MAP = ' + json.dumps(mapdata, ensure_ascii=False, separators=(',', ':')) + ';\n', encoding='utf-8')   # ファイルのままでも読めるよう script で
     geo_files(DIST)
     for fn, h in pages.items(): (DIST / fn).write_text(h, encoding='utf-8')
+    (ROOT / 'ops' / 'x_drafts').mkdir(parents=True, exist_ok=True)
+    (ROOT / 'ops' / 'x_drafts' / 'latest.md').write_text(x_drafts_md(), encoding='utf-8')   # X 用の投稿文（E014。daily が保存する）
+    (ROOT / 'ops' / 'social').mkdir(parents=True, exist_ok=True)   # X 以外の SNS への投稿キュー（docs/growth.md の C1。daily が保存する）
+    _sq = social_queue()
+    (ROOT / 'ops' / 'social' / 'queue.json').write_text(json.dumps(_sq, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    (ROOT / 'ops' / 'social' / 'drafts.md').write_text(social_drafts_md(_sq), encoding='utf-8')
+    write_weekly_social(ROOT)   # 週のまとめの SNS 用素材（G8。画像は weekly_social.js。daily が保存する）
     # 公開データ（誰でも検証できるように）
     public = {'fetchedAt': tfd['fetchedAt'], 'source': tfd_file, 'population_source': pop['url'], 'daily': daily,
               'news': {'collectedAt': news['collectedAt'], 'incidents': [{k: x[k] for k in ('id', 'ward', 'town', 'chome', 'building', 'injured', 'dead', 'first', 'sources')} for x in news['incidents']]},
@@ -1121,6 +1161,7 @@ def build(report=None):
     (DIST / 'data' / 'kaji23.json').write_text(json.dumps(public, ensure_ascii=False, indent=1), encoding='utf-8')
     # 内部用（OG画像・検査で使う）
     (DIST / 'data' / '_guides.json').write_text(json.dumps(GUIDE_OG, ensure_ascii=False), encoding='utf-8')   # 読み物の OG 画像用（og.js）
+    (DIST / 'data' / '_fires_og.json').write_text(json.dumps(FIRE_OG, ensure_ascii=False), encoding='utf-8')   # 直近の火事のページの OG 画像用（og.js）
     (DIST / 'data' / '_model.json').write_text(json.dumps({'wards': [{k: v for k, v in w.items() if k != 'stations'} | {'stations': [s['slug'] for s in w['stations']]} for w in wards],
                                                             'stations': stations, 'daily': daily, 'n_ranked': n_ranked, 'news': news,
                                                             'towns': [{k: t[k] for k in ('ward', 'base', 'file', 'stations')} for t in TOWN_LIST]}, ensure_ascii=False, default=str), encoding='utf-8')
@@ -1136,6 +1177,17 @@ def build(report=None):
     thin = thin_pages(old_day)
     (DIST / 'data' / '_sitemap_skip.json').write_text(json.dumps(sorted(old_fire | thin), ensure_ascii=False), encoding='utf-8')
     skip_sm = skip | old_fire | thin
+    # サイトマップから外したページ（定型文が中心）には noindex を付ける（2026-11-18・実験 E009）。
+    # Google はサイト全体の品質の見え方でクロールの量を決め、低いとサイトマップをしばらく読まない（Mueller 氏 2026-10-01、seo/knowledge.md 12章）。
+    # 公開中の約9,600ページのうち約5,300ページが定型文中心で、ここが品質の見え方を下げている見立て。ページと内部リンクは残す（follow）。
+    # 新しい火事・報告が入れば thin から外れ、noindex も自動で外れる
+    n_noindex = 0
+    for fn in sorted((old_fire | thin) & set(pages)):
+        h = pages[fn]
+        if '<meta name="robots" content="max-image-preview:large">' not in h: continue
+        (DIST / fn).write_text(h.replace('<meta name="robots" content="max-image-preview:large">', '<meta name="robots" content="noindex, follow">', 1), encoding='utf-8')
+        n_noindex += 1
+    (DIST / 'data' / '_noindex_count.json').write_text(json.dumps({'noindex': n_noindex, 'pages': len(pages)}), encoding='utf-8')
     urls = [(fn, (f'{SITE_URL}/' if fn == 'index.html' else f'{SITE_URL}/{quote(fn)}'), lastmod[fn]) for fn in sorted(pages) if fn not in skip_sm]
     # 型ごとにファイルを分け、Search Console の「特定のサイトマップ」で型ごとの登録率を見られるようにする（SEO 担当の決定 2026-11-11）。
     # 1ファイル5万件までの決まりがあるので、4万件を超えた型だけ -2 … と分ける。索引（sitemap.xml）の URL は変えない
@@ -1166,7 +1218,23 @@ def build(report=None):
     # IndexNow（Bing など）の確認用の鍵ファイル
     _ik = (SITE / 'indexnow_key.txt').read_text().strip()
     (DIST / f'{_ik}.txt').write_text(_ik, encoding='utf-8')
-    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nDisallow: /data/_guides.json\nSitemap: {SITE_URL}/sitemap.xml\n', encoding='utf-8')
+    # 索引に加えて、型ごとのサイトマップも1本ずつ書く。Google が索引を読んでも子を読みに来ないため（実験 E006・2026-11-17）。
+    # robots.txt のサイトマップの行は何本でも書け、索引と個別の両方を知らせてよい（seo/knowledge.md の11章）
+    (DIST / 'robots.txt').write_text(f'User-agent: *\nAllow: /\nDisallow: /data/_model.json\nDisallow: /data/_guides.json\nDisallow: /data/_fires_og.json\nSitemap: {SITE_URL}/sitemap.xml\n'
+        + ''.join(f'Sitemap: {SITE_URL}/{n}\n' for n, _ in files) + f'Sitemap: {SITE_URL}/feed.xml\n', encoding='utf-8')
+    # Atom フィード（新しい火事だけの短いサイトマップ。docs/growth.md の C8・seo/decisions.md 2026-11-25）。
+    # 中身（entry の id と updated）が前の回から変わったときだけ websub/ping.txt を書き、daily.yml の公開後のジョブがハブに知らせる
+    _listed = {fn for fn, _, _ in urls}
+    _titles = {fn: html.unescape(m.group(1)) for fn in _listed if fn.startswith('f-') for m in [re.search(r'<title>(.*?)</title>', pages[fn])] if m}
+    _entries = feed_entries(_listed, _titles)
+    (DIST / 'feed.xml').write_text(feed_xml(_entries), encoding='utf-8')
+    _sig = sorted(f"{e['id']} {e['updated']}" for e in _entries)
+    _sp = ROOT / 'data' / 'raw' / 'feed_sig.json'
+    _old = json.loads(_sp.read_text(encoding='utf-8')) if _sp.exists() else None
+    if _old != _sig:
+        _sp.write_text(json.dumps(_sig, ensure_ascii=False, indent=0) + '\n', encoding='utf-8')
+        (ROOT / 'websub').mkdir(exist_ok=True)
+        (ROOT / 'websub' / 'ping.txt').write_text(f'{SITE_URL}/feed.xml\n', encoding='utf-8')
     (DIST / '.nojekyll').write_text('', encoding='utf-8')
     if ADS_CLIENT:
         (DIST / 'ads.txt').write_text(f"google.com, {ADS_CLIENT.replace('ca-pub-', 'pub-')}, DIRECT, f08c47fec0942fa0\n", encoding='utf-8')

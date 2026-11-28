@@ -1,30 +1,48 @@
 # PR の検査：生成と検査（verify.js）だけを行う。公開もデータの保存もしない。
-# 自動改善（docs/autopilot.md）は、この検査が通った PR だけをマージする
+# main に入る PR は、この check に合格していること（docs/autopilot.md）。すり抜けは gate.yml が見張る（2026-11-17〜）。
+# そのため、どの PR でも必ず結果を返す。文書・データだけの PR は、重い検査を飛ばして1分以内に合格にする
 name: check
 on:
   pull_request:
     branches: [main]
-    paths-ignore: ['data/**', 'verify/**', 'seo/**', 'ops/**', '**.md']
   workflow_dispatch:
 concurrency:
   group: check-${{ github.ref }}
   cancel-in-progress: true
-permissions: { contents: read }
+permissions: { contents: read, pull-requests: read }
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
+      - name: 重い検査が要る変更か（data/・verify/・seo/・ops/・.md だけなら要らない）
+        id: scope
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then echo "heavy=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          files=$(gh api --paginate "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" -q '.[].filename')
+          echo "$files"
+          if echo "$files" | grep -Ev '^(data|verify|seo|ops)/|\.md$' | grep -q .; then echo "heavy=true" >> "$GITHUB_OUTPUT"; else echo "heavy=false" >> "$GITHUB_OUTPUT"; echo "文書・データだけの変更なので、重い検査は飛ばします"; fi
       - uses: actions/checkout@v5
+        if: steps.scope.outputs.heavy == 'true'
       - uses: actions/setup-node@v5
+        if: steps.scope.outputs.heavy == 'true'
         with: { node-version: 22 }
       - uses: actions/setup-python@v6
+        if: steps.scope.outputs.heavy == 'true'
         with: { python-version: '3.12' }
       - run: npm ci && npm i -g playwright@1.47.2 && npx playwright install --with-deps chromium
+        if: steps.scope.outputs.heavy == 'true'
       - run: sudo apt-get install -y fonts-noto-cjk
+        if: steps.scope.outputs.heavy == 'true'
       - name: 受付サーバーのテスト
-        run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs && node --no-warnings worker/mail.test.mjs && node --no-warnings worker/xposts.test.mjs && node --no-warnings worker/phone.test.mjs && node --no-warnings worker/push.test.mjs
+        if: steps.scope.outputs.heavy == 'true'
+        run: node --no-warnings worker/test.mjs && node --no-warnings worker/official.test.mjs && node --no-warnings worker/mail.test.mjs && node --no-warnings worker/xposts.test.mjs && node --no-warnings worker/phone.test.mjs && node --no-warnings worker/push.test.mjs && node --no-warnings worker/social.test.mjs
+      - name: 報道の読み取りのテスト（daily でも報道の取り直しの前に動く。落ちると取り直しが止まるので、PR の段階で止める。2026-11-27〜）
+        if: steps.scope.outputs.heavy == 'true'
+        run: node collector/news_jp.test.mjs
       - name: 生成・検査
+        if: steps.scope.outputs.heavy == 'true'
         env: { SITE_URL: '${{ vars.SITE_URL }}', SITE_OPERATOR: '${{ vars.SITE_OPERATOR }}', SITE_CONTACT: '${{ vars.SITE_CONTACT }}', CF_BEACON_TOKEN: '${{ vars.CF_BEACON_TOKEN }}' }
         run: cd site && NODE_PATH=$(npm root -g) ./run_all.sh
       - name: 失敗したときに検査結果を残す

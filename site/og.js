@@ -59,14 +59,31 @@ function guideHTML(g) {
 <div class="g"><h1>${esc(g.h1)}</h1><div class="art">${inlineImg(g.hero)}</div></div>
 <div class="foot"><span>図解でわかる・出典つき</span><span>kajisoku.jp</span></div>`;
 }
+// 火事のページ（直近の火事だけ）の件別カード。地名・種別・日時が、X のタイムラインと検索結果で目に留まるように
+function fireHTML(f) {
+  const len = [...f.place].length;
+  const fs1 = len <= 10 ? 84 : len <= 14 ? 72 : len <= 18 ? 58 : 48;
+  const st = f.status === '鎮火' ? '<span class="chip" style="background:#e8f1ea;color:#2c6a3c">鎮火</span>' : '';
+  return `<style>${css}.f-src{font-size:28px;font-weight:700;color:#9e2914}.f-place{font-size:${fs1}px;font-weight:900;line-height:1.15}
+.f-what{font-size:64px;font-weight:900;color:#c2341c;line-height:1.1}.f-at{font-size:40px;font-weight:700;color:#3a3f48}.f-row{display:flex;gap:16px;align-items:center}</style>
+<div class="brand">${icon}<span>火事<b>速</b></span><span class="f-src" style="margin-left:14px">${esc(f.src)}</span></div>
+<div class="f-place">${esc(f.place)}</div>
+<div class="f-what">${esc(f.what)}が発生</div>
+<div class="f-row"><span class="f-at">${esc(f.at)}</span>${st}</div>
+<div class="foot"><span>近づかない・火や煙が見えたら119番</span><span>目撃情報・口コミは kajisoku.jp</span></div>`;
+}
+const fires = fs.existsSync(path.join(DIST, 'data', '_fires_og.json')) ? JSON.parse(fs.readFileSync(path.join(DIST, 'data', '_fires_og.json'), 'utf8')) : [];
 const guides = fs.existsSync(path.join(DIST, 'data', '_guides.json')) ? JSON.parse(fs.readFileSync(path.join(DIST, 'data', '_guides.json'), 'utf8')) : [];
 
 (async () => {
   const out = path.join(DIST, 'og');
-  fs.mkdirSync(out, { recursive: true });
+  fs.mkdirSync(path.join(out, 'f'), { recursive: true });
+  // 前の回の件別画像のうち、今回の対象から外れたものは消す（dist/og は生成のたびに残るため）
+  const keep = new Set(fires.map(f => f.name + '.png'));
+  for (const fn of fs.readdirSync(path.join(out, 'f'))) if (!keep.has(fn)) fs.unlinkSync(path.join(out, 'f', fn));
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
-  const jobs = [['index', indexHTML()], ['live', liveHTML()], ['map', mapHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)])).concat(guides.map(g => ['g-' + g.slug, guideHTML(g)]));
+  const jobs = [['index', indexHTML()], ['live', liveHTML()], ['map', mapHTML()]].concat(model.wards.map(w => [w.slug, wardHTML(w)])).concat(guides.map(g => ['g-' + g.slug, guideHTML(g)])).concat(fires.map(f => ['f/' + f.name, fireHTML(f)]));
   for (const [name, html] of jobs) {
     await page.setContent(html, { waitUntil: 'load' });
     await page.evaluate(() => Promise.all([...document.images].map(i => i.decode().catch(() => {}))));   // 写真の描画を待つ

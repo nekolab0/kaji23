@@ -5,6 +5,18 @@
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
   var meta = $('meta[name="kaji23-api"]');
   var API = meta && meta.content ? meta.content.replace(/\/$/, '') : '';
+  // SNS の投稿（utm つきのリンク）から来た回数を数える（docs/growth.md の C5）。fire.html は受付サーバーが数えるので送らない。
+  // 同じタブで開き直したときは数えない。送るのはページのパス・流入元・種類だけ
+  (function () {
+    try {
+      var q = new URLSearchParams(location.search), src = q.get('utm_source');
+      if (!API || !src || location.pathname === '/fire.html' || !navigator.sendBeacon) return;
+      var key = 'kv:' + location.pathname + ':' + src;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+      navigator.sendBeacon(API + '/api/visit?p=' + encodeURIComponent(location.pathname) + '&utm_source=' + encodeURIComponent(src) + '&utm_campaign=' + encodeURIComponent(q.get('utm_campaign') || ''));
+    } catch (e) {}
+  })();
   var FLAGGED = {};   // このページで通報した口コミ（id → true）
   var KIND = { siren: 'サイレン', smoke: '煙・におい', fire: '火' };
   var AREAS = window.KAJI_AREAS || { prefs: {}, codes: {} };   // 全国の都道府県・市区町村（assets/areas.js）
@@ -680,8 +692,54 @@
       $('.f-place', r).textContent = placeOf({ pref: pref, city: city, town: town });
       return r;
     };
+    // 目撃報告の火事（fire.html?id=）だけ：その町の通知と、同じ都道府県のほかの火事（直近24時間の報告・3日以内の報道）。
+    // X から来た人の多くが1ページで帰るため（2026-11-24・E015）。固定ページ（data-pref あり）は HTML に同じ役の欄がある
+    var showNear = function (pref, ward, town) {
+      if (fire.hasAttribute('data-pref')) return;
+      var known = AREAS.prefs[pref] && AREAS.prefs[pref].indexOf(ward) >= 0;
+      var ps = $('.f-push-sec', fire), tn = town ? baseTown(town) : '';
+      if (ps && API && known) {
+        $('.f-push-h', fire).textContent = (tn || ward) + 'の次の火事を知らせる';
+        var pb = el('div', { class: 'push-box', 'data-push': '', 'data-pref': pref, 'data-city': ward, 'data-town': tn });
+        pb.innerHTML = '<button type="button" class="btn push-btn"></button><p class="small muted push-note">消防の発表・報道・近所の人の報告2件以上で、スマホやパソコンに知らせます（無料・登録不要・いつでも解除できます）。</p>';
+        $('.f-push', fire).appendChild(pb); initPush(pb); ps.hidden = false;
+      }
+      var ns = $('.f-near-sec', fire); if (!ns || !AREAS.prefs[pref]) return;
+      $('.f-near-h', fire).textContent = pref + 'のほかの火事';
+      var box = $('.f-near', fire);
+      var live = API ? getJSON('/api/live?hours=24').then(function (j) { return j.incidents || []; }, function () { return []; }) : Promise.resolve([]);
+      Promise.all([live, loadNews()]).then(function (r) {
+        var list = [];
+        r[0].forEach(function (x) {
+          if (x.id === id || (x.pref || '東京都') !== pref) return;
+          list.push({ href: fireHref(x.id), place: (x.ward || '') + (x.town || ''), at: x.last, city: x.ward, tag: x.official ? '消防の発表' : '目撃報告' });
+        });
+        Object.keys(r[1]).forEach(function (k) {
+          var x = r[1][k], at = x.first || x.last;   // 報道は最初の報道の時刻
+          if (k === id || x.pref !== pref || !at || Date.now() - Date.parse(at) > 3 * 864e5) return;
+          list.push({ href: fireHref(k), place: (x.city || '') + (x.town || '') + (x.chome ? x.chome + '丁目' : ''), at: at, city: x.city, tag: '報道' });
+        });
+        // 同じ市区町村を先に、あとは新しい順。5件まで
+        list.sort(function (a, b) { return ((b.city === ward) - (a.city === ward)) || (Date.parse(b.at) - Date.parse(a.at)); });
+        list = list.slice(0, 5);
+        box.innerHTML = '';
+        if (list.length) {
+          var ul = el('ul', { class: 'plain' });
+          list.forEach(function (x) {
+            var li = el('li'); li.appendChild(el('a', { href: x.href }, x.place + 'の火事'));
+            li.appendChild(el('span', { class: 'small muted' }, '　' + x.tag + '・' + hm(x.at) + 'ごろ')); ul.appendChild(li);
+          });
+          box.appendChild(ul);
+        } else box.appendChild(el('p', { class: 'small muted' }, '直近の' + pref + 'で、ほかの火事の情報はありません。'));
+        var more = el('p', { class: 'small' });
+        if (codeOf(pref, ward) || is23(pref, ward)) { more.appendChild(el('a', { href: cityHref(pref, ward) }, ward + 'の火事情報を見る →')); more.appendChild(document.createTextNode('　')); }
+        more.appendChild(el('a', { href: prefHref(pref) }, pref + 'の火事情報を見る →'));
+        box.appendChild(more); ns.hidden = false;
+      });
+    };
     var setup = function (pref, ward, town, title) {
       if (shown) return; shown = true;
+      showNear(pref, ward, town);
       document.title = title + '｜火事速';
       var crumb = $('.f-crumb');
       if (crumb) {

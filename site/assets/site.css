@@ -324,6 +324,7 @@ h1, .fire-card .place b { word-break: auto-phrase; }
 
 /* 広告（区切りの間だけ。読み込み前も場所を確保して、画面がずれないようにする） */
 .ad{margin:28px 0;padding:10px 0 14px;border-top:1px solid var(--line,#e5e0d8);border-bottom:1px solid var(--line,#e5e0d8);min-height:120px}
+.ad-admax{text-align:center;min-height:250px}
 .ad-label{font-size:11px;color:var(--muted,#7a7468);letter-spacing:.08em;margin-bottom:6px}
 .ad ins.adsbygoogle[data-ad-status="unfilled"]{display:none!important}
 

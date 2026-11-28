@@ -25,6 +25,7 @@ import { parseMail, mailText, decodeHeader } from './mail.js';
 import { pollX, snsFor } from './xposts.js';
 import { phoneTick, onRecording, onCallStatus, phoneLog, phoneKey } from './phone.js';
 import { vapidKeys, subscribe, unsubscribe, myAreas, pushTick } from './push.js';
+import { enqueue as socialEnqueue, socialTick, socialStatus } from './social.js';
 
 export const WARDS = ['足立区', '荒川区', '板橋区', '江戸川区', '大田区', '葛飾区', '北区', '江東区', '品川区', '渋谷区', '新宿区', '杉並区', '墨田区',
   '世田谷区', '台東区', '中央区', '千代田区', '豊島区', '中野区', '練馬区', '文京区', '港区', '目黒区'];
@@ -126,7 +127,10 @@ async function setup(env) {
   await run('CREATE INDEX IF NOT EXISTS idx_off_at ON official(at)');
   await run(`CREATE TABLE IF NOT EXISTS sources (id TEXT PRIMARY KEY, last_try TEXT, last_ok TEXT, status TEXT, items INTEGER, robots TEXT, robots_at TEXT)`);
   try { await run('ALTER TABLE sources ADD COLUMN sample TEXT'); } catch (e) {}   // 読み取りの確認用: 火災・出動を含む行の見本
+  try { await run('ALTER TABLE sources ADD COLUMN fails INTEGER NOT NULL DEFAULT 0'); } catch (e) {}   // 続けて失敗した回数（読めないページの間引き用。pollSources）
   for (const col of ['official INTEGER NOT NULL DEFAULT 0', 'official_kind TEXT', 'official_src TEXT']) { try { await run(`ALTER TABLE incidents ADD COLUMN ${col}`); } catch (e) {} }
+  // X などの投稿から来た人の数（utm_source つきの fire.html を開いた回数。日本時間の日・火事ID・流入元ごと。2026-11-23）
+  await run(`CREATE TABLE IF NOT EXISTS share_clicks (day TEXT NOT NULL, inc TEXT NOT NULL, src TEXT NOT NULL, campaign TEXT NOT NULL DEFAULT '', n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, inc, src, campaign))`);
   await run('CREATE TABLE IF NOT EXISTS contact (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT NOT NULL, at TEXT NOT NULL, who TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0)');
   if (env.SALT) return env.SALT;
   const rnd = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -145,12 +149,86 @@ const incOut = r => r && ({ id: r.id, pref: r.pref, city: r.ward, ward: r.ward, 
   official: r.official ? { kind: r.official_kind, source: r.official_src, name: (SOURCES.find(s => s.id === r.official_src) || {}).name || null } : null });
 const comOut = r => ({ id: r.id, inc: r.inc, pref: r.pref, city: r.ward, ward: r.ward, town: r.town, body: r.body, at: r.at });
 
+// ---- 火事ごとの SNS カード（og:title・og:description・og:url）。2026-11-23・運営者の依頼 ----
+// 消防の出動がある火事は「{場所}で{種別}が発生」、近所の人の報告だけの火事は未確認なので「{場所}付近で火事の目撃報告」にする
+const SITE_HOSTS = ['kajisoku.jp', 'www.kajisoku.jp'];
+const jstAt = iso => { const t = new Date(new Date(iso).getTime() + 9 * 3600e3); return `${t.getUTCMonth() + 1}月${t.getUTCDate()}日 ${t.getUTCHours()}時${t.getUTCMinutes()}分`; };
+export function incCard(inc, site, now = new Date()) {
+  const place = placeName(inc.pref, inc.ward, inc.town);
+  const at = jstAt(inc.first_at);
+  const url = `${site}/fire.html?id=${encodeURIComponent(inc.id)}`;
+  if (inc.official) {
+    const fresh = now - new Date(inc.last_at) < MERGE_HOURS * 3600e3;   // 古くなった火事に「出動中」と書かない
+    return { url, title: `${place}で${inc.official_kind || '火災'}が発生｜火事速`,
+      desc: `${at}ごろ発生。${fresh ? '消防車が出動中。' : '消防車が出動しました。'}${inc.n ? `近所の人の目撃報告${inc.n}件。` : ''}詳細は火事速で。` };
+  }
+  return { url, title: `${place}付近で火事の目撃報告｜火事速`, desc: `${at}に最初の報告。目撃報告${inc.n}件・口コミ${inc.comments}件。詳細は火事速で。` };
+}
+// fire.html の HTML の og:title・og:description・og:url（と twitter:）だけを差し替える。<title>・description・canonical は変えない（SEO 担当の判断 2026-11-23）
+export function rewriteFirePage(html, card) {
+  const put = (h, prop, v) => h.replace(new RegExp(`(<meta (?:property|name)="${prop}" content=")[^"]*(")`), `$1${escHtml(v)}$2`);
+  let h = put(put(put(html, 'og:title', card.title), 'og:description', card.desc), 'og:url', card.url);
+  h = h.replace('<meta property="og:type" content="website">', '<meta property="og:type" content="article">');
+  return h;
+}
+// X などに貼った URL の目印（utm_source）を数える。カードを取りに来るボット（Twitterbot など）は数えない。
+// 人の情報は残さず、日・火事ID・流入元・キャンペーンごとの回数だけを持つ
+const BOT_UA = /bot|crawl|spider|slurp|facebookexternalhit|embedly|preview|curl|wget|python|headless|lighthouse/i;
+export function shareClickOf(request, now = new Date()) {
+  const u = new URL(request.url), ua = request.headers.get('User-Agent') || '';
+  const src = (u.searchParams.get('utm_source') || '').toLowerCase().slice(0, 20);
+  const inc = u.searchParams.get('id') || '';
+  if (!src || !/^[a-z0-9_-]+$/.test(src) || !/^[a-z0-9-]{4,80}$/.test(inc) || BOT_UA.test(ua) || request.method !== 'GET') return null;
+  const campaign = (u.searchParams.get('utm_campaign') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+  const day = new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
+  return { day, inc, src, campaign };
+}
+// 静的なページ（報道・消防の火事のページ f-n-/f-o-・読み物 g-・quiz.html など）は Cloudflare のルートを通らないので、
+// ページの JavaScript（assets/site.js）が utm つきで開かれたときだけ POST /api/visit?p=<パス>&utm_source=…（sendBeacon）で知らせる（docs/growth.md の C5・G4）。
+// fire.html は siteFirePage で数えているので数えない。数えるのは日・ページ・流入元・種類ごとの回数だけ（人の情報は残さない）
+export function visitOf(request, now = new Date()) {
+  const u = new URL(request.url), ua = request.headers.get('User-Agent') || '';
+  const src = (u.searchParams.get('utm_source') || '').toLowerCase().slice(0, 20);
+  let path = u.searchParams.get('p') || '';
+  try { path = decodeURIComponent(path); } catch (e) { return null; }
+  if (!src || !/^[a-z0-9_-]+$/.test(src) || BOT_UA.test(ua) || request.method !== 'POST') return null;
+  if (!/^\/[^\s<>"'?#]{0,160}$/.test(path) || path === '/fire.html' || !(path === '/' || /\.html$/.test(path))) return null;
+  const campaign = (u.searchParams.get('utm_campaign') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+  const day = new Date(now.getTime() + 9 * 3600e3).toISOString().slice(0, 10);
+  return { day, inc: 'p:' + (path.slice(1) || 'index.html'), src, campaign };
+}
+async function countShareClick(request, env, now) {
+  const c = shareClickOf(request, now); if (!c) return;
+  if (!ready || ready.env !== env) { const p = setup(env); ready = { env, p }; p.catch(() => { ready = null; }); }
+  await ready.p;
+  await env.DB.prepare('INSERT INTO share_clicks (day, inc, src, campaign, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(day, inc, src, campaign) DO UPDATE SET n = n + 1')
+    .bind(c.day, c.inc, c.src, c.campaign).run();
+}
+async function siteFirePage(request, env, now) {
+  const origin = await fetch(request);   // 同じゾーンへの取得は、この Worker を通らずに GitHub Pages へ行く
+  try { await countShareClick(request, env, now); } catch (e) {}   // 数え損ねてもページは返す
+  try {
+    const id = new URL(request.url).searchParams.get('id') || '';
+    if (!origin.ok || !/text\/html/.test(origin.headers.get('Content-Type') || '') || !/^[a-z0-9-]{4,80}$/.test(id)) return origin;
+    const inc = await env.DB.prepare('SELECT * FROM incidents WHERE id = ?').bind(id).first();
+    if (!inc) return origin;   // ない ID は汎用のカードのまま（偽の火事のカードを作らせない）
+    const site = (env.SITE_URL || DEFAULT_SITE).replace(/\/$/, '');
+    const html = rewriteFirePage(await origin.text(), incCard(inc, site, now));
+    const headers = new Headers(origin.headers); headers.delete('Content-Length'); headers.delete('ETag');
+    headers.set('Cache-Control', 'public, max-age=60');
+    return new Response(html, { status: origin.status, headers });
+  } catch (e) { return origin; }
+}
+
 export async function handle(request, env, now = new Date()) {
   const url = new URL(request.url);
+  // サイト（kajisoku.jp）の fire.html に Cloudflare のルートで割り込み、SNS のカードを火事ごとにする
+  if (SITE_HOSTS.includes(url.hostname)) return request.method === 'GET' && url.pathname === '/fire.html' ? siteFirePage(request, env, now) : fetch(request);
   if (request.method === 'OPTIONS') return cors(env, new Response(null, { status: 204 }));
   // 受付サーバー（api.kajisoku.jp）は検索結果に出す場所ではない。検索エンジンには読まないよう伝え、
   // トップ（/）に来た人はサイトへ移す（Search Console の「見つかりませんでした（404）」対策）
-  if (request.method === 'GET' && url.pathname === '/robots.txt') return new Response('User-agent: *\nDisallow: /\n', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  // ただし共有用ページ /f/ は X などのカード取得（robots.txt に従う）が読めるように開ける。/f/ 自体は noindex で検索に出さない（2026-11-23）
+  if (request.method === 'GET' && url.pathname === '/robots.txt') return new Response('User-agent: *\nAllow: /f/\nDisallow: /\n', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   if (request.method === 'GET' && url.pathname === '/') return new Response(null, { status: 301, headers: { Location: 'https://kajisoku.jp/', 'X-Robots-Tag': 'noindex' } });
   if (!ready || ready.env !== env) { const p = setup(env); ready = { env, p }; p.catch(() => { ready = null; }); }
   const salt = await ready.p;
@@ -163,6 +241,15 @@ export async function handle(request, env, now = new Date()) {
   };
   const body = async () => { try { return await request.json(); } catch { return null; } };
   const P = url.pathname;
+
+  // ---- X 以外の SNS への自動投稿（docs/growth.md）。キューはサイトの生成が公開のあとに送る ----
+  if (P === '/api/social/enqueue' && request.method === 'POST') {
+    if (!env.SOCIAL_KEY) return json(env, { error: 'SOCIAL_KEY が設定されていません' }, 503);
+    if (request.headers.get('Authorization') !== 'Bearer ' + env.SOCIAL_KEY) return json(env, { error: '認証できませんでした' }, 401);
+    const r = await socialEnqueue(env, await body(), now);
+    return json(env, r, r.status || 200);
+  }
+  if (P === '/api/social/status' && request.method === 'GET') return json(env, await socialStatus(env, Number(url.searchParams.get('days')) || 7, now));
 
   // ---- 目撃報告 ----
   if (P === '/api/report' && request.method === 'POST') {
@@ -302,7 +389,7 @@ export async function handle(request, env, now = new Date()) {
     const mails = results.filter(r => /^mail-/.test(r.id)).map(r => ({ id: r.id, name: '消防メール（' + r.id.slice(5) + '）', last_ok: r.last_ok, items: r.items, ...(dbg ? { sample: r.sample } : {}) }));
     let samples = [];
     if (dbg) { try { samples = (await DB.prepare('SELECT at, src, subject, text, added FROM mail_samples ORDER BY id DESC LIMIT 50').all()).results; } catch (e) {} }
-    return json(env, { generatedAt: iso, mails, ...(dbg ? { mailSamples: samples } : {}), sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items, ...(dbg ? { sample: st[s.id].sample } : {}) } : {}) })) });
+    return json(env, { generatedAt: iso, mails, ...(dbg ? { mailSamples: samples } : {}), sources: SOURCES.map(s => ({ id: s.id, name: s.name, url: s.url, pref: s.pref, ...(st[s.id] ? { last_try: st[s.id].last_try, last_ok: st[s.id].last_ok, status: st[s.id].status, items: st[s.id].items, fails: st[s.id].fails || 0, ...(dbg ? { sample: st[s.id].sample } : {}) } : {}) })) });
   }
 
   // 消防本部の発表の記録（サイトの生成時に読み、火事のページ・町のページ・件数に使う）。場所は町名まで
@@ -317,6 +404,20 @@ export async function handle(request, env, now = new Date()) {
     const { results } = await DB.prepare("SELECT pref, ward, COALESCE(base, '') AS base, COUNT(*) AS n FROM incidents WHERE last_at > ? GROUP BY pref, ward, base").bind(ago(365 * 864e5)).all();
     const counts = {}; for (const r of results) counts[`${r.pref || '東京都'}|${r.ward}|${r.base}`] = r.n;
     return json(env, { generatedAt: iso, counts }, 200, { 'Cache-Control': 'public, max-age=300' });
+  }
+
+  // X などの投稿から来た人の数（日ごと・流入元ごとの合計と、火事ごとの内訳）。X の投稿の表示回数と割ってクリック率を見る（2026-11-23）
+  if (P === '/api/visit') {
+    const c = visitOf(request, now);
+    if (c) await DB.prepare('INSERT INTO share_clicks (day, inc, src, campaign, n) VALUES (?, ?, ?, ?, 1) ON CONFLICT(day, inc, src, campaign) DO UPDATE SET n = n + 1').bind(c.day, c.inc, c.src, c.campaign).run();
+    return cors(env, new Response(null, { status: 204 }));
+  }
+  if (P === '/api/share-clicks' && request.method === 'GET') {
+    const days = Math.min(60, Math.max(1, parseInt(url.searchParams.get('days') || '14', 10) || 14));
+    const since = new Date(now.getTime() + 9 * 3600e3 - (days - 1) * 864e5).toISOString().slice(0, 10);
+    const { results: byDay } = await DB.prepare('SELECT day, src, campaign, SUM(n) AS n FROM share_clicks WHERE day >= ? GROUP BY day, src, campaign ORDER BY day').bind(since).all();
+    const { results: byInc } = await DB.prepare('SELECT day, inc, src, SUM(n) AS n FROM share_clicks WHERE day >= ? GROUP BY day, inc, src ORDER BY n DESC LIMIT 200').bind(since).all();
+    return json(env, { generatedAt: iso, days, since, byDay, byInc }, 200, { 'Cache-Control': 'public, max-age=300' });
   }
 
   // 旧形式（区・町ごとの件数）
@@ -340,21 +441,16 @@ export async function handle(request, env, now = new Date()) {
     const inc = await DB.prepare('SELECT * FROM incidents WHERE id = ?').bind(m[1]).first();
     const dest = `${site}/fire.html?id=${encodeURIComponent(m[1])}`;
     let title = '火事の目撃情報｜火事速', desc = '「近くで火事？」を町名で確かめられるサイトです。';
-    if (inc) {
-      const place = placeName(inc.pref, inc.ward, inc.town);
-      const parts = KINDS.filter(k => inc[k]).map(k => `${KIND_JA[k]}${inc[k]}`).join('・');
-      const t = new Date(new Date(inc.last_at).getTime() + 9 * 3600e3);
-      title = inc.official ? `${place}付近で${inc.official_kind || '火災'}（消防出動）${inc.n ? ` 目撃報告${inc.n}件` : ''}｜火事速` : `${place}付近で火事の目撃情報 ${inc.n}件｜火事速`;
-      desc = `${parts}の報告、口コミ${inc.comments}件（最新 ${t.getUTCMonth() + 1}/${t.getUTCDate()} ${t.getUTCHours()}:${String(t.getUTCMinutes()).padStart(2, '0')}）。現場の状況を近所の人どうしで共有しています。近づかず、火や煙が見えたら119番へ。`;
-    }
+    if (inc) ({ title, desc } = incCard(inc, site, now));   // fire.html のカードと同じ文（2026-11-23）
     const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${escHtml(title)}</title><meta name="description" content="${escHtml(desc)}">
 <meta property="og:type" content="article"><meta property="og:site_name" content="火事速"><meta property="og:title" content="${escHtml(title)}">
 <meta property="og:description" content="${escHtml(desc)}"><meta property="og:url" content="${escHtml(dest)}"><meta property="og:image" content="${site}/og/live.png">
-<meta name="twitter:card" content="summary_large_image"><link rel="canonical" href="${escHtml(dest)}">
+<meta name="twitter:card" content="summary_large_image">
 <meta http-equiv="refresh" content="0;url=${escHtml(dest)}"></head><body><p><a href="${escHtml(dest)}">${escHtml(title)}</a></p>
 <script>location.replace(${JSON.stringify(dest)})</script></body></html>`;
-    return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60' } });
+    // noindex だけにして canonical は付けない（共有専用で、どこかへまとめるページではない。SEO 担当の判断 2026-11-23）
+    return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60', 'X-Robots-Tag': 'noindex' } });
   }
   return json(env, { error: 'not found' }, 404);
 }
@@ -409,13 +505,29 @@ export async function ingestOfficial(env, items, now = new Date()) {
   return added;
 }
 
+// 続けて失敗しているページを、次に読むまであける時間（3回目までは0。そのあとは30分→1時間→…→最長6時間）
+// 本番の監視（site/verify.js の M2）も、この時間を足して「止まっている」を判定する（2026-11-19）
+export function sourceWaitMs(s) {
+  const f = (s && s.fails) || 0;
+  return f < 3 ? 0 : Math.min(30 * 60e3 * 2 ** (f - 3), 6 * 3600e3);
+}
+
+// 続けて失敗しているページを、今回読むかどうか
+export function sourceDue(s, now) {
+  if (!s || !s.last_try || ((s.fails || 0) < 3)) return true;   // 3回目までは時刻を見ずに毎回読む（時刻が壊れていても止まらない）
+  return now - new Date(s.last_try) >= sourceWaitMs(s);
+}
+
 // 1回の実行で読むページ数を絞り、古い順に回す（各ページはおよそ5〜10分に1回）
 export async function pollSources(env, now = new Date(), fetcher = fetch, perRun = 8) {
   await setup(env);
   const DB = env.DB;
   const { results } = await DB.prepare('SELECT * FROM sources').all();
   const st = Object.fromEntries(results.map(r => [r.id, r]));
-  const due = SOURCES.slice().sort((a, b) => String((st[a.id] || {}).last_try || '').localeCompare(String((st[b.id] || {}).last_try || ''))).slice(0, perRun);
+  // 続けて読めないページ（HTTP 522・robots.txt で禁止など）は間引き、空いた枠を読めるページに回す（有事の速さ）。
+  // 3回続けて失敗したら、次は30分あけ、失敗するたびに倍（最長6時間）。1回でも読めたら元に戻る
+  const due = SOURCES.filter(src => sourceDue(st[src.id], now))
+    .sort((a, b) => String((st[a.id] || {}).last_try || '').localeCompare(String((st[b.id] || {}).last_try || ''))).slice(0, perRun);
   const report = [];
   for (const src of due) {
     const s = st[src.id] || {};
@@ -442,11 +554,12 @@ export async function pollSources(env, now = new Date(), fetcher = fetch, perRun
           await ingestOfficial(env, found, now);
         }
       }
-      await DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, robots, robots_at, sample) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = COALESCE(excluded.last_ok, sources.last_ok), status = excluded.status, items = excluded.items, robots = excluded.robots, robots_at = excluded.robots_at, sample = COALESCE(excluded.sample, sources.sample)')
-        .bind(src.id, now.toISOString(), status === 'ok' ? now.toISOString() : null, status, items, robots || '', robotsAt, sample).run();
+      const fails = status === 'ok' ? 0 : (s.fails || 0) + 1;
+      await DB.prepare('INSERT INTO sources (id, last_try, last_ok, status, items, robots, robots_at, sample, fails) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, last_ok = COALESCE(excluded.last_ok, sources.last_ok), status = excluded.status, items = excluded.items, robots = excluded.robots, robots_at = excluded.robots_at, sample = COALESCE(excluded.sample, sources.sample), fails = excluded.fails')
+        .bind(src.id, now.toISOString(), status === 'ok' ? now.toISOString() : null, status, items, robots || '', robotsAt, sample, fails).run();
     } catch (e) {
       status = 'エラー: ' + String(e && e.message || e).slice(0, 80);
-      await DB.prepare('INSERT INTO sources (id, last_try, status, items) VALUES (?, ?, ?, 0) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, status = excluded.status, items = 0').bind(src.id, now.toISOString(), status).run();
+      await DB.prepare('INSERT INTO sources (id, last_try, status, items, fails) VALUES (?, ?, ?, 0, ?) ON CONFLICT(id) DO UPDATE SET last_try = excluded.last_try, status = excluded.status, items = 0, fails = excluded.fails').bind(src.id, now.toISOString(), status, (s.fails || 0) + 1).run();
     }
     report.push({ id: src.id, status, items });
   }
@@ -490,7 +603,15 @@ export async function receiveMail(env, raw, now = new Date()) {
 const QUIET_KICK = ['17:37', '18:07'];
 
 export default {
-  fetch: (request, env) => handle(request, env),
+  // 例外で落ちたときは、どの URL で何が起きたかをログ（Observability）に残し、JSON の 500 を返す（2026-11-23。Error rate 39.6% の原因を見るため）
+  fetch: async (request, env) => {
+    try { return await handle(request, env); }
+    catch (e) {
+      const u = new URL(request.url);
+      console.error(JSON.stringify({ at: 'fetch', path: u.pathname, search: u.search.slice(0, 300), error: String(e && e.message || e).slice(0, 500), stack: String(e && e.stack || '').slice(0, 1500) }));
+      return cors(env, new Response(JSON.stringify({ error: '一時的に読み込めませんでした' }), { status: 500, headers: { 'Content-Type': 'application/json; charset=utf-8' } }));
+    }
+  },
   email: async (message, env) => {
     const buf = new Uint8Array(await new Response(message.raw).arrayBuffer());
     let raw = ''; for (let i = 0; i < buf.length; i += 8192) raw += String.fromCharCode.apply(null, buf.subarray(i, i + 8192));
@@ -511,6 +632,7 @@ export default {
     try { await pollX(env); } catch (e) {}
     try { await phoneTick(env); } catch (e) {}
     try { await pushTick(env); } catch (e) {}
+    try { await socialTick(env); } catch (e) { console.error(JSON.stringify({ at: 'socialTick', error: String(e && e.message || e).slice(0, 300) })); }   // X 以外の SNS への自動投稿（Secret のある先だけ・SOCIAL_PAUSE で止まる）
     // GitHub の定期実行は混雑で数時間あくことがあるため、30分ごとにこちらからサイトの作り直し（報道の取り直し）を頼む（GH_TOKEN を設定したときだけ）
     if (env.GH_TOKEN && [7, 37].includes(new Date().getUTCMinutes()) && !QUIET_KICK.includes(new Date().toISOString().slice(11, 16))) { try { await kickBuild(env); } catch (e) {} }   // Web プッシュ通知（登録がある地域の新しい火事）   // 案内ダイヤルへの自動電話（Twilio を設定したときだけ。1日の上限つき）   // X の投稿（X_BEARER を設定したときだけ。1日の上限つき）
   },

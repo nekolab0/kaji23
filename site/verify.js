@@ -182,7 +182,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     const title = (h.match(/<title>([^<]*)<\/title>/) || [])[1];
     const h1 = (h.match(/<h1[\s>]/g) || []).length;
     const desc = /<meta name="description" content="[^"]+"/.test(h);
-    const og = ((h.match(/property="og:image" content="([^"]+)"/) || [])[1] || '').replace(/^https?:\/\/.*?\/(?=og\/)/, '');
+    const og = decodeURIComponent(((h.match(/property="og:image" content="([^"]+)"/) || [])[1] || '').replace(/^https?:\/\/.*?\/(?=og\/)/, ''));
     const can = (h.match(/rel="canonical" href="([^"]+)"/) || [])[1];
     if (!can || !/^https:\/\//.test(can) || /[^\x21-\x7e]/.test(can)) meta.push(`${f}: 正規URLが不正 ${can}`);
     if (!title || h1 !== 1 || !desc || !og || !fileSet.has(og)) meta.push(`${f}: title=${!!title} h1=${h1} desc=${desc} og=${og}`);
@@ -264,8 +264,15 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     if (!h.includes(encodeURIComponent('n-' + x.id).replace(/%2D/g, '-')) && !h.includes('n-' + x.id)) newsBad.push(`${t.file}:報道が出ていない`);
   }
   await page.goto('file://' + path.join(DIST, 'index.html'));
-  const topNews = await page.$$eval('.news-item', els => els.length);
+  // 「最近報道された火事」は12件。その上の「直近24時間の主な火事」（E014）は別に数える：3件まで・配慮の要る記事は出さない
+  const topNews = await page.$$eval('section[aria-labelledby="recent"] .news-item', els => els.length);
   if (topNews !== Math.min(12, news.incidents.length)) newsBad.push(`トップ:表示${topNews}`);
+  const feat = await page.$$eval('section[aria-labelledby="feat"] .news-item a.place', as => as.map(a => decodeURIComponent(a.getAttribute('href'))));
+  if (feat.length > 3) newsBad.push(`トップの主な火事:${feat.length}件（3件まで）`);
+  const sensIds = new Set(news.incidents.filter(x => x.sensitive).map(x => `f-n-${x.id}.html`));
+  feat.forEach(h => { if (sensIds.has(h)) newsBad.push(`トップの主な火事:配慮の要る記事 ${h}`); });
+  const featAll = await page.$$eval('.news-item', els => els.length);
+  if (featAll !== topNews + feat.length) newsBad.push(`トップ:一覧の外に報道 ${featAll - topNews - feat.length}件`);
 
   // R7 町名検索と現在地
   const searchBad = [];
@@ -330,7 +337,7 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       const xt = decodeURIComponent(x);
       if (!/【火事の目撃情報】北区赤羽西2丁目付近　報告1件/.test(xt) || !xt.includes(API + '/f/' + incId) || !/#赤羽西/.test(xt)) flowBad.push(`Xの共有文が不正「${xt.slice(0, 160)}」`); else flowOk.push('X・LINEの共有文');
       const og = await (await handle(new Request(API + '/f/' + incId), W.env)).text();
-      if (!/北区赤羽西2丁目付近で火事の目撃情報 1件/.test(og)) flowBad.push('共有用ページの見出しが不正'); else flowOk.push('共有用ページの見出し');
+      if (!/北区赤羽西2丁目付近で火事の目撃報告｜火事速/.test(og) || !/目撃報告1件/.test(og)) flowBad.push('共有用ページの見出しが不正'); else flowOk.push('共有用ページの見出し');
       clock++; await fp.click('.f-report [data-tab=text]');
       await fp.fill('.f-report textarea', '黒い煙が見えます。消防車が来ています');
       await fp.click('.f-report form.text button[type=submit]');
@@ -394,7 +401,8 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
       if (near < 5) flowBad.push('近くの町が出ない');
     }
     // 消防本部の発表: 取り込むと一覧に「消防の発表」、火事のページに出典つきで出る
-    await ingestOfficial(W.env, [{ source: 'sapporo', pref: '北海道', city: '札幌市北区', town: '北32条西7丁目', kind: '建物火災', at: new Date(Date.now() - 20 * 60e3).toISOString() }], new Date());
+    await ingestOfficial(W.env, [{ source: 'sapporo', pref: '北海道', city: '札幌市北区', town: '北32条西7丁目', kind: '建物火災', at: new Date(Date.now() - 20 * 60e3).toISOString() },
+      { source: 'sapporo', pref: '北海道', city: '札幌市中央区', town: '北1条西2丁目', kind: '建物火災', at: new Date(Date.now() - 40 * 60e3).toISOString() }], new Date());
     const offInc = W.db.prepare("SELECT id FROM incidents WHERE ward = '札幌市北区'").get();
     await fp.goto('file://' + path.join(DIST, 'index.html'));
     await fp.waitForFunction(() => [...document.querySelectorAll('.fire-card')].some(c => /札幌市北区北32条西7丁目付近/.test(c.textContent) && /消防の発表・建物火災/.test(c.textContent)), null, { timeout: 5000 })
@@ -405,6 +413,13 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
         .then(() => flowOk.push('火事のページに消防の発表と出典'), () => flowBad.push('火事のページに消防の発表が出ない'));
       const xs = decodeURIComponent((await fp.$$eval('.f-share a', as => as.map(a => a.href))).find(h => /intent/.test(h)) || '');
       if (!/【消防出動】北海道札幌市北区北32条西7丁目付近で建物火災/.test(xs)) flowBad.push('消防の発表の共有文が不正'); else flowOk.push('消防の発表の共有文');
+      // 目撃報告・消防の発表の火事のページ（fire.html?id=）に、同じ都道府県のほかの火事と、その町の通知の欄が出る（E015）
+      await fp.waitForFunction(() => { const n = document.querySelector('.f-near-sec'); return n && !n.hidden && /札幌市中央区北1条西2丁目の火事/.test(n.textContent) && !/札幌市北区北32条西7丁目の火事/.test(n.textContent); }, null, { timeout: 5000 })
+        .then(() => flowOk.push('火事のページに「北海道のほかの火事」（自分は出さない）'), () => flowBad.push('火事のページに近くのほかの火事が出ない、または自分の火事が出る'));
+      const nl = await fp.$$eval('.f-near a', as => as.map(a => decodeURIComponent(a.getAttribute('href'))));
+      if (!nl.some(h => h.startsWith('fire.html?id=')) || !nl.includes('c-北海道-札幌市北区.html') || !nl.includes('p-北海道.html')) flowBad.push(`近くの火事のリンクが不正 ${nl.join(',')}`); else flowOk.push('近くの火事から市区町村・都道府県ページへ');
+      const pv = await fp.evaluate(() => { const s = document.querySelector('.f-push-sec'); const b = s && s.querySelector('[data-push]'); return s && !s.hidden && b && b.getAttribute('data-town') ? b.getAttribute('data-city') : ''; });
+      if (pv !== '札幌市北区') flowBad.push(`火事のページの通知の欄が不正「${pv}」`); else flowOk.push('火事のページにその町の通知の欄');
     }
     const nid = news.incidents[0] && 'n-' + news.incidents[0].id;
     if (nid) {
@@ -456,12 +471,16 @@ const valOf = src => { const m = z2h(String(src).split('＝').pop()).replace(/,/
     const src = await getJ(API + '/api/sources');
     if (src) {
       const now = Date.now();
-      const stale = src.sources.filter(x => x.last_try && now - Date.parse(x.last_try) > 2 * 3600e3).map(x => x.id);
+      // 「止まっている」＝最後に読もうとしてから、2時間＋間引きであける時間（worker の sourceWaitMs）を過ぎたページ。
+      // 読めないページは最長6時間おきにしか読まないので、2時間だけで見ると毎回 error になっていた（2026-11-18：kyoto）
+      const { sourceWaitMs } = await import('../worker/src/index.js');
+      const stale = src.sources.filter(x => x.last_try && now - Date.parse(x.last_try) > 2 * 3600e3 + sourceWaitMs(x)).map(x => x.id);
+      const backoff = src.sources.filter(x => sourceWaitMs(x) > 0).map(x => x.id);   // 続けて読めず間引き中（warn の M3 にも出る）
       const pending = src.sources.filter(x => !x.last_try).map(x => x.id);   // 追加したばかりでまだ読んでいない
       const bad = src.sources.filter(x => x.status && x.status !== 'ok').map(x => `${x.id}(${x.status})`);
       const okN = src.sources.filter(x => x.status === 'ok').length;
       add('M2 消防本部の読み取り（5分ごと）', !stale.length && okN >= Math.ceil((src.sources.length - pending.length) / 2),
-        `読めている ${okN}/${src.sources.length}ページ、取り込み ${src.sources.reduce((a, x) => a + (x.items || 0), 0)}件${pending.length ? '（未実行：' + pending.join('、') + '）' : ''}${stale.length ? '／2時間以上止まっている：' + stale.join('、') : ''}`, stale.length || okN < (src.sources.length - pending.length) / 2 ? 'error' : 'warn');
+        `読めている ${okN}/${src.sources.length}ページ、取り込み ${src.sources.reduce((a, x) => a + (x.items || 0), 0)}件${pending.length ? '（未実行：' + pending.join('、') + '）' : ''}${backoff.length ? '／間引き中：' + backoff.join('、') : ''}${stale.length ? '／止まっている：' + stale.join('、') : ''}`, stale.length || okN < (src.sources.length - pending.length) / 2 ? 'error' : 'warn');
       add('M3 読み取れていない消防本部', !bad.length, bad.join('、') || 'すべて読めている', 'warn');
     } else add('M2 消防本部の読み取り（5分ごと）', false, '読み取り状況を取得できない', lvl === 'error' && inCI ? 'error' : 'warn');
   }

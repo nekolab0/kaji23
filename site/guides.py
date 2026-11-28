@@ -91,7 +91,7 @@ def guide_article(slug, title, h1, desc, lead, body, sources, related, art=None)
 {body2}
 {cta}
 {_src(sources)}
-<section class="section" aria-labelledby="more"><h2 id="more">あわせて読みたい</h2><ul class="plain">{rel}<li><a href="guide.html">火事の調べ方・備えの記事一覧</a></li></ul></section>
+<section class="section" aria-labelledby="more"><h2 id="more">あわせて読みたい</h2><ul class="plain">{rel}<li><a href="quiz.html">火事・防災クイズに挑戦する（1回5問）</a></li><li><a href="guide.html">火事の調べ方・備えの記事一覧</a></li></ul></section>
 </div>'''
     GUIDE_OG.append({'slug': slug, 'h1': h1, 'hero': art.get('hero', '')})
     return page(f'g-{slug}', f'{title}｜{SITE_NAME}', desc, html, og_image=f'og/g-{slug}.png', ld_extra=[bc_ld([('火事の調べ方・備え', 'guide.html'), (h1, None)]), _article_ld(slug, title, desc)])
@@ -323,7 +323,7 @@ def guide_pages():
     pages['guide.html'] = page('guide', f'火事の調べ方・備え（ガイド）｜{SITE_NAME}', '近くで火事かどうかの調べ方、サイレンの見分け方、119番通報の伝え方、火事の原因と備えなど、火事にまつわる知識をまとめています。',
         f'''<section class="hero"><div class="wrap"><p class="crumb"><a href="index.html">トップ</a> ／ 火事の調べ方・備え</p><h1>火事の調べ方・備え</h1>
 <p class="lead">サイレンや煙に気づいたときの調べ方と、火事に備えるための知識をまとめています。</p></div></section>
-<div class="wrap"><section class="section"><ul class="g-cards">{items}</ul>
+<div class="wrap"><section class="section"><p><a class="btn" href="quiz.html">火事・防災クイズに挑戦する（1回5問）</a>　<a class="btn" href="weekly.html">週の火事まとめ</a></p><ul class="g-cards">{items}</ul>
 <p><a href="dial-list.html"><b>都道府県別 火災・災害の案内ダイヤル一覧</b></a><br><span class="small muted">出動中の火災を自動音声で案内する消防本部の電話番号</span></p></section></div>''',
         ld_extra=[bc_ld([('火事の調べ方・備え', None)])])
     pages.update(dial_pages())

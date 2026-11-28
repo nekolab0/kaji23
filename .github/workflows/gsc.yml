@@ -24,7 +24,10 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
           INSPECT_PER_DAY: ${{ inputs.inspect }}
         run: python3 seo/fetch_gsc.py
+      # 下の3つは、Search Console の取得が失敗しても動かす（2026-11-19・11-20 は取得の失敗でアクセス解析と ops/metrics/ の更新も飛んだ）。
+      # 取得の失敗はジョブの失敗として残るので、メールは届く
       - name: アクセス解析（Cloudflare Web Analytics。設定がなければ飛ばす）
+        if: ${{ !cancelled() }}
         continue-on-error: true
         env:
           CF_ANALYTICS_TOKEN: ${{ secrets.CF_ANALYTICS_TOKEN }}
@@ -32,12 +35,16 @@ jobs:
           CF_SITE_TAG: ${{ vars.CF_SITE_TAG }}
         run: python3 ops/fetch_cf_analytics.py
       - name: 自動改善の数字をまとめる（ops/metrics/。docs/goals.md）
+        if: ${{ !cancelled() }}
         continue-on-error: true
         run: python3 ops/metrics.py
       - name: 保存
-        # 30分ごとのデータ保存と重なると push が断られるので、取り込み直して最大5回試す
+        if: ${{ !cancelled() }}
+        # 30分ごとのデータ保存と重なると push が断られるので、取り込み直して最大5回試す。
+        # 同じ日に ops/metrics/ を手で更新した PR が先に入っていると食い違う（2026-11-16 はこれで保存できなかった）。
+        # ここで保存するのは機械が作り直すファイルだけなので、食い違ったらこの回の取得結果を採る（-X theirs。daily.yml と同じ）
         run: |
           git config user.name kaji23-bot && git config user.email bot@users.noreply.github.com
           git add seo/gsc/api ops/metrics; if [ -d ops/analytics ]; then git add ops/analytics; fi; git commit -m "gsc: $(date -u +%F)" || exit 0
-          for i in 1 2 3 4 5; do git push && exit 0; git pull --rebase -q || git rebase --abort; sleep 10; done
+          for i in 1 2 3 4 5; do git push && exit 0; git pull --rebase -X theirs -q || git rebase --abort; sleep 10; done
           echo "::warning::Search Console データの保存に失敗しました"; exit 1

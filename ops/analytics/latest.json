@@ -1,72 +1,232 @@
 {
- "fetchedAt": "2026-11-15T04:47+00:00",
+ "fetchedAt": "2026-11-28T06:52+00:00",
  "range": [
-  "2026-11-08",
-  "2026-11-14"
+  "2026-11-21",
+  "2026-11-27"
  ],
- "pageviews_7d": 33,
- "visits_7d": 17,
+ "pageviews_7d": 780,
+ "visits_7d": 677,
  "daily": [
   {
-   "date": "2026-11-12",
-   "pageviews": 2,
-   "visits": 2
+   "date": "2026-11-21",
+   "pageviews": 31,
+   "visits": 26
   },
   {
-   "date": "2026-11-13",
-   "pageviews": 28,
-   "visits": 12
+   "date": "2026-11-22",
+   "pageviews": 73,
+   "visits": 59
   },
   {
-   "date": "2026-11-14",
-   "pageviews": 3,
-   "visits": 3
+   "date": "2026-11-23",
+   "pageviews": 53,
+   "visits": 49
+  },
+  {
+   "date": "2026-11-24",
+   "pageviews": 197,
+   "visits": 170
+  },
+  {
+   "date": "2026-11-25",
+   "pageviews": 120,
+   "visits": 105
+  },
+  {
+   "date": "2026-11-26",
+   "pageviews": 204,
+   "visits": 190
+  },
+  {
+   "date": "2026-11-27",
+   "pageviews": 102,
+   "visits": 78
   }
  ],
  "top_paths": [
   {
    "path": "/fire.html",
-   "pageviews": 14,
-   "visits": 8
+   "pageviews": 579,
+   "visits": 555
   },
   {
    "path": "/",
+   "pageviews": 44,
+   "visits": 44
+  },
+  {
+   "path": "/index.html",
+   "pageviews": 29,
+   "visits": 0
+  },
+  {
+   "path": "/map.html",
+   "pageviews": 11,
+   "visits": 5
+  },
+  {
+   "path": "/town.html",
+   "pageviews": 10,
+   "visits": 1
+  },
+  {
+   "path": "/p-%E5%9F%BC%E7%8E%89%E7%9C%8C.html",
+   "pageviews": 9,
+   "visits": 6
+  },
+  {
+   "path": "/p-%E4%BA%AC%E9%83%BD%E5%BA%9C.html",
+   "pageviews": 9,
+   "visits": 9
+  },
+  {
+   "path": "/p-%E5%85%B5%E5%BA%AB%E7%9C%8C.html",
    "pageviews": 8,
    "visits": 8
   },
   {
-   "path": "/index.html",
+   "path": "/p-%E7%A5%9E%E5%A5%88%E5%B7%9D%E7%9C%8C.html",
    "pageviews": 6,
-   "visits": 0
+   "visits": 6
   },
   {
-   "path": "/p-%E6%96%B0%E6%BD%9F%E7%9C%8C.html",
+   "path": "/p-%E5%A4%A7%E9%98%AA%E5%BA%9C.html",
+   "pageviews": 5,
+   "visits": 5
+  },
+  {
+   "path": "/f-n-%E7%A5%9E%E5%A5%88%E5%B7%9D%E7%9C%8C-%E8%97%A4%E6%B2%A2%E5%B8%82-x-2026-11-25.html",
+   "pageviews": 5,
+   "visits": 4
+  },
+  {
+   "path": "/p-%E6%84%9B%E7%9F%A5%E7%9C%8C.html",
+   "pageviews": 5,
+   "visits": 3
+  },
+  {
+   "path": "/f-n-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E4%B8%89%E9%83%B7%E5%B8%82-x-2026-11-23.html",
+   "pageviews": 5,
+   "visits": 5
+  },
+  {
+   "path": "/p-%E5%8C%97%E6%B5%B7%E9%81%93.html",
+   "pageviews": 4,
+   "visits": 4
+  },
+  {
+   "path": "/p-%E5%8D%83%E8%91%89%E7%9C%8C.html",
+   "pageviews": 4,
+   "visits": 1
+  },
+  {
+   "path": "/c-%E5%BA%83%E5%B3%B6%E7%9C%8C-%E7%86%8A%E9%87%8E%E7%94%BA.html",
    "pageviews": 3,
    "visits": 1
   },
   {
-   "path": "/p-%E5%AE%AE%E5%9F%8E%E7%9C%8C.html",
+   "path": "/f-n-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E3%81%95%E3%81%84%E3%81%9F%E3%81%BE%E5%B8%82%E5%8D%97%E5%8C%BA-x-2026-11-09.html",
+   "pageviews": 2,
+   "visits": 2
+  },
+  {
+   "path": "/f-n-%E5%B1%B1%E5%8F%A3%E7%9C%8C-%E5%B1%B1%E5%8F%A3%E5%B8%82-%E6%B1%9F%E5%B4%8E-2026-11-26.html",
+   "pageviews": 2,
+   "visits": 2
+  },
+  {
+   "path": "/f-n-%E5%B1%B1%E5%8F%A3%E7%9C%8C-%E5%B1%B1%E5%8F%A3%E5%B8%82-%E6%B1%9F%E5%B4%8E-2026-11-25.html",
+   "pageviews": 2,
+   "visits": 1
+  },
+  {
+   "path": "/p-%E7%86%8A%E6%9C%AC%E7%9C%8C.html",
+   "pageviews": 2,
+   "visits": 0
+  },
+  {
+   "path": "/c-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E3%81%95%E3%81%84%E3%81%9F%E3%81%BE%E5%B8%82%E8%A6%8B%E6%B2%BC%E5%8C%BA.html",
+   "pageviews": 2,
+   "visits": 0
+  },
+  {
+   "path": "/g-taika-itoigawa.html",
+   "pageviews": 2,
+   "visits": 2
+  },
+  {
+   "path": "/p-%E6%9D%B1%E4%BA%AC%E9%83%BD.html",
+   "pageviews": 2,
+   "visits": 2
+  },
+  {
+   "path": "/dial-%E5%9F%BC%E7%8E%89%E7%9C%8C.html",
+   "pageviews": 2,
+   "visits": 2
+  },
+  {
+   "path": "/c-%E5%85%B5%E5%BA%AB%E7%9C%8C-%E6%B7%A1%E8%B7%AF%E5%B8%82.html",
    "pageviews": 1,
    "visits": 0
   },
   {
-   "path": "/town.html",
+   "path": "/c-%E7%86%8A%E6%9C%AC%E7%9C%8C-%E7%86%8A%E6%9C%AC%E5%B8%82.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
+   "path": "/f-n-%E9%95%B7%E9%87%8E%E7%9C%8C-%E5%8D%83%E6%9B%B2%E5%B8%82-x-2026-11-25.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
+   "path": "/f-n-%E5%9F%BC%E7%8E%89%E7%9C%8C-%E5%8A%A0%E9%A0%88%E5%B8%82-%E5%A4%A7%E8%B6%8A-2026-11-25.html",
+   "pageviews": 1,
+   "visits": 0
+  },
+  {
+   "path": "/dial-list.html",
+   "pageviews": 1,
+   "visits": 1
+  },
+  {
+   "path": "/p-%E7%A6%8F%E5%B3%B6%E7%9C%8C.html",
    "pageviews": 1,
    "visits": 0
   }
  ],
  "top_referers": [
   {
-   "host": "kajisoku.jp",
-   "pageviews": 16
+   "host": "t.co",
+   "pageviews": 523
   },
   {
    "host": "",
-   "pageviews": 9
+   "pageviews": 105
   },
   {
-   "host": "t.co",
-   "pageviews": 8
+   "host": "kajisoku.jp",
+   "pageviews": 103
+  },
+  {
+   "host": "www.bing.com",
+   "pageviews": 44
+  },
+  {
+   "host": "www.facebook.com",
+   "pageviews": 2
+  },
+  {
+   "host": "duckduckgo.com",
+   "pageviews": 1
+  },
+  {
+   "host": "www.ecosia.org",
+   "pageviews": 1
+  },
+  {
+   "host": "l.instagram.com",
+   "pageviews": 1
   }
  ]
 }
