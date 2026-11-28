@@ -1136,6 +1136,7 @@ def build(report=None):
     _sq = social_queue()
     (ROOT / 'ops' / 'social' / 'queue.json').write_text(json.dumps(_sq, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
     (ROOT / 'ops' / 'social' / 'drafts.md').write_text(social_drafts_md(_sq), encoding='utf-8')
+    write_weekly_social(ROOT)   # 週のまとめの SNS 用素材（G8。画像は weekly_social.js。daily が保存する）
     # 公開データ（誰でも検証できるように）
     public = {'fetchedAt': tfd['fetchedAt'], 'source': tfd_file, 'population_source': pop['url'], 'daily': daily,
               'news': {'collectedAt': news['collectedAt'], 'incidents': [{k: x[k] for k in ('id', 'ward', 'town', 'chome', 'building', 'injured', 'dead', 'first', 'sources')} for x in news['incidents']]},

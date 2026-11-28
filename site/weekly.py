@@ -16,7 +16,7 @@ WEEK_TIPS = {   # 月ごとの注意（言い切りすぎない・怖がらせ�
     8: '花火は水を入れたバケツを用意し、燃えかすは水につけてから捨てましょう。',
     9: '台風の後は、水につかった電気製品や配線から火が出ることがあります。使う前に点検しましょう。',
     10: '暖房器具を使い始める前に、ほこりの掃除と点検をしておきましょう。',
-    11: '秋の全国火災予防運動（11月9日〜15日）の時期です。住宅用火災警報器が鳴るか、テストしてみましょう。',
+    11: '住宅用火災警報器が鳴るか、テストボタンで確かめてみましょう（秋の全国火災予防運動は毎年11月9日〜15日）。',   # 週が予防運動の後でも合う書き方（G8 で直した）
     12: '1年で火事が多い時期です。寝る前・出かける前に、こんろ・暖房・たばこの火を確かめましょう。',
 }
 
@@ -147,3 +147,71 @@ def weekly_pages(today=None):
 <p class="small"><a href="index.html">いまの火事を町名で探す →</a>　<a href="guide.html">火事の調べ方・備え →</a></p></section></div>''',
         ld_extra=[bc_ld([('週の火事まとめ', None)])])
     return pages
+
+# ── 週のまとめの SNS 用素材（backlog G8・docs/growth.md の C6）──────────────────────────
+# 終わった週のうち一番新しい週について、ops/social/weekly/<月曜>/ に data.json（画像の材料）と post.md（文面）を書く。
+# 画像（1080×1350 のスライド）は weekly_social.js が data.json から作る。Muse が TikTok・YouTube ショート・note・はてなブログに手で使う。
+# 遅れて入る報道があるので、週が終わってから2日目（火曜）以降に1回だけ作り、できたら書き換えない（毎回の保存で画像が変わらないように）。
+# 文のきまり（docs/growth.md 2章）：煽らない・けが人や番地を書かない・町名まで分かった火事だけ。check_social.py が確かめる。
+WEEKLY_SOCIAL_DESTS = ('tiktok', 'youtube', 'note', 'hatena')
+
+def weekly_social_data(today=None):
+    today = today or datetime.datetime.now(JST).date()
+    ws = weekly_weeks(today)
+    if not ws: return None
+    mon = ws[-1]
+    if today < mon + datetime.timedelta(days=8): return None   # 火曜より前は作らない（遅れて入る記録を待つ）
+    s = weekly_summary(mon)
+    wd = ['月', '火', '水', '木', '金', '土', '日']
+    m = mon.month
+    nb = [{'place': place_of(r['pref'], r['city'], r['town']), 'day': jday(_jst_day(r)), 'kind': rec_kind(r) or ''}
+          for r in s['notable'] if r['town']][:5]
+    return {'mon': mon.isoformat(), 'range': f'{mon.year}年{_wrange(mon)}', 'short': _wrange(mon),
+            'url': f'{SITE_URL}/{week_file(mon)}', 'n': s['n'], 'n_town': s['n_town'],
+            'days': [[wd[i], s['days'][i]] for i in range(7)], 'prefs': s['prefs'].most_common(5),
+            'kinds': [kv for kv in s['kinds'].most_common(5) if kv[0] != '種類不明'][:4], 'notable': nb,
+            'month': m, 'nat_month': NAT_MONTH[m - 1], 'tip': WEEK_TIPS[m]}
+
+def weekly_social_md(d):
+    u = lambda dest: social_utm(d['url'], dest, 'weekly')
+    top = '・'.join(f'{p} {v:,}件' for p, v in d['prefs'][:3])
+    nb = '\n'.join(f'- {x["day"]} {x["place"]}' + (f'（{x["kind"]}）' if x['kind'] else '') for x in d['notable'])
+    tags = '#火事 #防災 #火事速'
+    return f'''# 週の火事まとめ {d["range"]}（SNS 用の素材）
+
+自動で作った素材です（`site/weekly.py` の `weekly_social_data`）。画像は同じフォルダの `slide-1.png`〜。投稿は Muse が手で行う。
+件数は火事速が記録した分だけです（すべての火事ではありません）。前の週と比べて「増えた・減った」とは書かないでください（収録元が増え続けているため）。
+
+## TikTok（写真の投稿・画像をすべて選ぶ）
+{d["short"]}に火事速が記録した全国の火事は{d["n"]:,}件。多かったのは{top}。
+{d["tip"]}
+くわしくはプロフィールのリンクから。{tags}
+
+## YouTube ショート
+タイトル：{d["short"]}の全国の火事まとめ（{d["n"]:,}件）{tags.split()[0]}
+説明：{d["range"]}に火事速が記録した全国の火事を、曜日・都道府県ごとにまとめました。{d["tip"]}
+{u("youtube")}
+
+## note・はてなブログ（本文）
+{d["range"]}に、火事速（kajisoku.jp）が報道と消防本部の発表から記録した全国の火事は{d["n"]:,}件でした（うち町名まで分かったもの {d["n_town"]:,}件）。
+
+件数の多かった都道府県：{top}
+
+{"町名まで分かった主な火事：" + chr(10) + nb + chr(10) if nb else ""}
+{d["month"]}月は、全国で{d["nat_month"]:,}件の火事が起きた月です（消防庁、2024年）。{d["tip"]}
+
+週のまとめの全体（曜日・都道府県・建物の種類）：
+- note 用：{u("note")}
+- はてなブログ用：{u("hatena")}
+'''
+
+def write_weekly_social(root, today=None):
+    """ops/social/weekly/<月曜>/ に data.json と post.md を書く（まだないときだけ）。書いたフォルダを返す"""
+    d = weekly_social_data(today)
+    if not d: return None
+    out = root / 'ops' / 'social' / 'weekly' / d['mon']
+    if (out / 'data.json').exists(): return None
+    out.mkdir(parents=True, exist_ok=True)
+    (out / 'data.json').write_text(json.dumps(d, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    (out / 'post.md').write_text(weekly_social_md(d), encoding='utf-8')
+    return out
