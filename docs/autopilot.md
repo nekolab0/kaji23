@@ -5,7 +5,7 @@
 
 ## 0. 毎回の準備
 1. リポジトリを最新にする（`git pull`）。
-2. 次を読む：`CLAUDE.md` → `docs/STATUS.md` → `docs/goals.md` → `ops/metrics/latest.md` → `docs/experiments.md` → `docs/backlog.md`。
+2. 次を読む：`CLAUDE.md` → `docs/STATUS.md` → `docs/adsense-remediation.md`（2026-11-28〜。AdSense 不承認の対応と公開前の品質チェック）→ `docs/goals.md` → `ops/metrics/latest.md` → `docs/experiments.md` → `docs/backlog.md`。
 3. `ops/metrics/latest.md` の日付が今日でなければ、`python3 ops/metrics.py` を自分で動かす（Search Console の取得が止まっていれば、それも報告に書く）。
 
 ### Fable は使わない（2026-11-18〜）
@@ -29,6 +29,8 @@ Claude Fable は追加のクレジットがないと使えなくなり、11/18 �
 ### 上限
 - 自動マージは1日1件まで。
 - サイトマップに載るページを、1回の変更で100件以上増やさない。テンプレートの文言だけが違うページを大量に作らない（Google の「大量生成コンテンツ」の扱いを受ける危険がある）。
+- 新しく index になるページ・読み物は、`docs/adsense-remediation.md` 5章の「公開前の品質チェック」を検証役が必ず見る。件数・PV だけでなく「index のページ1枚あたりの価値」を下げる変更はしない（2026-11-28〜）。
+- 一度に大量のページの index／noindex を切り替える変更は承認制（2026-11-28〜）。
 - 受付サーバー（`worker/`）の変更は、`worker/` のテストをすべて通したものだけ。
 - `check` が合格していない PR はマージしない。GitHub のルールセットで壁にすることも試したが、個人のリポジトリでは GitHub Actions（データの保存）を例外にできず、入れると保存が止まるのでやめた（2026-11-17）。代わりに `gate` ワークフローが、main に入った PR の `check` の結果を毎回確かめ、合格していなければ失敗してメールが届く。`gate` が失敗したら、その日は新しい改善をせず、該当の PR を元に戻すか `check` を通して確かめる。
 
